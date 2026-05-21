@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, Alert, Image, StyleSheet, Act
 import { ImagePlus, Sparkles, Camera, Wand2, Trash2, Save, Send } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
+import * as Sharing from 'expo-sharing';
 import ViewShot from 'react-native-view-shot';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle } from 'react-native-reanimated';
@@ -139,16 +140,36 @@ export function SimuladorScreen() {
 
   const salvarSimulacao = async () => {
     try {
+      if (!viewShotRef.current) return;
+      const uri = await viewShotRef.current.capture();
+
+      // 1. Tenta pedir permissão do MediaLibrary
       const permission = await MediaLibrary.requestPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert('Permissão necessária', 'Precisamos de acesso à galeria para salvar a imagem.');
-        return;
+      
+      if (permission.granted) {
+        try {
+          // 2. Se tiver permissão, tenta salvar diretamente
+          await MediaLibrary.saveToLibraryAsync(uri);
+          Alert.alert('Sucesso!', 'A simulação foi salva na sua galeria.');
+          return;
+        } catch (saveError) {
+          console.warn('Falha ao salvar via MediaLibrary, usando fallback de compartilhamento:', saveError);
+        }
       }
 
-      if (viewShotRef.current) {
-        const uri = await viewShotRef.current.capture();
-        await MediaLibrary.saveToLibraryAsync(uri);
-        Alert.alert('Sucesso!', 'A simulação foi salva na sua galeria.');
+      // 3. Fallback: Se não tiver permissão ou se o salvamento direto falhar (limitações do Android/Expo Go),
+      // usamos o compartilhamento nativo para permitir que o usuário salve a imagem.
+      const isSharingAvailable = await Sharing.isAvailableAsync();
+      if (isSharingAvailable) {
+        await Sharing.shareAsync(uri, {
+          dialogTitle: 'Salvar Simulação',
+          mimeType: 'image/jpeg',
+        });
+      } else {
+        Alert.alert(
+          'Erro ao salvar',
+          'Não foi possível salvar a imagem diretamente e o compartilhamento nativo não está disponível.'
+        );
       }
     } catch (error) {
       console.error('Erro ao salvar imagem:', error);
