@@ -19,11 +19,11 @@ import {
 /**
  * Bottom navigation (DESIGN.md §8.2 — BottomNav.jsx). Cream surface, 96px tall, no top border;
  * active tab is plum-tinted with an animated underline pill (0 → 18px via spring) and a 1.12
- * icon scale. Plugged into the navigator via `tabBar={(props) => <BottomNav {...props} />}` in
- * `src/routes/app.routes.tsx`.
+ * icon scale. Plugado num navigator via `tabBar={(props) => <BottomNav {...props} />}`.
  *
- * Atualmente 5 abas — Home · Chat · **Simulador** (Bisko AI, killer feature) · Sessões · Settings.
- * Se uma aba nova for adicionada em `app.routes.tsx`, registrar ícone + label nos maps abaixo.
+ * Os ícones/labels são configuráveis por `props` — assim o MESMO visual atende fluxos
+ * diferentes: o fluxo do cliente usa os defaults abaixo (`app.routes.tsx`); o fluxo do
+ * tatuador passa seu próprio mapa via `ArtistBottomNav` (`artist.routes.tsx`).
  */
 
 const PLUM = '#602C66';
@@ -31,8 +31,8 @@ const INK = '#000000';
 const CREAM = '#EAE0D5';
 const SPRING = { damping: 16, stiffness: 200 } as const;
 
-// Route name → lucide icon. Anything not in this map is skipped (defensive).
-const ICONS: Record<string, LucideIcon> = {
+// Mapa padrão (fluxo do cliente) — route name → ícone lucide. Rota fora do mapa é pulada.
+const CLIENT_ICONS: Record<string, LucideIcon> = {
   Home,
   Chat: MessageCircle,
   Simulador: ScanEye,
@@ -40,14 +40,21 @@ const ICONS: Record<string, LucideIcon> = {
   Settings,
 };
 
-// Accessibility label per tab — falls back to the route name if missing.
-const LABELS: Record<string, string> = {
+// Labels de acessibilidade padrão (fluxo do cliente) — cai pro route name se faltar.
+const CLIENT_LABELS: Record<string, string> = {
   Home: 'Início',
   Chat: 'Mensagens',
   Simulador: 'Simulador',
   Sessoes: 'Sessões',
   Settings: 'Configurações',
 };
+
+interface BottomNavProps extends BottomTabBarProps {
+  /** route name → ícone lucide. Default: mapa do cliente. */
+  icons?: Record<string, LucideIcon>;
+  /** route name → label de acessibilidade. Default: mapa do cliente. */
+  labels?: Record<string, string>;
+}
 
 function TabIcon({ Icon, focused }: { Icon: LucideIcon; focused: boolean }) {
   // Single shared progress drives both the icon scale and the underline pill width.
@@ -70,7 +77,13 @@ function TabIcon({ Icon, focused }: { Icon: LucideIcon; focused: boolean }) {
   );
 }
 
-export function BottomNav({ state, descriptors, navigation }: BottomTabBarProps) {
+export function BottomNav({
+  state,
+  descriptors,
+  navigation,
+  icons = CLIENT_ICONS,
+  labels = CLIENT_LABELS,
+}: BottomNavProps) {
   const insets = useSafeAreaInsets();
 
   // Honor `tabBarStyle: { display: 'none' }` set by the focused screen — the default
@@ -98,7 +111,7 @@ export function BottomNav({ state, descriptors, navigation }: BottomTabBarProps)
     >
       {state.routes.map((route, index) => {
         const focused = state.index === index;
-        const Icon = ICONS[route.name];
+        const Icon = icons[route.name];
         if (!Icon) return null;
 
         const { options } = descriptors[route.key];
@@ -126,7 +139,7 @@ export function BottomNav({ state, descriptors, navigation }: BottomTabBarProps)
             accessibilityLabel={
               (typeof options.tabBarAccessibilityLabel === 'string'
                 ? options.tabBarAccessibilityLabel
-                : undefined) ?? LABELS[route.name] ?? route.name
+                : undefined) ?? labels[route.name] ?? route.name
             }
             onPress={onPress}
             onLongPress={onLongPress}
