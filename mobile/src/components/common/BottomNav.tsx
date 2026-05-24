@@ -10,7 +10,7 @@ import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import {
   Home,
   MessageCircle,
-  Sparkles,
+  ScanEye,
   Calendar,
   Settings,
   type LucideIcon,
@@ -35,7 +35,7 @@ const SPRING = { damping: 16, stiffness: 200 } as const;
 const ICONS: Record<string, LucideIcon> = {
   Home,
   Chat: MessageCircle,
-  Simulador: Sparkles,
+  Simulador: ScanEye,
   Sessoes: Calendar,
   Settings,
 };

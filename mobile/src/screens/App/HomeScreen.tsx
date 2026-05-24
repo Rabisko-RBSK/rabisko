@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -23,6 +23,44 @@ import { useAuthStore } from '../../store/authStore';
 import { Input } from '../../components/common/Input';
 import { FilterChip, StatusPill } from '../../components/common/Chip';
 import { ArtistCard } from '../../components/common/ArtistCard';
+import { SuggestionList } from '../../components/common/SuggestionList';
+import { useEstilos } from '../../hooks/useEstilos';
+import { Estilo } from '../../services/api/estiloService';
+import { normalize } from '../../utils/normalize';
+import { levenshtein } from '../../utils/levenshtein';
+
+/** Quantidade maxima de sugestoes mostradas no dropdown da Home. */
+const MAX_SUGGESTIONS = 5;
+
+/**
+ * Ranqueia estilos pela query: prefixo (rank 0) > substring (1) >
+ * Levenshtein proximo (2). Estilos fora desses tres baldes sao
+ * descartados. Empate por ranking decide-se por ordem alfabetica
+ * (catalogo ja vem ordenado pelo backend).
+ */
+function rankSuggestions(query: string, catalogo: Estilo[]): Estilo[] {
+  const q = normalize(query);
+  if (q.length === 0) return [];
+  const limiteLeve = Math.max(2, Math.floor(q.length / 3));
+
+  type Ranked = { estilo: Estilo; rank: number; distance: number };
+  const ranked: Ranked[] = [];
+  for (const estilo of catalogo) {
+    const nome = normalize(estilo.nome);
+    if (nome.startsWith(q)) {
+      ranked.push({ estilo, rank: 0, distance: 0 });
+    } else if (nome.includes(q)) {
+      ranked.push({ estilo, rank: 1, distance: 0 });
+    } else {
+      const d = levenshtein(q, nome);
+      if (d <= limiteLeve) {
+        ranked.push({ estilo, rank: 2, distance: d });
+      }
+    }
+  }
+  ranked.sort((a, b) => a.rank - b.rank || a.distance - b.distance);
+  return ranked.slice(0, MAX_SUGGESTIONS).map((r) => r.estilo);
+}
 
 /* ---------- Mock data (P1 Home — replace with real API once `/services/api` is wired) ---------- */
 
@@ -146,6 +184,30 @@ export function HomeScreen() {
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
   const [activeFilter, setActiveFilter] = useState<string>('perto');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Catalogo cacheado em memoria de processo (useEstilos). Compartilhado
+  // com SearchResults pro did-you-mean.
+  const { estilos } = useEstilos();
+
+  // Sugestoes derivadas: memoiza para nao re-ranquear a cada render do scroll.
+  const suggestions = useMemo(
+    () => rankSuggestions(searchQuery, estilos),
+    [searchQuery, estilos],
+  );
+
+  // Enter na barra de busca -> tela de resultados. Vazio = lista todos
+  // os tatuadores ativos (sem filtro de estilo).
+  const handleSearchSubmit = () => {
+    const estilo = searchQuery.trim() || undefined;
+    navigation.navigate('SearchResults', estilo ? { estilo } : undefined);
+  };
+
+  // Tap numa sugestao: navega com o nome canonico (sem typo) e limpa a barra.
+  const handleSuggestionPress = (estilo: Estilo) => {
+    setSearchQuery('');
+    navigation.navigate('SearchResults', { estilo: estilo.nome });
+  };
 
   // First name only for the greeting; falls back to "VOCÊ" if no user.
   const firstName = (user?.name?.split(' ')[0] ?? 'VOCÊ').toUpperCase();
@@ -197,11 +259,23 @@ export function HomeScreen() {
         {/* Search field */}
         <View className="px-6">
           <Input
-            placeholder="Artistas, estúdios, estilos..."
+            placeholder="Realismo, Aquarela, Blackwork..."
             icon={Search}
             trailingIcon={SlidersHorizontal}
             autoCapitalize="none"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            returnKeyType="search"
+            onSubmitEditing={handleSearchSubmit}
+            onTrailingPress={handleSearchSubmit}
           />
+          {/* Dropdown de sugestoes — so renderiza quando ha o que sugerir.
+              `-mt-2` puxa pra perto do Input compensando a `mb-4` interna dele. */}
+          {suggestions.length > 0 && (
+            <View className="-mt-2 mb-2">
+              <SuggestionList suggestions={suggestions} onSelect={handleSuggestionPress} />
+            </View>
+          )}
         </View>
 
         {/* Filter chips */}

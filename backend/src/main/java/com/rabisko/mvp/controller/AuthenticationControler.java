@@ -18,19 +18,19 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Endpoint de login. Fluxo:
- *  1. Recebe { login (email), senha } no body.
- *  2. Delega ao AuthenticationManager — internamente ele:
- *       - chama AuthorizationService.loadUserByUsername(email)
- *       - compara a senha plain com o hash BCrypt via PasswordEncoder
- *       - lanca AuthenticationException se nao bater
- *  3. Pega o User autenticado (auth.getPrincipal()) e gera o JWT.
- *  4. Devolve { token } — o front salva e injeta no header das proximas
- *     requests via interceptor (axios no mobile).
+ * 1. Recebe { login (email), senha } no body.
+ * 2. Delega ao AuthenticationManager — internamente ele:
+ * - chama AuthorizationService.loadUserByUsername(email)
+ * - compara a senha plain com o hash BCrypt via PasswordEncoder
+ * - lanca AuthenticationException se nao bater
+ * 3. Pega o User autenticado (auth.getPrincipal()) e gera o JWT.
+ * 4. Devolve { token } — o front salva e injeta no header das proximas
+ * requests via interceptor (axios no mobile).
  *
  * Erros sao traduzidos pra HTTP:
- *  - 401: credenciais invalidas (mensagem generica, nao revela se foi o
- *    email ou a senha — evita user enumeration).
- *  - 400: qualquer outro erro inesperado.
+ * - 401: credenciais invalidas (mensagem generica, nao revela se foi o
+ * email ou a senha — evita user enumeration).
+ * - 400: qualquer outro erro inesperado.
  */
 @RestController
 @RequestMapping("auth")

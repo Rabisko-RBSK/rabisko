@@ -2,10 +2,7 @@ import axios from 'axios';
 import { useAuthStore } from '../../store/authStore';
 
 const api = axios.create({
-  // ATENÇÃO: hardcoded no IP da LAN do dev. Muda toda vez que troca de
-  // rede — confere com `ipconfig` (IPv4 do adapter Wi-Fi). TODO: mover
-  // pra app.json.extra.apiUrl + Constants.expoConfig.extra.apiUrl.
-  baseURL: 'http://192.168.15.5:8080',
+  baseURL: process.env.EXPO_PUBLIC_API_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',

@@ -1,15 +1,23 @@
 package com.rabisko.mvp.domain.artist;
 
+import com.rabisko.mvp.domain.estilo.Estilo;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -26,7 +34,9 @@ import java.util.UUID;
  *
  * O que fica aqui (proprio do papel):
  *  - bio, instagram, endereco
+ *  - latitude/longitude (busca por distancia via Haversine)
  *  - vinculo com estudio (estudio_id + flag)
+ *  - vinculo com estilos (M:N `tatuador_estilos`)
  */
 @Entity
 @Table(name = "tatuadores")
@@ -67,6 +77,29 @@ public class Artist {
     /** Espelha a presenca de estudio_id; util pra filtros sem JOIN. */
     @Column(name = "vinculado_estudio", nullable = false)
     private boolean vinculadoEstudio;
+
+    /**
+     * Coordenadas opcionais. Usadas pela busca por distancia (Haversine em
+     * SQL nativo no ArtistRepository.buscar). Null = tatuador nao apareceu
+     * no filtro "perto de mim".
+     */
+    private BigDecimal latitude;
+
+    private BigDecimal longitude;
+
+    /**
+     * M:N com o catalogo de estilos via `tatuador_estilos`. A coluna
+     * `data_criacao` da tabela de juncao e preenchida pelo DEFAULT do banco
+     * — Hibernate so escreve (tatuador_id, estilo_id) e ignora o resto.
+     */
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "tatuador_estilos",
+            joinColumns = @JoinColumn(name = "tatuador_id"),
+            inverseJoinColumns = @JoinColumn(name = "estilo_id")
+    )
+    @Builder.Default
+    private Set<Estilo> estilos = new HashSet<>();
 
     @CreationTimestamp
     @Column(name = "data_criacao", updatable = false, nullable = false)

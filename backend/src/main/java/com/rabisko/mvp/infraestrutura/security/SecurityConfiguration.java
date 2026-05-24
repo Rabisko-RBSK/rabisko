@@ -17,26 +17,26 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 /**
  * Configuracao do Spring Security. Define a pipeline de seguranca da API:
  *
- *   request --> [SecurityFilter (le JWT, popula SecurityContext)]
- *           --> [UsernamePasswordAuthenticationFilter (no-op aqui, sessao stateless)]
- *           --> Controller (com @AuthenticationPrincipal disponivel)
+ * request --> [SecurityFilter (le JWT, popula SecurityContext)]
+ * --> [UsernamePasswordAuthenticationFilter (no-op aqui, sessao stateless)]
+ * --> Controller (com @AuthenticationPrincipal disponivel)
  *
  * Decisoes principais:
- *  - STATELESS: nao cria HttpSession. Cada request carrega o JWT no header
- *    Authorization. Permite escala horizontal sem sticky sessions.
- *  - CSRF desabilitado: nao usamos cookies de sessao, entao o vetor CSRF
- *    nao se aplica. Se um dia adicionar cookie auth, REVERTER esta linha.
- *  - permitAll APENAS em /auth/login e /user/cadastro/{cliente|artista|estudio}.
- *    Todas as outras rotas exigem JWT valido (.anyRequest().authenticated()).
- *  - SecurityFilter inserido ANTES do UsernamePasswordAuthenticationFilter
- *    pra que o SecurityContext ja esteja populado quando o controller rodar.
+ * - STATELESS: nao cria HttpSession. Cada request carrega o JWT no header
+ * Authorization. Permite escala horizontal sem sticky sessions.
+ * - CSRF desabilitado: nao usamos cookies de sessao, entao o vetor CSRF
+ * nao se aplica. Se um dia adicionar cookie auth, REVERTER esta linha.
+ * - permitAll APENAS em /auth/login e /user/cadastro/{cliente|artista|estudio}.
+ * Todas as outras rotas exigem JWT valido (.anyRequest().authenticated()).
+ * - SecurityFilter inserido ANTES do UsernamePasswordAuthenticationFilter
+ * pra que o SecurityContext ja esteja populado quando o controller rodar.
  *
  * Beans expostos:
- *  - AuthenticationManager: usado pelo AuthenticationControler pra validar
- *    credenciais no /auth/login.
- *  - PasswordEncoder (BCrypt): hashing usado tanto no cadastro (UserService
- *    armazena o hash) quanto na autenticacao (Spring compara senha plain
- *    com o hash via DaoAuthenticationProvider).
+ * - AuthenticationManager: usado pelo AuthenticationControler pra validar
+ * credenciais no /auth/login.
+ * - PasswordEncoder (BCrypt): hashing usado tanto no cadastro (UserService
+ * armazena o hash) quanto na autenticacao (Spring compara senha plain
+ * com o hash via DaoAuthenticationProvider).
  */
 @Configuration
 @EnableWebSecurity
@@ -56,14 +56,15 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.POST, "/user/cadastro/artista").permitAll()
                         .requestMatchers(HttpMethod.POST, "/user/cadastro/estudio").permitAll()
                         .requestMatchers("/wss/**").permitAll()
-                        .anyRequest().authenticated()
-                )
+                        .requestMatchers("/simulation/**").permitAll()
+                        .anyRequest().authenticated())
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration)
+            throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
     }
 
