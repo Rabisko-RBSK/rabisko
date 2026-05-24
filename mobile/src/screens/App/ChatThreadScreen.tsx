@@ -10,11 +10,13 @@ import {
   Alert,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { Send } from 'lucide-react-native';
+import { CalendarDays, Send } from 'lucide-react-native';
 
 import { Header } from '../../components/common/Header';
 import { chatService, MensagemDTO } from '../../services/api';
 import { stompClient } from '../../services/ws/stompClient';
+import { useAuthStore } from '../../store/authStore';
+import { ScheduleModal } from './ScheduleModal';
 
 type ChatThreadParams = { chatId: string; outroNome: string; outroUsuarioId: string };
 
@@ -23,9 +25,11 @@ export function ChatThreadScreen() {
   const navigation = useNavigation();
   const { chatId, outroNome, outroUsuarioId } = route.params;
 
+  const { role } = useAuthStore();
   const [mensagens, setMensagens] = useState<MensagemDTO[]>([]);
   const [texto, setTexto] = useState('');
   const [enviando, setEnviando] = useState(false);
+  const [agendando, setAgendando] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -71,7 +75,30 @@ export function ChatThreadScreen() {
       className="flex-1 bg-background"
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <Header title={outroNome} onBack={() => navigation.goBack()} />
+      <Header
+        title={outroNome}
+        onBack={() => navigation.goBack()}
+        right={
+          role === 'artista' ? (
+            <TouchableOpacity
+              onPress={() => setAgendando(true)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Agendar sessão"
+            >
+              <CalendarDays size={22} color="#000000" />
+            </TouchableOpacity>
+          ) : undefined
+        }
+      />
+
+      <ScheduleModal
+        visible={agendando}
+        onClose={() => setAgendando(false)}
+        chatId={chatId}
+        outroNome={outroNome}
+        onSent={() => setAgendando(false)}
+      />
 
       <FlatList
         inverted
