@@ -72,6 +72,14 @@ public class Artist {
     private String instagram;
 
     /**
+     * URL publica da foto de perfil — salva no bucket `profile_images` do
+     * Supabase Storage. Nullable: tatuador sem foto cadastrada cai no avatar
+     * padrao da UI.
+     */
+    @Column(name = "foto_perfil_url")
+    private String fotoPerfilUrl;
+
+    /**
      * Atalho booleano que espelha "estudioId != null". Existe pra permitir
      * filtros do tipo "so tatuadores de estudio" sem ter que fazer JOIN.
      * Quem atualiza esse flag e o ArtistService quando muda o vinculo.
