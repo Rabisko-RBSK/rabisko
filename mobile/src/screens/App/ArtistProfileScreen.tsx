@@ -238,8 +238,10 @@ export function ArtistProfileScreen() {
     reload: reloadProfile,
   } = useArtistProfile();
 
-  // Avaliações — destinatário é o user_id do tatuador logado.
-  const tatuadorId = route.params?.tatuadorId ?? user?.id;
+  // Avaliações — destinatário é o tatuadorId (PK de `tatuadores`, distinto
+  // do user_id). Em rota navegada, vem nos params; no próprio perfil, vem do
+  // profile carregado. `user?.id` não serve aqui — é o user_id.
+  const tatuadorId = route.params?.tatuadorId ?? profile?.tatuadorId;
   const {
     avaliacoes,
     loading: avaliacoesLoading,
@@ -470,6 +472,12 @@ export function ArtistProfileScreen() {
             {displayName}
           </Text>
 
+          {profile?.instagram ? (
+            <Text className="font-body text-[14px] text-fg-2 mt-1">
+              {formatHandle(profile.instagram)}
+            </Text>
+          ) : null}
+
           <View className="flex-row items-center mt-1.5" style={{ gap: 5 }}>
             <Text className="font-body-semibold text-[14px] text-ink">
               {ratingText}
@@ -500,11 +508,6 @@ export function ArtistProfileScreen() {
                 <Text className="font-body text-[11px] text-fg-3 mt-2 text-right">
                   {editingBio.length}/{BIO_MAX}
                 </Text>
-                {profile?.instagram ? (
-                  <Text className="font-body text-[13px] text-fg-3 mt-1">
-                    {formatHandle(profile.instagram)}
-                  </Text>
-                ) : null}
               </>
             ) : profileLoading ? (
               <View className="py-3 items-center">
@@ -527,22 +530,22 @@ export function ArtistProfileScreen() {
                   {bio ||
                     'Você ainda não adicionou uma descrição sobre o seu trabalho.'}
                 </Text>
-                {profile?.instagram ? (
-                  <Text className="font-body text-[13px] text-fg-3 mt-3">
-                    {formatHandle(profile.instagram)}
-                  </Text>
-                ) : null}
               </>
             )}
           </View>
         </View>
 
-        {/* Portfólio — carrossel; "Ver Todos" abre o portfólio completo */}
+        {/* Portfólio — carrossel; o botão abre a tela dedicada (onde o
+            tatuador também adiciona/remove imagens). Quando vazio, o rótulo
+            vira "Gerenciar" pra deixar claro que ainda da pra entrar e subir
+            a primeira imagem. */}
         <SectionHeader
           title="Portfólio"
           actionLabel={
-            !editing && profileReady && portfolio.length > 0
-              ? 'Ver Todos'
+            !editing && profileReady
+              ? portfolio.length > 0
+                ? 'Ver Todos'
+                : 'Gerenciar'
               : undefined
           }
           onAction={abrirPortfolioCompleto}

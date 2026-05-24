@@ -9,6 +9,7 @@ import { stompClient } from '../services/ws/stompClient';
 export function Router() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const token = useAuthStore((s) => s.token);
+  const role = useAuthStore((s) => s.role);
 
   useEffect(() => {
     console.log('[router] auth effect — isAuthenticated:', isAuthenticated, 'token?', !!token);
