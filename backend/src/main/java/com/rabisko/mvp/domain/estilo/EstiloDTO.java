@@ -2,13 +2,13 @@ package com.rabisko.mvp.domain.estilo;
 
 import java.util.UUID;
 
-/**
- * RESPONSE DTO de Estilo — usado pelo GET /estilos pra alimentar o
- * autocomplete da barra de busca no mobile. So id + nome porque
- * `descricao`/`dataCriacao` nao tem uso no front (autocomplete + did-you-mean).
- *
- * Manter sincronizado com Estilo.java caso novos campos publicos surjam.
- */
+// =====================================================================
+// DTO EstiloDTO — resposta do GET /estilos.
+//
+// Usado pra alimentar o autocomplete da barra de busca no mobile.
+// So id + nome porque o front nao precisa da descricao nem da data
+// pra mostrar uma sugestao.
+// =====================================================================
 public record EstiloDTO(
         UUID estiloId,
         String nome

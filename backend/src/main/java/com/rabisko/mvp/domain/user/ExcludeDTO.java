@@ -1,8 +1,10 @@
 package com.rabisko.mvp.domain.user;
 
-/**
- * INPUT do DELETE /user/excluir-conta. So precisa do email — o User e
- * achado por email no UserService.excluirUser.
- */
+// =====================================================================
+// DTO ExcludeDTO — entrada do DELETE /user/excluir-conta.
+//
+// So precisa do email pra identificar qual conta excluir. O UserService
+// faz findByEmail e remove (ou marca como inativa, dependendo da regra).
+// =====================================================================
 public record ExcludeDTO(String email) {
 }

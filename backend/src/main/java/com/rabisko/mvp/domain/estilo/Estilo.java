@@ -12,13 +12,17 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-/**
- * Tabela `estilos` — catalogo controlado de estilos de tatuagem (Realismo,
- * Minimalista, etc.). O banco e fonte da verdade: o vinculo de tatuadores a
- * estilos vive na M:N `tatuador_estilos` (mapeada como @ManyToMany no Artist).
- *
- * Nada de criar estilos via cadastro de usuario — o seed e feito no Supabase.
- */
+// =====================================================================
+// ENTIDADE Estilo — linha da tabela `estilos`.
+//
+// E o CATALOGO de estilos de tatuagem disponiveis (Realismo, Blackwork,
+// Minimalista, etc.). Funciona como uma "tabela de dominio" — os valores
+// sao cadastrados manualmente no Supabase (seed), nao pelos usuarios.
+//
+// A relacao "quais estilos um tatuador faz" vive na tabela de juncao
+// `tatuador_estilos` (ver mapeamento @ManyToMany em Artist.estilos).
+// =====================================================================
+
 @Entity
 @Table(name = "estilos")
 @Getter
@@ -34,9 +38,11 @@ public class Estilo {
     @Column(name = "estilo_id", updatable = false, nullable = false)
     private UUID estiloId;
 
+    /** Nome do estilo. UNIQUE: nao pode ter 2 estilos com mesmo nome. */
     @Column(nullable = false, unique = true)
     private String nome;
 
+    /** Descricao opcional (ex.: "tracos finos e geometria"). */
     private String descricao;
 
     @CreationTimestamp

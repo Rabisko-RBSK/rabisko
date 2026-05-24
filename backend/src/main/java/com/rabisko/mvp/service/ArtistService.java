@@ -21,42 +21,41 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/**
- * Cria a linha em `tatuadores` que materializa o papel de artista do User
- * e expoe a busca por estilo/distancia.
- *
- * Notas:
- *  - Dados pessoais (nome/email/cpf/telefone/senha) NAO sao replicados
- *    aqui — vivem em `users` e sao consultados via JOIN ou
- *    UserRepository.findById(userId). Ver Artist.java.
- *  - termosAceitos vive em User.termosAceitos (UserService.construirUser
- *    ja gravou). Mantido fora desta linha pra evitar duplicacao.
- *  - estilos: lista de nomes vinda do DTO. Persistido na M:N
- *    `tatuador_estilos` via @ManyToMany no Artist. Nomes desconhecidos
- *    no catalogo sao logados como warning e ignorados (front nao
- *    consegue criar estilos novos — catalogo controlado).
- */
+// =====================================================================
+// SERVICE ArtistService — duas responsabilidades:
+//
+//   1) cadastrarArtista: cria a linha em `tatuadores` e amarra os
+//      estilos escolhidos a M:N `tatuador_estilos`.
+//
+//   2) buscar: expoe a busca de tatuadores por estilo e/ou distancia,
+//      empacotando os filtros pra @Query nativa do ArtistRepository.
+//
+// Nada de dados pessoais (nome/email/cpf) aqui — esses vivem em `users`.
+// =====================================================================
+
 @Service
 public class ArtistService {
 
     private static final Logger log = LoggerFactory.getLogger(ArtistService.class);
 
-    /** Default usado quando o cliente manda lat/lng mas omite raioKm. */
+    /** Raio padrao da busca por distancia quando o front nao passa um. */
     private static final double RAIO_KM_DEFAULT = 25.0;
 
-    @Autowired
-    private ArtistRepository artistRepository;
+    @Autowired private ArtistRepository artistRepository;
+    @Autowired private EstiloRepository estiloRepository;
 
-    @Autowired
-    private EstiloRepository estiloRepository;
-
+    /**
+     * Cria o perfil tatuador apos o User ja ter sido salvo.
+     * Os estilos vem como lista de nomes — a gente RESOLVE cada nome
+     * pra um Estilo do catalogo via resolverEstilos().
+     */
     public Artist cadastrarArtista(User user, RegisterArtistaDTO body) {
         Artist novoArtist = Artist.builder()
                 .userId(user.getUserId())
                 .bio(body.getBio())
                 .instagram(body.getInstagram())
                 .endereco(body.getEndereco())
-                .vinculadoEstudio(false)
+                .vinculadoEstudio(false)                  // nasce autonomo
                 .estilos(resolverEstilos(body.getEstilos()))
                 .build();
 
@@ -64,11 +63,13 @@ public class ArtistService {
     }
 
     /**
-     * Busca tatuadores por estilo e/ou distancia. Ambos os filtros sao
-     * opcionais — se nenhum vier, devolve todos os tatuadores ativos.
+     * Busca tatuadores com filtros OPCIONAIS:
+     *   - estilos : se vier, restringe a tatuadores que fazem pelo menos 1 desses
+     *   - lat/lng : se vier os DOIS, restringe a tatuadores dentro do raioKm
+     *               (se faltar um, ignora distancia)
      *
-     * Distancia exige lat E lng; raioKm cai pra {@link #RAIO_KM_DEFAULT} se
-     * vier ausente/zero/negativo.
+     * Esse metodo aqui faz TODA a higiene de input (limpar strings vazias,
+     * lowercase, defaults) antes de passar pro repositorio.
      */
     public List<ArtistSearchResultDTO> buscar(
             List<String> estilos,
@@ -76,6 +77,7 @@ public class ArtistService {
             Double lng,
             Double raioKm
     ) {
+        // --- Filtro de estilos ---
         boolean semEstilo = estilos == null || estilos.isEmpty();
         List<String> estilosNormalizados = semEstilo
                 ? Collections.emptyList()
@@ -84,24 +86,24 @@ public class ArtistService {
                         .map(s -> s.trim().toLowerCase(Locale.ROOT))
                         .collect(Collectors.toList());
 
-        // Apos limpeza pode ter ficado vazio (so strings vazias) — degrada
-        // pra "sem filtro" em vez de gerar query com IN ().
+        // Se a limpeza zerou a lista (so vinha "  " ou null), desliga o filtro.
         if (estilosNormalizados.isEmpty()) {
             semEstilo = true;
         }
 
+        // --- Filtro de distancia ---
         boolean semDistancia = lat == null || lng == null;
         double raio = (raioKm == null || raioKm <= 0) ? RAIO_KM_DEFAULT : raioKm;
 
-        // Sentinela: a query nativa nao toca nesses parametros quando o flag
-        // correspondente e TRUE, mas o JDBC ainda precisa de algum valor pra
-        // bindar — manda 0 pra evitar NPE no driver.
+        // Mesmo quando o filtro esta desligado (semEstilo/semDistancia = true)
+        // o JDBC EXIGE valores nao-null pros binds. Mandamos sentinelas:
         Collection<String> estilosParam = estilosNormalizados.isEmpty()
                 ? List.of("")
                 : estilosNormalizados;
         double latParam = lat == null ? 0.0 : lat;
         double lngParam = lng == null ? 0.0 : lng;
 
+        // Roda a SQL nativa e converte o resultado pra DTO de resposta.
         List<ArtistSearchProjection> rows = artistRepository.buscar(
                 semEstilo,
                 estilosParam,
@@ -117,9 +119,16 @@ public class ArtistService {
     }
 
     /**
-     * Resolve nomes do DTO contra o catalogo de estilos. Casamento
-     * case-insensitive; nomes que nao casam viram warning no log e nao
-     * impedem o cadastro do tatuador.
+     * Pega os nomes de estilos vindos no cadastro e devolve as entidades
+     * Estilo correspondentes do catalogo. Comparacao case-insensitive.
+     *
+     * Se o front mandar um nome que NAO existe no catalogo (ex.: typo),
+     * o estilo simplesmente nao entra — o cadastro nao falha. So loga
+     * um warning pra a gente investigar depois.
+     *
+     * Por que nao deixar criar estilo novo na hora? Pra manter o
+     * catalogo controlado (evita "Realismo", "realista", "Realismoo"...
+     * cada tatuador inventando seu).
      */
     private Set<Estilo> resolverEstilos(List<String> nomes) {
         if (nomes == null || nomes.isEmpty()) {
@@ -132,7 +141,10 @@ public class ArtistService {
         if (limpos.isEmpty()) {
             return new HashSet<>();
         }
+
         List<Estilo> encontrados = estiloRepository.findByNomeInIgnoreCase(limpos);
+
+        // Se algum nome nao casou, loga quais nao encontramos.
         if (encontrados.size() != limpos.size()) {
             Set<String> encontradosNomes = encontrados.stream()
                     .map(e -> e.getNome().toLowerCase(Locale.ROOT))

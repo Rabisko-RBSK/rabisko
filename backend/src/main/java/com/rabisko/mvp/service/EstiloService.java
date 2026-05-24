@@ -8,11 +8,16 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-/**
- * Servico do catalogo `estilos`. Por enquanto so expoe `listar()` (consumido
- * pelo autocomplete do front). Catalogo e pequeno e raramente muda — sem
- * paginacao/cache server-side; o mobile mantem o cache em memoria de processo.
- */
+// =====================================================================
+// SERVICE EstiloService — expoe a lista do catalogo de estilos.
+//
+// Por enquanto so 1 metodo: `listar()`, ordenando por nome. O resultado
+// alimenta o autocomplete da busca no app.
+//
+// Sem paginacao porque o catalogo e PEQUENO (dezenas de itens, nao
+// milhares). O mobile guarda em memoria depois da primeira chamada.
+// =====================================================================
+
 @Service
 public class EstiloService {
 

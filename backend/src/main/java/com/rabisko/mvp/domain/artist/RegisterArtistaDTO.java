@@ -10,19 +10,18 @@ import lombok.Setter;
 import java.time.LocalDate;
 import java.util.List;
 
-/**
- * INPUT do cadastro de artista (POST /user/cadastro/artista). Junta os
- * campos do User base (nome/email/senha/telefone/dataNasc/cpf) + os
- * campos exclusivos do Artist (bio, instagram, endereco, estilos).
- *
- * O role NAO vem no payload — o endpoint /artista ja assume tatuador.
- *
- * estilos: lista de nomes (ex.: "Realismo"). A persistencia ainda nao
- * existe — TODO no ArtistService ate a tabela M:N tatuador_estilos
- * ter entity/repo. Capturar aqui mantem o contrato pronto.
- *
- * endereco: relevante para tatuador autonomo (sem estudio_id).
- */
+// =====================================================================
+// DTO RegisterArtistaDTO — entrada do POST /user/cadastro/artista.
+//
+// Junta os campos do User base (nome/email/senha/...) + os campos
+// exclusivos de Artist (bio, instagram, endereco, estilos). O backend
+// monta as duas entidades (User + Artist) a partir desse DTO so.
+//
+// O `role` NAO vem aqui: e definido implicitamente pela URL do endpoint
+// (/cadastro/artista -> role = tatuador). Isso impede que alguem se
+// cadastre como ADMIN forjando o JSON.
+// =====================================================================
+
 @Getter
 @Setter
 public class RegisterArtistaDTO {
@@ -44,12 +43,19 @@ public class RegisterArtistaDTO {
 
     private String cpf;
 
-    private String bio;
+    // ----- Campos especificos do Artist (perfil tatuador) -----
 
-    private String instagram;
+    private String bio;            // texto livre sobre o profissional
 
-    private String endereco;
+    private String instagram;      // @handle
 
+    private String endereco;       // relevante quando o tatuador e autonomo (sem estudio)
+
+    /**
+     * Lista de NOMES de estilos que o tatuador faz (ex.: ["Realismo", "Blackwork"]).
+     * O ArtistService resolve cada nome pra um id consultando a tabela `estilos`
+     * e popula a juncao M:N `tatuador_estilos`.
+     */
     private List<String> estilos;
 
     @AssertTrue(message = "Voce deve aceitar os termos de uso")

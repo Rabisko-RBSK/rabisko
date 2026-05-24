@@ -6,6 +6,7 @@ import { EstablishmentProfileScreen } from '../screens/App/EstablishmentProfileS
 import { BookingScreen } from '../screens/App/BookingScreen';
 import { PaymentScreen } from '../screens/App/PaymentScreen';
 import { ConfirmedScreen } from '../screens/App/ConfirmedScreen';
+import { ChatThreadScreen } from '../screens/App/ChatThreadScreen';
 import { SearchResultsScreen } from '../screens/App/SearchResultsScreen';
 
 export type HomeStackParamList = {
@@ -14,6 +15,7 @@ export type HomeStackParamList = {
   BookingFlow: { id: string };
   Payment: { bookingId: string };
   Confirmed: { artistName?: string; dateTime?: string; total?: string } | undefined;
+  ChatThread: { chatId: string; outroNome: string; outroUsuarioId: string };
   SearchResults: { estilo?: string } | undefined;
 };
 
@@ -31,6 +33,7 @@ export function HomeStack() {
         component={ConfirmedScreen}
         options={{ gestureEnabled: false }}
       />
+      <Screen name="ChatThread" component={ChatThreadScreen} />
       <Screen name="SearchResults" component={SearchResultsScreen} />
     </Navigator>
   );

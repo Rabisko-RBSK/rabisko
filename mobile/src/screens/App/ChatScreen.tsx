@@ -1,20 +1,56 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MessageSquarePlus } from 'lucide-react-native';
 
-/**
- * Conversations list (DESIGN.md screen 08 — Chat). Static for now; the full message thread
- * with image attachments (the design's ChatV2) is still pending — see IMPLEMENTATION-CHECKLIST.md P2.
- */
-const CONVERSATIONS = [
-  { id: '1', name: 'João Santos', initials: 'JS', preview: 'Combinado! Te vejo na terça-feira...', time: 'Ontem' },
-  { id: '2', name: 'Ana Costa', initials: 'AC', preview: 'Te mando a referência amanhã.', time: 'Ontem' },
-  { id: '3', name: 'Lia Prata', initials: 'LP', preview: 'Pago via Pix mais tarde, ok?', time: 'Sex' },
-];
+import { chatService, ChatDTO } from '../../services/api';
+import { stompClient } from '../../services/ws/stompClient';
+import { ChatStackParamList } from '../../routes/chat.stack';
+
+function iniciais(nome: string): string {
+  const partes = nome.trim().split(/\s+/);
+  const a = partes[0]?.[0] ?? '';
+  const b = partes.length > 1 ? partes[partes.length - 1][0] : '';
+  return (a + b).toUpperCase() || '?';
+}
+
+function formatarHora(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
 
 export function ChatScreen() {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<NativeStackNavigationProp<ChatStackParamList>>();
+  const [chats, setChats] = useState<ChatDTO[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const lista = await chatService.listarChats();
+      setChats(lista);
+    } catch (e) {
+      console.error('Erro ao listar chats', e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  // Sempre que chegar mensagem nova pelo WS, recarrega a lista pra atualizar preview/ordem.
+  useEffect(() => {
+    return stompClient.addListener(() => {
+      refresh();
+    });
+  }, [refresh]);
+
   return (
     <View className="flex-1 bg-background">
       <ScrollView
@@ -27,31 +63,52 @@ export function ChatScreen() {
           Converse direto com os tatuadores que você reservou.
         </Text>
 
+        {loading && chats.length === 0 && (
+          <ActivityIndicator className="mt-8" />
+        )}
+
+        {!loading && chats.length === 0 && (
+          <Text className="font-body text-[13px] text-fg-3 mt-8 text-center">
+            Você ainda não tem conversas. Inicie uma a partir do perfil de um artista.
+          </Text>
+        )}
+
         <View className="mt-6">
-          {CONVERSATIONS.map((c) => (
-            <TouchableOpacity key={c.id} activeOpacity={0.8} className="flex-row items-center py-3">
+          {chats.map((c) => (
+            <TouchableOpacity
+              key={c.chatId}
+              activeOpacity={0.8}
+              className="flex-row items-center py-3"
+              onPress={() =>
+                navigation.navigate('ChatThread', {
+                  chatId: c.chatId,
+                  outroNome: c.outroUsuarioNome,
+                  outroUsuarioId: c.outroUsuarioId,
+                })
+              }
+            >
               <View
                 className="bg-ink items-center justify-center rounded-r-pill mr-3"
                 style={{ width: 46, height: 46 }}
               >
-                <Text className="font-body-semibold text-[14px] text-white">{c.initials}</Text>
+                <Text className="font-body-semibold text-[14px] text-white">
+                  {iniciais(c.outroUsuarioNome)}
+                </Text>
               </View>
               <View className="flex-1">
                 <View className="flex-row justify-between items-center">
-                  <Text className="font-body-semibold text-[14px] text-ink">{c.name}</Text>
-                  <Text className="font-body text-[11px] text-fg-3">{c.time}</Text>
+                  <Text className="font-body-semibold text-[14px] text-ink">{c.outroUsuarioNome}</Text>
+                  <Text className="font-body text-[11px] text-fg-3">
+                    {formatarHora(c.dataUltimaMensagem)}
+                  </Text>
                 </View>
                 <Text className="font-body text-[12px] text-fg-2 mt-1" numberOfLines={1}>
-                  {c.preview}
+                  {c.ultimaMensagem ?? 'Sem mensagens ainda'}
                 </Text>
               </View>
             </TouchableOpacity>
           ))}
         </View>
-
-        <Text className="font-body text-[11px] text-fg-3 text-center mt-6">
-          Inicie novas conversas visitando o perfil de um artista e tocando em &quot;Iniciar Conversa&quot;.
-        </Text>
       </ScrollView>
 
       <TouchableOpacity
