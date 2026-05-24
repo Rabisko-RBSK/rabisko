@@ -7,18 +7,19 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { MessageSquare, RotateCw } from 'lucide-react-native';
+import { CalendarCheck, MessageSquare, RotateCw, Wallet } from 'lucide-react-native';
 
 import { Header } from '../../components/common/Header';
 import { useArtistDashboard } from '../../hooks/useArtistDashboard';
+import { formatarBRL } from '../../services/api/dashboardService';
 
 /**
  * Gestão — primeira aba do fluxo do tatuador (DESIGN.md §10 #13 — Dashboard:
  * visão de reservas e faturamento).
  *
- * v1: card único com "Chats abertos" (clientes com conversa ativa). Próximas
- * métricas (novos chats 7d, tempo médio de resposta, mensagens últimos 14d,
- * top clientes) entram aqui, ladeando o card atual.
+ * v1: três KPIs lado a lado (empilhados): chats abertos, faturamento do mês
+ * e total de agendamentos do mês. Próximas métricas (tempo médio de resposta,
+ * mensagens nos últimos 14d, top clientes) entram aqui.
  *
  * O hook `useArtistDashboard` cuida do fetch, loading e erro — esta tela só
  * decide o layout.
@@ -51,7 +52,19 @@ export function ManagementScreen() {
               value={dashboard?.chatsAbertos ?? 0}
               hint="Clientes com conversa ativa no momento."
             />
-            {/* TODO v2: + Novos chats (7d) + Tempo médio de resposta + gráficos */}
+            <KpiCard
+              icon={<Wallet size={22} color="#602C66" />}
+              label="Faturamento do mês"
+              value={formatarBRL(dashboard?.valorTotalMes ?? 0)}
+              hint="Soma dos serviços fechados este mês (exclui cancelados)."
+            />
+            <KpiCard
+              icon={<CalendarCheck size={22} color="#602C66" />}
+              label="Agendamentos do mês"
+              value={dashboard?.totalAgendamentosMes ?? 0}
+              hint="Serviços criados desde o primeiro dia do mês."
+            />
+            {/* TODO v2: tempo médio de resposta + line chart de mensagens 14d + top clientes */}
           </View>
         )}
       </ScrollView>
@@ -67,14 +80,22 @@ export function ManagementScreen() {
 interface KpiCardProps {
   icon: React.ReactNode;
   label: string;
-  value: number;
+  /**
+   * Aceita number (ex.: contagens) ou string (ex.: "R$ 1.234,56" já formatado).
+   * Quem chama decide a formatação — o card só renderiza.
+   */
+  value: number | string;
   hint?: string;
 }
 
 /**
- * Card de KPI: número grande no topo, label embaixo, hint opcional. Visual
- * segue o design system: surface cream, plum como cor de destaque (única
+ * Card de KPI: número/valor grande no topo, label em cima, hint opcional embaixo.
+ * Visual segue o design system: surface cream, plum como cor de destaque (única
  * cor de "ativação" permitida — ver tailwind.config.js).
+ *
+ * `adjustsFontSizeToFit` reduz a fonte se o conteúdo não couber numa linha
+ * (ex.: faturamento muito grande tipo R$ 999.999,99). Funciona bem no iOS;
+ * no Android o efeito é limitado mas o `numberOfLines={1}` evita quebra feia.
  */
 function KpiCard({ icon, label, value, hint }: KpiCardProps) {
   return (
@@ -88,7 +109,12 @@ function KpiCard({ icon, label, value, hint }: KpiCardProps) {
         </Text>
       </View>
 
-      <Text className="font-display text-[56px] text-plum leading-[56px]">
+      <Text
+        className="font-display text-[56px] text-plum leading-[56px]"
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.5}
+      >
         {value}
       </Text>
 

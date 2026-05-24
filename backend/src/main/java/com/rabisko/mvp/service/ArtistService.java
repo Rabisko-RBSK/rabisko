@@ -1,5 +1,6 @@
 package com.rabisko.mvp.service;
 
+import com.rabisko.mvp.domain.appointment.AppointmentStatus;
 import com.rabisko.mvp.domain.artist.Artist;
 import com.rabisko.mvp.domain.artist.ArtistDashboardDTO;
 import com.rabisko.mvp.domain.artist.ArtistSearchProjection;
@@ -8,6 +9,7 @@ import com.rabisko.mvp.domain.artist.RegisterArtistaDTO;
 import com.rabisko.mvp.domain.estilo.Estilo;
 import com.rabisko.mvp.domain.user.User;
 import com.rabisko.mvp.domain.user.UserRole;
+import com.rabisko.mvp.repositories.AppointmentRepository;
 import com.rabisko.mvp.repositories.ArtistRepository;
 import com.rabisko.mvp.repositories.ChatRepository;
 import com.rabisko.mvp.repositories.EstiloRepository;
@@ -20,12 +22,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 // =====================================================================
@@ -55,6 +61,7 @@ public class ArtistService {
     @Autowired private ArtistRepository artistRepository;
     @Autowired private EstiloRepository estiloRepository;
     @Autowired private ChatRepository chatRepository;
+    @Autowired private AppointmentRepository appointmentRepository;
 
     /**
      * Cria o perfil tatuador apos o User ja ter sido salvo.
@@ -183,16 +190,31 @@ public class ArtistService {
      * DTO e calculos aqui — nem o controller nem o front precisam saber
      * detalhe nenhum.
      */
-    public ArtistDashboardDTO dashboard(User logado) {
-        if (logado.getRole() != UserRole.tatuador) {
-            throw new AccessDeniedException("Apenas tatuadores podem acessar o dashboard");
+        public ArtistDashboardDTO dashboard(User logado) {
+                if (logado.getRole() != UserRole.tatuador) {
+                        throw new AccessDeniedException("Apenas tatuadores podem acessar o dashboard");
+                }
+
+                Artist meuPerfil = artistRepository.findByUserId(logado.getUserId())
+                        .orElseThrow(() -> new EntityNotFoundException("Perfil tatuador não encontrado"));
+
+                UUID tatuadorId = meuPerfil.getTatuadorId();
+
+                LocalDateTime inicioMes      = YearMonth.now().atDay(1).atStartOfDay();
+                LocalDateTime inicioProxMes  = YearMonth.now().plusMonths(1).atDay(1).atStartOfDay();
+
+                long chatsAbertos = chatRepository.countByTatuadorIdAndAtivoTrue(tatuadorId);
+
+                BigDecimal valorTotalMes = appointmentRepository.somarValorTotalNoPeriodo(
+                        tatuadorId, inicioMes, inicioProxMes);
+
+                long totalAgendamentosMes = appointmentRepository
+                        .countByTatuadorIdAndStatusNotInAndDataCriacaoBetween(
+                                tatuadorId,
+                                List.of(AppointmentStatus.cancelada, AppointmentStatus.no_show),
+                                inicioMes,
+                                inicioProxMes);
+
+                return new ArtistDashboardDTO(chatsAbertos, valorTotalMes, totalAgendamentosMes);
         }
-
-        Artist meuPerfil = artistRepository.findByUserId(logado.getUserId())
-                .orElseThrow(() -> new EntityNotFoundException("Perfil tatuador não encontrado"));
-
-        return new ArtistDashboardDTO(
-                chatRepository.countByTatuadorIdAndAtivoTrue(meuPerfil.getTatuadorId())
-        );
-    }
 }
