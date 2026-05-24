@@ -1,16 +1,23 @@
 package com.rabisko.mvp.service;
 
 import com.rabisko.mvp.domain.artist.Artist;
+import com.rabisko.mvp.domain.artist.ArtistDashboardDTO;
 import com.rabisko.mvp.domain.artist.ArtistSearchProjection;
 import com.rabisko.mvp.domain.artist.ArtistSearchResultDTO;
 import com.rabisko.mvp.domain.artist.RegisterArtistaDTO;
 import com.rabisko.mvp.domain.estilo.Estilo;
 import com.rabisko.mvp.domain.user.User;
+import com.rabisko.mvp.domain.user.UserRole;
 import com.rabisko.mvp.repositories.ArtistRepository;
+import com.rabisko.mvp.repositories.ChatRepository;
 import com.rabisko.mvp.repositories.EstiloRepository;
+
+import jakarta.persistence.EntityNotFoundException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.util.Collection;
@@ -22,13 +29,17 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 // =====================================================================
-// SERVICE ArtistService — duas responsabilidades:
+// SERVICE ArtistService — tres responsabilidades:
 //
 //   1) cadastrarArtista: cria a linha em `tatuadores` e amarra os
 //      estilos escolhidos a M:N `tatuador_estilos`.
 //
 //   2) buscar: expoe a busca de tatuadores por estilo e/ou distancia,
 //      empacotando os filtros pra @Query nativa do ArtistRepository.
+//
+//   3) dashboard: monta o DTO de metricas da home do tatuador logado
+//      (chats abertos, etc.). Valida que o usuario e tatuador antes
+//      de calcular.
 //
 // Nada de dados pessoais (nome/email/cpf) aqui — esses vivem em `users`.
 // =====================================================================
@@ -43,6 +54,7 @@ public class ArtistService {
 
     @Autowired private ArtistRepository artistRepository;
     @Autowired private EstiloRepository estiloRepository;
+    @Autowired private ChatRepository chatRepository;
 
     /**
      * Cria o perfil tatuador apos o User ja ter sido salvo.
@@ -155,5 +167,32 @@ public class ArtistService {
             log.warn("Estilos nao encontrados no catalogo, ignorados: {}", faltantes);
         }
         return new HashSet<>(encontrados);
+    }
+
+    /**
+     * Monta o DTO com as metricas da home do tatuador logado.
+     *
+     * Etapas:
+     *   1) Bloqueia chamadas de outros papeis (cliente/estudio/admin) com 403.
+     *   2) Resolve o perfil tatuador a partir do User logado.
+     *   3) Consulta o ChatRepository pra contar chats ativos.
+     *   4) Empacota tudo num ArtistDashboardDTO.
+     *
+     * Quando adicionar metricas novas no v2 (tempo medio de resposta,
+     * novos chats nos ultimos 7 dias, etc.), e SO acrescentar campos no
+     * DTO e calculos aqui — nem o controller nem o front precisam saber
+     * detalhe nenhum.
+     */
+    public ArtistDashboardDTO dashboard(User logado) {
+        if (logado.getRole() != UserRole.tatuador) {
+            throw new AccessDeniedException("Apenas tatuadores podem acessar o dashboard");
+        }
+
+        Artist meuPerfil = artistRepository.findByUserId(logado.getUserId())
+                .orElseThrow(() -> new EntityNotFoundException("Perfil tatuador não encontrado"));
+
+        return new ArtistDashboardDTO(
+                chatRepository.countByTatuadorIdAndAtivoTrue(meuPerfil.getTatuadorId())
+        );
     }
 }

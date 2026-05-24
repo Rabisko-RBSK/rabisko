@@ -30,4 +30,6 @@ public interface ChatRepository extends JpaRepository<Chat, UUID> {
     List<Chat> findByTatuadorId(UUID tatuadorId);
 
     List<Chat> findByClienteId(UUID clienteId);
+
+    long countByTatuadorIdAndAtivoTrue(UUID tatuadorId);
 }
