@@ -10,17 +10,17 @@ import {
   Alert,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Send } from 'lucide-react-native';
 
 import { Header } from '../../components/common/Header';
-import { HomeStackParamList } from '../../routes/home.stack';
 import { chatService, MensagemDTO } from '../../services/api';
 import { stompClient } from '../../services/ws/stompClient';
 
+type ChatThreadParams = { chatId: string; outroNome: string; outroUsuarioId: string };
+
 export function ChatThreadScreen() {
-  const route = useRoute<RouteProp<HomeStackParamList, 'ChatThread'>>();
-  const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
+  const route = useRoute<RouteProp<{ ChatThread: ChatThreadParams }, 'ChatThread'>>();
+  const navigation = useNavigation();
   const { chatId, outroNome, outroUsuarioId } = route.params;
 
   const [mensagens, setMensagens] = useState<MensagemDTO[]>([]);

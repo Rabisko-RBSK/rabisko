@@ -9,22 +9,32 @@ import lombok.Setter;
 
 import java.time.LocalDate;
 
-/**
- * INPUT do cadastro de cliente (POST /user/cadastro/cliente). Cliente nao
- * tem campos exclusivos no momento do cadastro — so os do User base.
- *
- * Campos NAO presentes (deliberado):
- *  - userId: gerado pelo servidor (@GeneratedValue UUID).
- *  - role: ja determinado pela URL do endpoint. Aceitar do payload abriria
- *    spoof (cliente se cadastrando como admin).
- *  - dataCriacao / status: server-side only.
- *
- * Validacoes Bean Validation (@Valid no controller):
- *  - @NotBlank em nome/email/senha — nao pode vir vazio.
- *  - @Email no email — formato basico.
- *  - @Size(min=8) na senha — alinha com User.senha (@Size(min=8)).
- *  - @AssertTrue em termosAceitos — bloqueia cadastro se vier false.
- */
+// =====================================================================
+// DTO UserDTO — entrada do POST /user/cadastro/cliente.
+//
+// O que e um DTO?
+//   DTO = Data Transfer Object (Objeto de Transferencia de Dados).
+//   E um objeto SIMPLES (so atributos, sem logica) usado pra mover
+//   dados entre camadas — neste caso, entre a API HTTP e a camada
+//   de servico (UserService).
+//
+// Por que nao receber direto um User?
+//   1) Seguranca: campos como `role`, `userId`, `status` nao devem
+//      vir do cliente — se viessem, um usuario malicioso poderia se
+//      cadastrar como ADMIN. Deixar de fora ja resolve.
+//   2) Acoplamento: o User e o que vai pro banco; o DTO e o que vem
+//      da rede. Mudar um nao deve quebrar o outro.
+//
+// Validacoes (anotacoes do Jakarta Bean Validation):
+//   @NotBlank   = nao pode ser null, vazio ou so espacos
+//   @Email      = formato basico de email valido
+//   @Size       = tamanho minimo/maximo
+//   @AssertTrue = boolean tem que ser true
+//
+// Essas validacoes rodam quando o controller marca o parametro com
+// @Valid. Se algo falhar, o Spring devolve HTTP 400 automatico.
+// =====================================================================
+
 @Getter
 @Setter
 public class UserDTO {
@@ -38,14 +48,14 @@ public class UserDTO {
 
     @NotBlank
     @Size(min = 8)
-    private String senha;
+    private String senha;             // senha em texto puro — o UserService faz o hash antes de salvar
 
-    private String telefone;
+    private String telefone;          // opcional
 
-    private LocalDate dataNasc;
+    private LocalDate dataNasc;       // opcional
 
-    private String cpf;
+    private String cpf;               // opcional no MVP
 
     @AssertTrue(message = "Voce deve aceitar os termos de uso")
-    private boolean termosAceitos;
+    private boolean termosAceitos;    // obriga marcar o checkbox
 }

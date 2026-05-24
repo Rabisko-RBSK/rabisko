@@ -5,19 +5,19 @@ import lombok.Setter;
 
 import java.util.UUID;
 
-/**
- * DTO do cliente — usado para futuras rotas de pagamento (cadastro/edicao
- * de metodo de pagamento). Nao serve pra cadastro inicial: o cliente nao
- * tem campos exclusivos no momento do cadastro (so o vinculo userId, que
- * o ClientService cria a partir do User salvo).
- *
- * dadosPagamentoToken: token de cliente em gateway (Mercado Pago/Stripe).
- */
+// =====================================================================
+// DTO ClientDTO — usado para rotas futuras de pagamento (cadastrar/
+// editar metodo de pagamento do cliente).
+//
+// NAO e o DTO de cadastro: cliente nao tem campos exclusivos no momento
+// do cadastro — usa UserDTO. O ClientService cria a linha em `clientes`
+// automaticamente depois de salvar o User, so com o userId.
+// =====================================================================
 @Getter
 @Setter
 public class ClientDTO {
 
     private UUID clientId;
     private UUID userId;
-    private String dadosPagamentoToken;
+    private String dadosPagamentoToken;   // token retornado pelo gateway (Mercado Pago/Stripe)
 }

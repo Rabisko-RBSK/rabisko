@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./mvnw.cmd -q -DskipTests compile)",
+      "PowerShell(Set-Location D:\\\\GitHub\\\\rabisko\\\\backend; .\\\\mvnw.cmd -DskipTests compile 2>&1 | Select-Object -Last 30; \"EXIT=$LASTEXITCODE\")",
+      "PowerShell(Set-Location D:\\\\GitHub\\\\rabisko\\\\backend; .\\\\mvnw.cmd -DskipTests clean compile 2>&1 | Select-Object -Last 40; \"EXIT=$LASTEXITCODE\")",
+      "PowerShell(Set-Location D:\\\\GitHub\\\\rabisko\\\\backend; .\\\\mvnw.cmd -DskipTests compile 2>&1 | Select-Object -Last 15; \"EXIT=$LASTEXITCODE\")",
+      "PowerShell(Set-Location D:\\\\GitHub\\\\rabisko\\\\backend; .\\\\mvnw.cmd -DskipTests compile 2>&1 | Select-Object -Last 12; \"EXIT=$LASTEXITCODE\")",
+      "PowerShell(Set-Location D:\\\\GitHub\\\\rabisko\\\\backend; .\\\\mvnw.cmd -DskipTests clean compile 2>&1 | Select-Object -Last 12; \"EXIT=$LASTEXITCODE\")",
+      "PowerShell(Set-Location D:\\\\GitHub\\\\rabisko\\\\backend; .\\\\mvnw.cmd -DskipTests -q compile 2>&1 | Select-Object -Last 8; \"EXIT=$LASTEXITCODE\")",
+      "PowerShell(Set-Location D:\\\\GitHub\\\\rabisko\\\\backend; .\\\\mvnw.cmd -DskipTests -q compile 2>&1 | Select-Object -Last 5; \"EXIT=$LASTEXITCODE\")",
+      "PowerShell(Set-Location D:\\\\GitHub\\\\rabisko\\\\backend; .\\\\mvnw.cmd -DskipTests clean compile 2>&1 | Select-Object -Last 8; \"EXIT=$LASTEXITCODE\")"
+    ]
+  }
+}

@@ -6,15 +6,18 @@ import com.rabisko.mvp.repositories.ClientRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-/**
- * Cria a linha em `clientes`. O cliente nao tem campos proprios no
- * cadastro — so o vinculo com o User. dadosPagamentoToken (token de
- * gateway tipo Mercado Pago/Stripe) entra depois, quando o usuario
- * cadastrar um metodo de pagamento.
- *
- * Por isso o cadastrarCliente recebe so o User salvo (nao um DTO) — nao
- * ha nada extra do payload pra plumbar aqui.
- */
+// =====================================================================
+// SERVICE ClientService — cria a linha em `clientes` no cadastro.
+//
+// E o servico mais simples do sistema: cliente nao tem nenhum campo
+// proprio no momento do cadastro — so o vinculo com o User. O token
+// de pagamento (`dadosPagamentoToken`) entra depois, quando o usuario
+// cadastrar um cartao na tela de configuracoes.
+//
+// Por isso recebe so o User salvo (nao um DTO): nao ha nada extra
+// do payload pra processar aqui.
+// =====================================================================
+
 @Service
 public class ClientService {
 
@@ -23,7 +26,7 @@ public class ClientService {
 
     public Client cadastrarCliente(User user) {
         Client novoClient = Client.builder()
-                .userId(user.getUserId())
+                .userId(user.getUserId())     // unica coisa que importa: linkar ao User
                 .build();
 
         return clientRepository.save(novoClient);

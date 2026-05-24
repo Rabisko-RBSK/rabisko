@@ -10,13 +10,17 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-/**
- * Endpoint publico do catalogo de estilos. Hoje so o /listar (GET /estilos).
- *
- * Auth: herda do SecurityConfiguration — qualquer endpoint que NAO seja
- * /auth/login ou /user/cadastro/* exige Bearer. O front sempre chama esse
- * endpoint depois do login, entao o token ja esta disponivel.
- */
+// =====================================================================
+// CONTROLLER EstiloController — endpoints do catalogo `estilos`.
+//
+// Hoje so existe um: GET /estilos (lista todos).
+//
+// Usado pelo autocomplete da busca no app. O front cacheia em memoria,
+// entao chamamos uma vez quando o app sobe.
+//
+// AUTH: herda o padrao -> exige JWT valido.
+// =====================================================================
+
 @RestController
 @RequestMapping("/estilos")
 public class EstiloController {
@@ -24,6 +28,10 @@ public class EstiloController {
     @Autowired
     private EstiloService estiloService;
 
+    /**
+     * @GetMapping (sem path) significa: responde GET na raiz do
+     * @RequestMapping da classe -> GET /estilos
+     */
     @GetMapping
     public ResponseEntity<List<EstiloDTO>> listar() {
         return ResponseEntity.ok(estiloService.listar());

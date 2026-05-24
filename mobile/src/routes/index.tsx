@@ -10,6 +10,7 @@ export function Router() {
   const token = useAuthStore((s) => s.token);
 
   useEffect(() => {
+    console.log('[router] auth effect — isAuthenticated:', isAuthenticated, 'token?', !!token);
     if (isAuthenticated && token) {
       stompClient.connect(token);
     } else {

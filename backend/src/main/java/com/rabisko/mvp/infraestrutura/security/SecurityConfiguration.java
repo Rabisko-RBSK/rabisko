@@ -14,60 +14,87 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-/**
- * Configuracao do Spring Security. Define a pipeline de seguranca da API:
- *
- * request --> [SecurityFilter (le JWT, popula SecurityContext)]
- * --> [UsernamePasswordAuthenticationFilter (no-op aqui, sessao stateless)]
- * --> Controller (com @AuthenticationPrincipal disponivel)
- *
- * Decisoes principais:
- * - STATELESS: nao cria HttpSession. Cada request carrega o JWT no header
- * Authorization. Permite escala horizontal sem sticky sessions.
- * - CSRF desabilitado: nao usamos cookies de sessao, entao o vetor CSRF
- * nao se aplica. Se um dia adicionar cookie auth, REVERTER esta linha.
- * - permitAll APENAS em /auth/login e /user/cadastro/{cliente|artista|estudio}.
- * Todas as outras rotas exigem JWT valido (.anyRequest().authenticated()).
- * - SecurityFilter inserido ANTES do UsernamePasswordAuthenticationFilter
- * pra que o SecurityContext ja esteja populado quando o controller rodar.
- *
- * Beans expostos:
- * - AuthenticationManager: usado pelo AuthenticationControler pra validar
- * credenciais no /auth/login.
- * - PasswordEncoder (BCrypt): hashing usado tanto no cadastro (UserService
- * armazena o hash) quanto na autenticacao (Spring compara senha plain
- * com o hash via DaoAuthenticationProvider).
- */
-@Configuration
-@EnableWebSecurity
+// =====================================================================
+// CONFIG SecurityConfiguration — regras de seguranca da API.
+//
+// O que esse arquivo define:
+//   1) Quais URLs sao PUBLICAS (sem login)
+//   2) Quais URLs exigem JWT valido
+//   3) Como tratar sessao (no nosso caso: NAO ter sessao = stateless)
+//   4) Onde encaixar o NOSSO filtro JWT na pipeline de filtros do Spring
+//   5) Beans utilitarios: AuthenticationManager (pra validar login) e
+//      PasswordEncoder (BCrypt — pra fazer hash/compare de senha)
+//
+// Pipeline simplificada de uma request HTTP:
+//
+//   request -> [SecurityFilter (le o JWT)]
+//           -> [UsernamePasswordAuthenticationFilter (no-op aqui)]
+//           -> Controller (ja com @AuthenticationPrincipal disponivel)
+//
+// "Stateless" significa que o servidor NAO guarda sessao em memoria —
+// cada request precisa carregar o JWT no header. Vantagem: escala
+// horizontal sem precisar de "sticky session" no load balancer.
+// =====================================================================
+
+@Configuration            // diz ao Spring: essa classe define beans/config
+@EnableWebSecurity        // ativa o Spring Security e permite customizar
 public class SecurityConfiguration {
 
     @Autowired
-    SecurityFilter securityFilter;
+    SecurityFilter securityFilter;       // nosso filtro JWT custom
 
+    /**
+     * Bean principal: declara a "regra de filtros" do Spring Security
+     * pra TODAS as requisicoes HTTP.
+     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity
+                // CSRF desligado: so faz sentido com cookies de sessao;
+                // como usamos JWT no header, nao tem o que proteger.
                 .csrf(csrf -> csrf.disable())
+
+                // STATELESS: nao gera HttpSession nenhuma.
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+                // Regras de autorizacao por URL — a ordem importa!
+                // permitAll = liberado sem login. anyRequest().authenticated()
+                // = tudo que nao for explicitamente liberado exige JWT.
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/user/cadastro/cliente").permitAll()
                         .requestMatchers(HttpMethod.POST, "/user/cadastro/artista").permitAll()
                         .requestMatchers(HttpMethod.POST, "/user/cadastro/estudio").permitAll()
-                        .requestMatchers("/wss/**").permitAll()
-                        .requestMatchers("/simulation/**").permitAll()
+                        .requestMatchers("/wss/**").permitAll()        // handshake do WebSocket — auth e via STOMP CONNECT
+                        .requestMatchers("/simulation/**").permitAll() // endpoint de simulacao de tattoo (sem login)
                         .anyRequest().authenticated())
+
+                // Insere NOSSO filtro JWT ANTES do filtro de login padrao
+                // do Spring. Assim o SecurityContext ja chega populado.
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 
+    /**
+     * Expoe o AuthenticationManager como bean pra que o AuthenticationControler
+     * possa injeta-lo e chamar `authenticate(usernamePasswordToken)`. Esse
+     * cara que checa email+senha contra o banco no /auth/login.
+     */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration)
             throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
     }
 
+    /**
+     * BCrypt: algoritmo de hashing de senhas. Usado em dois lugares:
+     *   - Cadastro    : UserService.cadastrar* faz `encode(senha)` antes de salvar
+     *   - Login       : Spring compara automaticamente a senha digitada com o
+     *                   hash salvo via `matches(plain, hash)` por baixo dos panos
+     *
+     * NUNCA guardar senha em texto puro. BCrypt embute salt no hash, entao
+     * dois usuarios com mesma senha geram hashes diferentes.
+     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();

@@ -86,6 +86,16 @@
 			<artifactId>spring-boot-starter-websocket</artifactId>
 		</dependency>
 		<!--
+		  Necessária para @AuthenticationPrincipal funcionar em handlers
+		  @MessageMapping (STOMP). Sem ela o Spring cai no resolver default
+		  (Payload) e tenta desserializar o JSON da mensagem no tipo do
+		  parâmetro User, explodindo no Jackson.
+		-->
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-messaging</artifactId>
+		</dependency>
+		<!--
 		  Migração: removidas as deps de teste do Mongo
 		  (spring-boot-starter-data-mongodb-test) e o driver
 		  mongodb-driver-sync. Para testes JPA, quando forem adicionados,

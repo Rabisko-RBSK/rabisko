@@ -23,6 +23,22 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
+// =====================================================================
+// CONTROLLER ChatController — endpoints HTTP do chat.
+//
+// Atencao: este controller cuida das chamadas REST (HTTP tradicionais).
+// O envio de mensagem EM TEMPO REAL nao acontece aqui — acontece em
+// ChatWsController via WebSocket. Aqui ficam as operacoes "frias":
+//
+//   POST /chats                       -> abre ou recupera um chat
+//   GET  /chats                       -> lista de conversas do usuario
+//   GET  /chats/{chatId}/mensagens    -> historico paginado
+//
+// Em todos os endpoints, @AuthenticationPrincipal injeta o User logado
+// (vindo do JWT, populado pelo SecurityFilter).
+//
+// AUTH: herda o padrao -> exige JWT valido.
+// =====================================================================
 
 @RestController
 @RequestMapping("/chats")
@@ -31,22 +47,44 @@ public class ChatController {
     @Autowired
     private ChatService chatService;
 
+    /**
+     * POST /chats — abre um chat com outro usuario (ou devolve o
+     * existente, se o par ja conversou antes).
+     */
     @PostMapping
-    public ChatDTO abrirOuObterChat(@AuthenticationPrincipal User usuario, @RequestBody @Valid AbrirChatRequest request){
+    public ChatDTO abrirOuObterChat(
+            @AuthenticationPrincipal User usuario,
+            @RequestBody @Valid AbrirChatRequest request) {
         return chatService.abrirOuObterChat(usuario, request);
     }
 
+    /**
+     * GET /chats — lista de conversas do usuario logado.
+     * Cada item tem nome do outro lado e preview da ultima mensagem
+     * (igual a tela inicial do WhatsApp).
+     */
     @GetMapping
     public List<ChatDTO> listarChatsDoUsuario(@AuthenticationPrincipal User usuario) {
         return chatService.listarChatsDoUsuario(usuario);
     }
 
+    /**
+     * GET /chats/{chatId}/mensagens?page=0&size=30
+     *
+     * Historico paginado das mensagens de um chat especifico.
+     *
+     *   @PathVariable UUID chatId : pega o pedaco {chatId} da URL
+     *   @RequestParam page/size   : query params com defaults
+     *
+     * Page<MensagemDTO> e o tipo do Spring Data pra resposta paginada;
+     * o JSON resultante traz `content`, `totalElements`, `number`, etc.
+     */
     @GetMapping("/{chatId}/mensagens")
     public Page<MensagemDTO> historicoChat(
-    @AuthenticationPrincipal User usuario,
-    @PathVariable UUID chatId,
-    @RequestParam(defaultValue = "0") int page,
-    @RequestParam(defaultValue = "30") int size) {
+            @AuthenticationPrincipal User usuario,
+            @PathVariable UUID chatId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "30") int size) {
         return chatService.listarMensagens(usuario, chatId, PageRequest.of(page, size));
     }
 }

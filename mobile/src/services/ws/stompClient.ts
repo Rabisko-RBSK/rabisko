@@ -1,29 +1,46 @@
 import { Client, IMessage } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
 import { MensagemDTO } from '../api';
 
 type Listener = (msg: MensagemDTO) => void;
 
-const WS_URL = 'ws://192.168.15.5:8080/wss';
+// SockJS usa HTTP/HTTPS no URL (não ws/wss) — ele negocia o transporte sozinho.
+const SOCKJS_URL = (process.env.EXPO_PUBLIC_API_URL ?? '') + '/wss';
 
 let client: Client | null = null;
 const listeners: Set<Listener> = new Set();
 
 export const stompClient = {
   connect(token: string) {
-    if (client?.active) return;
+    console.log('[stomp] connect() chamado. SOCKJS_URL =', SOCKJS_URL, 'token len =', token?.length);
+    if (client?.active) {
+      console.log('[stomp] já ativo, ignorando');
+      return;
+    }
 
     client = new Client({
-      brokerURL: WS_URL,
+      webSocketFactory: () => new SockJS(SOCKJS_URL) as any,
       connectHeaders: { Authorization: `Bearer ${token}` },
       reconnectDelay: 5000,
+      debug: (msg) => console.log('[stomp debug]', msg),
       onConnect: () => {
+        console.log('[stomp] CONECTADO');
         client!.subscribe('/user/queue/messages', (frame: IMessage) => {
           const msg: MensagemDTO = JSON.parse(frame.body);
           listeners.forEach((fn) => fn(msg));
         });
       },
       onStompError: (frame) => {
-        console.error('STOMP error:', frame.headers['message'], frame.body);
+        console.error('[stomp] STOMP error:', frame.headers['message'], frame.body);
+      },
+      onWebSocketError: (e) => {
+        console.error('[stomp] WS error:', e?.message ?? e);
+      },
+      onWebSocketClose: (e) => {
+        console.warn('[stomp] WS fechou:', e?.code, e?.reason);
+      },
+      onDisconnect: () => {
+        console.warn('[stomp] desconectou');
       },
     });
 

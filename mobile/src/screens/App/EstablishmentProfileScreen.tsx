@@ -13,7 +13,7 @@ import { chatService } from '../../services/api';
 /* ---------- Mock data (P1 ArtistProfile — replace with real API once wired) ---------- */
 
 const ARTIST = {
-  id: '1',
+  id: 'cacc1353-c691-49b4-9a66-ce4a73891f3c',
   name: 'João Santos',
   rating: '4,9',
   tags: ['Realismo', 'Minimalista'],
