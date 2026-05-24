@@ -21,4 +21,7 @@ public interface AppointmentSessionRepository extends JpaRepository<AppointmentS
         LocalDateTime inicioDia,
         LocalDateTime fimDia
     );
+
+    /** Todas as sessões de um cliente (para a tela "Minhas Sessões"). */
+    List<AppointmentSession> findByClienteId(UUID clienteId);
 }

@@ -7,6 +7,8 @@ import com.rabisko.mvp.domain.client.Client;
 import com.rabisko.mvp.domain.user.User;
 import com.rabisko.mvp.domain.user.UserRole;
 import com.rabisko.mvp.repositories.*;
+
+import java.math.BigDecimal;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
@@ -16,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -29,6 +32,7 @@ public class AppointmentService {
     @Autowired private ChatRepository chatRepository;
     @Autowired private ArtistRepository artistRepository;
     @Autowired private ClientRepository clientRepository;
+    @Autowired private UserRepository userRepository;
 
     @Transactional
     public AppointmentDTO criarAgendamento(User logado, CreateAppointmentRequest req) {
@@ -113,6 +117,76 @@ public class AppointmentService {
                 s.getDuracaoMinutos()
             ))
             .collect(Collectors.toList());
+    }
+
+    public List<SessaoListItemDTO> listarSessoes(User logado, LocalDate de, LocalDate ate) {
+        if (logado.getRole() == UserRole.cliente) {
+            Client cliente = clientRepository.findByUserId(logado.getUserId())
+                .orElseThrow(() -> new EntityNotFoundException("Perfil cliente não encontrado"));
+
+            List<AppointmentSession> sessoes = sessionRepository.findByClienteId(cliente.getClientId());
+            return sessoes.stream()
+                .map(s -> {
+                    Artist artista = artistRepository.findById(s.getTatuadorId())
+                        .orElseThrow(() -> new EntityNotFoundException("Tatuador não encontrado"));
+                    User user = userRepository.findById(artista.getUserId())
+                        .orElseThrow(() -> new EntityNotFoundException("Usuário do tatuador não encontrado"));
+                    BigDecimal valorTotal = appointmentRepository.findById(s.getAppointmentId())
+                        .map(Appointment::getValorTotal)
+                        .orElse(BigDecimal.ZERO);
+                    return new SessaoListItemDTO(
+                        s.getSessionId(),
+                        s.getAppointmentId(),
+                        s.getDataSessao().toLocalDate(),
+                        s.getDataSessao().toLocalTime(),
+                        s.getDuracaoMinutos(),
+                        user.getNome(),
+                        artista.getFotoPerfilUrl(),
+                        valorTotal,
+                        s.getStatus().name()
+                    );
+                })
+                .sorted(Comparator.comparing(SessaoListItemDTO::data).thenComparing(SessaoListItemDTO::horario))
+                .collect(Collectors.toList());
+
+        } else if (logado.getRole() == UserRole.tatuador) {
+            Artist artista = artistRepository.findByUserId(logado.getUserId())
+                .orElseThrow(() -> new EntityNotFoundException("Perfil tatuador não encontrado"));
+
+            LocalDate inicio = de != null ? de : LocalDate.MIN;
+            LocalDate fim    = ate != null ? ate : LocalDate.MAX;
+            LocalDateTime inicioDia = inicio.atStartOfDay();
+            LocalDateTime fimDia   = fim.atTime(LocalTime.MAX);
+
+            List<AppointmentSession> sessoes = sessionRepository
+                .findByTatuadorIdAndDataSessaoBetween(artista.getTatuadorId(), inicioDia, fimDia);
+            return sessoes.stream()
+                .map(s -> {
+                    Client cliente = clientRepository.findById(s.getClienteId())
+                        .orElseThrow(() -> new EntityNotFoundException("Cliente não encontrado"));
+                    User user = userRepository.findById(cliente.getUserId())
+                        .orElseThrow(() -> new EntityNotFoundException("Usuário do cliente não encontrado"));
+                    BigDecimal valorTotal = appointmentRepository.findById(s.getAppointmentId())
+                        .map(Appointment::getValorTotal)
+                        .orElse(BigDecimal.ZERO);
+                    return new SessaoListItemDTO(
+                        s.getSessionId(),
+                        s.getAppointmentId(),
+                        s.getDataSessao().toLocalDate(),
+                        s.getDataSessao().toLocalTime(),
+                        s.getDuracaoMinutos(),
+                        user.getNome(),
+                        null,
+                        valorTotal,
+                        s.getStatus().name()
+                    );
+                })
+                .sorted(Comparator.comparing(SessaoListItemDTO::data).thenComparing(SessaoListItemDTO::horario))
+                .collect(Collectors.toList());
+
+        } else {
+            throw new AccessDeniedException("Esse papel não tem acesso a sessões");
+        }
     }
 
     private void verificarParticipacao(User logado, Appointment appointment) {

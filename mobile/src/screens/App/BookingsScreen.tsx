@@ -1,91 +1,67 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
-import { Image } from 'expo-image';
-import { QrCode, CheckCircle2, ChevronRight } from 'lucide-react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { CheckCircle2, ChevronRight } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { Header } from '../../components/common/Header';
-import { CalendarMini } from '../../components/common/CalendarMini';
+import { SessionDetailModal } from './SessionDetailModal';
+import { appointmentService, SessaoListItemDTO } from '../../services/api';
 
-/**
- * "Sessões" (DESIGN.md §10 #09 — Calendar / Screens.jsx#CalendarScreen). Overline + Bebas title,
- * `CalendarMini` for visual context, a cream pill-segmented toggle (Próximas/Concluídas), and
- * a list of `SessionRow`s. The "today" row is inverted (ink fill) with a plum CHECK-IN pill;
- * done rows show a plum check; future rows show a chevron. No green/yellow status anywhere.
- *
- * Session Detail (#09b) doesn't exist yet — `onOpen` is a no-op placeholder until that screen lands.
- */
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
-type SessionStatus = 'hoje' | 'confirmada' | 'concluida';
+const PT_MONTHS_SHORT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+const PT_WEEKDAYS_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
-interface Session {
-  id: string;
-  artistName: string;
-  photo: string;
-  date: string;       // already pre-formatted (the design's example copy)
-  duration: string;   // "3h"
-  style: string;      // "Blackwork · antebraço"
-  status: SessionStatus;
-  code: string;
+function todayStr(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-// Mock data mirrored from design/src/ui_kits/mobile-app/components/Screens.jsx#CalendarScreen.
-const UPCOMING: Session[] = [
-  {
-    id: '1',
-    artistName: 'João Santos',
-    photo: 'https://images.unsplash.com/photo-1682406593404-99578759c260?q=80&w=200&h=200&auto=format&fit=crop',
-    date: 'Hoje · 14:00',
-    duration: '3h',
-    style: 'Blackwork · antebraço',
-    status: 'hoje',
-    code: 'RBK-4729',
-  },
-  {
-    id: '2',
-    artistName: 'Ana Costa',
-    photo: 'https://images.unsplash.com/photo-1745953707460-959b97dfa42d?q=80&w=200&h=200&auto=format&fit=crop',
-    date: 'Sex · 19 Out · 18:30',
-    duration: '2h',
-    style: 'Aquarela · panturrilha',
-    status: 'confirmada',
-    code: 'RBK-5102',
-  },
-  {
-    id: '3',
-    artistName: 'Lia Prata',
-    photo: 'https://images.unsplash.com/photo-1702700382679-26890ebe71c5?q=80&w=200&h=200&auto=format&fit=crop',
-    date: 'Sáb · 27 Out · 11:00',
-    duration: '4h',
-    style: 'Realismo · braço',
-    status: 'confirmada',
-    code: 'RBK-5188',
-  },
-];
+function formatDataCurta(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  const wday = PT_WEEKDAYS_SHORT[date.getDay()];
+  return `${wday}, ${d} ${PT_MONTHS_SHORT[m - 1]}`;
+}
 
-const PAST: Session[] = [
-  {
-    id: '9',
-    artistName: 'João Santos',
-    photo: 'https://images.unsplash.com/photo-1682406593404-99578759c260?q=80&w=200&h=200&auto=format&fit=crop',
-    date: '22 Set · 15:00',
-    duration: '2h',
-    style: 'Blackwork · pulso',
-    status: 'concluida',
-    code: 'RBK-4621',
-  },
-];
+function formatHorario(horario: string): string {
+  return horario.substring(0, 5);
+}
 
-const PLUM = '#602C66';
+function formatDuracao(min: number): string {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}min`;
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
 
 type Tab = 'upcoming' | 'past';
 
 export function BookingsScreen() {
   const [view, setView] = React.useState<Tab>('upcoming');
-  // Today (the "Hoje" row) used as the default selected day on the mini calendar.
-  const [selectedDate, setSelectedDate] = React.useState<Date>(() => new Date());
+  const [sessoes, setSessoes] = React.useState<SessaoListItemDTO[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [selectedSessao, setSelectedSessao] = React.useState<SessaoListItemDTO | null>(null);
+  const [detalheVisivel, setDetalheVisivel] = React.useState(false);
 
-  const list = view === 'upcoming' ? UPCOMING : PAST;
+  React.useEffect(() => {
+    appointmentService.listarSessoes()
+      .then(setSessoes)
+      .catch(() => Alert.alert('Erro', 'Não foi possível carregar suas sessões.'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const today = todayStr();
+  const upcoming = sessoes.filter((s) => s.data >= today && s.status !== 'cancelada' && s.status !== 'no_show');
+  const past = sessoes.filter((s) => s.data < today || s.status === 'concluida' || s.status === 'cancelada' || s.status === 'no_show');
+  const list = view === 'upcoming' ? upcoming : past;
+
+  function openDetail(s: SessaoListItemDTO) {
+    setSelectedSessao(s);
+    setDetalheVisivel(true);
+  }
 
   return (
     <View className="flex-1 bg-background">
@@ -96,22 +72,13 @@ export function BookingsScreen() {
         contentContainerStyle={{ paddingBottom: 24 }}
         showsVerticalScrollIndicator={false}
       >
-        <Text className="font-aux-bold text-[10px] tracking-widest text-fg-3 mt-1 mb-1.5">
+        <Text className="font-aux-bold text-[10px] tracking-widest text-fg-3 mt-2 mb-4">
           MINHA AGENDA
         </Text>
 
-        <View className="mb-4">
-          <CalendarMini
-            selectedDate={selectedDate}
-            onSelectDate={setSelectedDate}
-            // Let the user browse past months when reviewing concluídas.
-            minDate={view === 'past' ? new Date(2000, 0, 1) : undefined}
-          />
-        </View>
-
-        {/* Pill-segmented toggle — Próximas / Concluídas */}
-        <View className="flex-row gap-1 p-1 bg-surface rounded-r-pill mb-4">
-          {([['upcoming', 'Próximas'], ['past', 'Concluídas']] as const).map(([key, label]) => {
+        {/* Toggle — Próximas / Concluídas */}
+        <View className="flex-row gap-1 p-1 bg-surface rounded-r-pill mb-5">
+          {([['upcoming', 'Próximas'], ['past', 'Histórico']] as const).map(([key, label]) => {
             const active = view === key;
             return (
               <TouchableOpacity
@@ -130,8 +97,12 @@ export function BookingsScreen() {
           })}
         </View>
 
-        {list.length === 0 ? (
-          <View className="items-center py-8">
+        {loading ? (
+          <View className="items-center py-12">
+            <ActivityIndicator color="#602C66" />
+          </View>
+        ) : list.length === 0 ? (
+          <View className="items-center py-10">
             <Text className="font-body text-[13px] text-fg-3">
               Nenhuma sessão por aqui ainda.
             </Text>
@@ -139,74 +110,76 @@ export function BookingsScreen() {
         ) : (
           <View style={{ gap: 10 }}>
             {list.map((s, i) => (
-              <Animated.View key={s.id} entering={FadeInDown.delay(40 * i).duration(220)}>
-                <SessionRow session={s} onOpen={() => { /* TODO: navegar pra Session Detail (P2 #9b) */ }} />
+              <Animated.View key={s.sessionId} entering={FadeInDown.delay(40 * i).duration(220)}>
+                <SessionRow sessao={s} today={today} onOpen={() => openDetail(s)} />
               </Animated.View>
             ))}
           </View>
         )}
       </ScrollView>
+
+      <SessionDetailModal
+        visible={detalheVisivel}
+        onClose={() => setDetalheVisivel(false)}
+        sessao={selectedSessao}
+      />
     </View>
   );
 }
 
-function SessionRow({ session, onOpen }: { session: Session; onOpen: () => void }) {
-  const isToday = session.status === 'hoje';
-  const isDone = session.status === 'concluida';
+// ─── Row ─────────────────────────────────────────────────────────────────────
+
+function SessionRow({ sessao, today, onOpen }: { sessao: SessaoListItemDTO; today: string; onOpen: () => void }) {
+  const isToday = sessao.data === today;
+  const isDone  = sessao.status === 'concluida' || sessao.data < today;
 
   return (
     <TouchableOpacity
       onPress={onOpen}
       activeOpacity={0.85}
-      className={`flex-row items-center gap-3.5 p-3.5 rounded-r-lg ${isToday ? 'bg-ink' : 'bg-surface'}`}
+      className={`flex-row items-center gap-3 p-4 rounded-r-lg ${isToday ? 'bg-ink' : 'bg-surface'}`}
       accessibilityRole="button"
-      accessibilityLabel={`Abrir sessão com ${session.artistName}`}
+      accessibilityLabel={`Sessão com ${sessao.outroNome}`}
     >
-      <Image
-        source={{ uri: session.photo }}
-        style={{ width: 52, height: 52, borderRadius: 12 }}
-        contentFit="cover"
-      />
-
-      <View className="flex-1 min-w-0">
-        <View className="flex-row items-center" style={{ gap: 8 }}>
-          <Text
-            className={`font-body-semibold text-[14px] ${isToday ? 'text-surface' : 'text-ink'}`}
-            numberOfLines={1}
-          >
-            {session.artistName}
+      {/* Date / time column */}
+      <View className="items-center" style={{ minWidth: 52 }}>
+        <Text className={`font-body-bold text-[13px] ${isToday ? 'text-surface' : 'text-ink'}`}>
+          {isToday ? 'HOJE' : formatDataCurta(sessao.data).split(', ')[1]}
+        </Text>
+        <Text className={`font-body text-[11px] mt-0.5 ${isToday ? 'text-surface' : 'text-fg-2'}`} style={{ opacity: 0.8 }}>
+          {formatHorario(sessao.horario)}
+        </Text>
+        {!isToday && (
+          <Text className="font-body text-[10px] text-fg-3 mt-0.5">
+            {formatDataCurta(sessao.data).split(', ')[0]}
           </Text>
-          {isToday && (
-            <View className="rounded-r-pill bg-plum px-[7px] py-[3px]">
-              <Text className="font-body-bold text-[10px] tracking-widest text-white">HOJE</Text>
-            </View>
-          )}
-        </View>
+        )}
+      </View>
+
+      {/* Separator */}
+      <View className="w-px self-stretch" style={{ backgroundColor: isToday ? 'rgba(255,255,255,0.2)' : '#E5E0E8' }} />
+
+      {/* Name / duration */}
+      <View className="flex-1 min-w-0">
         <Text
-          className={`font-body text-[11px] mt-1 ${isToday ? 'text-surface' : 'text-fg-2'}`}
-          style={{ opacity: isToday ? 0.85 : 0.85 }}
+          className={`font-body-semibold text-[14px] ${isToday ? 'text-surface' : 'text-ink'}`}
           numberOfLines={1}
         >
-          {session.style}
+          {sessao.outroNome}
         </Text>
         <Text
           className={`font-body text-[11px] mt-0.5 ${isToday ? 'text-surface' : 'text-fg-2'}`}
-          style={{ opacity: isToday ? 0.85 : 0.7 }}
-          numberOfLines={1}
+          style={{ opacity: 0.8 }}
         >
-          {session.date} · {session.duration}
+          {formatDuracao(sessao.duracaoMinutos)}
         </Text>
       </View>
 
-      {isToday ? (
-        <View className="flex-row items-center rounded-r-pill bg-plum px-2.5 py-2" style={{ gap: 4 }}>
-          <QrCode size={14} color="#FFFFFF" />
-          <Text className="font-body-bold text-[11px] text-white tracking-wider">CHECK-IN</Text>
-        </View>
-      ) : isDone ? (
-        <CheckCircle2 size={22} color={PLUM} />
+      {/* Status indicator */}
+      {isDone ? (
+        <CheckCircle2 size={20} color={isToday ? '#FFFFFF' : '#602C66'} />
       ) : (
-        <ChevronRight size={22} color="#6B6B6B" />
+        <ChevronRight size={20} color={isToday ? '#FFFFFF' : '#6B6B6B'} />
       )}
     </TouchableOpacity>
   );
