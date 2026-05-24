@@ -2,14 +2,18 @@ package com.rabisko.mvp.domain.artist;
 
 import java.util.UUID;
 
-/**
- * RESPONSE DTO da busca de tatuadores (GET /artist/search). Lista plana com
- * o minimo pra exibir no resultado: id (pra navegar), nome/email (vindos do
- * users via JOIN) e endereco (texto livre em `tatuadores`).
- *
- * Construido a partir de uma projecao nativa (ArtistSearchProjection) pra
- * evitar carregar a entity inteira + relacoes (estilos LAZY explodiria N+1).
- */
+// =====================================================================
+// DTO ArtistSearchResultDTO — resposta do GET /artist/search.
+//
+// Lista plana com o MINIMO pra mostrar um item de resultado de busca:
+//   - tatuadorId : pra navegar pro perfil
+//   - nome/email : vem do `users` via JOIN
+//   - endereco   : vem do `tatuadores`
+//
+// E construido a partir de uma projecao (ArtistSearchProjection) em vez
+// da entity, pra evitar carregar a relacao M:N de estilos (LAZY) que
+// causaria N consultas extras (problema "N+1").
+// =====================================================================
 public record ArtistSearchResultDTO(
         UUID tatuadorId,
         String nome,

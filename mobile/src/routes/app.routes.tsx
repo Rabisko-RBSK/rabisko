@@ -2,7 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 import { HomeStack } from './home.stack';
-import { ChatScreen } from '../screens/App/ChatScreen';
+import { ChatStack } from './chat.stack';
 import { SimuladorScreen } from '../screens/App/SimuladorScreen';
 import { BookingsScreen } from '../screens/App/BookingsScreen';
 import { SettingsScreen } from '../screens/App/SettingsScreen';
@@ -33,7 +33,7 @@ export function AppRoutes() {
       screenOptions={{ headerShown: false }}
     >
       <Screen name="Home" component={HomeStack} />
-      <Screen name="Chat" component={ChatScreen} />
+      <Screen name="Chat" component={ChatStack} />
       <Screen name="Simulador" component={SimuladorScreen} />
       <Screen name="Sessoes" component={BookingsScreen} />
       <Screen name="Settings" component={SettingsScreen} />

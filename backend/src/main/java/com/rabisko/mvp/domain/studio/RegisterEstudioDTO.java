@@ -7,24 +7,23 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
-/**
- * INPUT do cadastro de estudio (POST /user/cadastro/estudio). Carrega os
- * campos do User base (credenciais de login do dono) + os campos
- * exclusivos do Studio (cnpj, endereco).
- *
- * O 'nome' aqui e o nome do estudio — vai pra Studio.nome E pra User.nome
- * (estudio nao tem pessoa fisica, entao e o mesmo nome nas duas linhas
- * no cadastro inicial).
- *
- * dataNasc / cpf NAO entram: estudio e PJ — usa cnpj.
- * role NAO vem no payload (idem outros DTOs de cadastro).
- */
+// =====================================================================
+// DTO RegisterEstudioDTO — entrada do POST /user/cadastro/estudio.
+//
+// Junta os campos do User base (credenciais de login do dono) com os
+// campos do Studio (cnpj, endereco). O `nome` aqui e o NOME DO ESTUDIO
+// — vai pra Studio.nome e tambem pra User.nome (no cadastro inicial os
+// dois sao iguais; podem divergir depois via tela de edicao).
+//
+// dataNasc/cpf NAO entram: estudio e pessoa juridica — usa CNPJ.
+// =====================================================================
+
 @Getter
 @Setter
 public class RegisterEstudioDTO {
 
     @NotBlank
-    private String nome;
+    private String nome;       // nome do estudio (e tambem do User dono)
 
     @NotBlank
     @Email
@@ -36,7 +35,7 @@ public class RegisterEstudioDTO {
 
     private String telefone;
 
-    private String cnpj;
+    private String cnpj;       // opcional no MVP
 
     private String endereco;
 

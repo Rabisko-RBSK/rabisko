@@ -41,6 +41,16 @@ Perfil específico de usuários que contratam tatuagens
 | `dados_pagamento_token` | `varchar` |  Nullable |
 | `data_criacao` | `timestamptz` |  |
 
+## Table `controle_etapas`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `chat_id` | `uuid` | Primary |
+| `created_at` | `timestamptz` |  |
+| `status` | `varchar` |  Nullable |
+
 ## Table `enderecos`
 
 Endereços polimórficos com geolocalização (PostGIS)
@@ -109,28 +119,6 @@ Mensagens trocadas dentro de um chat
 | `conteudo` | `text` |  Nullable |
 | `data_envio` | `timestamptz` |  |
 | `destinatario_id` | `uuid` |  |
-
-## Table `orcamentos`
-
-Propostas de tatuagem em negociação ou finalizadas
-
-### Columns
-
-| Name | Type | Constraints |
-|------|------|-------------|
-| `orcamento_id` | `uuid` | Primary |
-| `chat_id` | `uuid` |  Nullable |
-| `tatuador_id` | `uuid` |  |
-| `cliente_id` | `uuid` |  |
-| `descricao` | `text` |  Nullable |
-| `tamanho_cm` | `numeric` |  Nullable |
-| `local_corpo` | `varchar` |  Nullable |
-| `arte_final_url` | `varchar` |  Nullable |
-| `valor_total` | `numeric` |  |
-| `valor_sinal` | `numeric` |  |
-| `finalizado` | `bool` |  |
-| `data_criacao` | `timestamptz` |  |
-| `data_finalizacao` | `timestamptz` |  Nullable |
 
 ## Table `pagamentos`
 
@@ -201,6 +189,28 @@ Sessões de tatuagem agendadas
 | `observacoes` | `text` |  Nullable |
 | `data_criacao` | `timestamptz` |  |
 
+## Table `servicos`
+
+Propostas de tatuagem em negociação ou finalizadas
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `servico_id` | `uuid` | Primary |
+| `chat_id` | `uuid` |  Nullable |
+| `tatuador_id` | `uuid` |  |
+| `cliente_id` | `uuid` |  |
+| `descricao` | `text` |  Nullable |
+| `tamanho_cm` | `numeric` |  Nullable |
+| `local_corpo` | `varchar` |  Nullable |
+| `arte_final_url` | `varchar` |  Nullable |
+| `valor_total` | `numeric` |  |
+| `valor_sinal` | `numeric` |  |
+| `finalizado` | `bool` |  |
+| `data_criacao` | `timestamptz` |  |
+| `data_finalizacao` | `timestamptz` |  Nullable |
+
 ## Table `simulacoes`
 
 Simulações de tatuagem aplicadas em foto do cliente
@@ -259,6 +269,8 @@ Perfil profissional de tatuadores, vinculados ou não a estúdios
 | `vinculado_estudio` | `bool` |  |
 | `data_criacao` | `timestamptz` |  |
 | `endereco` | `varchar` |  Nullable |
+| `latitude` | `numeric` |  Nullable |
+| `longitude` | `numeric` |  Nullable |
 
 ## Table `users`
 

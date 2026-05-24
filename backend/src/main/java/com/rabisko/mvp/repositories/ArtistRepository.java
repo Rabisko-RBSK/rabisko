@@ -8,23 +8,47 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
-/**
- * Repositorio JPA de Artist (tabela `tatuadores`).
- *
- * `buscar` e uma @Query NATIVA porque precisamos de funcoes Postgres que o
- * JPQL nao oferece (radians/acos/cos/sin = Haversine) e porque mexer com
- * IN-list opcional no JPQL e ruim. Os flags :semEstilo / :semDistancia
- * deixam o filtro "tudo opcional" em uma unica query, decidido no service.
- *
- * Filtra `users.status_ativo = TRUE` pra nao devolver conta desativada.
- *
- * 6371 = raio medio da Terra em km — Haversine clamp em radianos para
- * distancia em km. PostGIS seria mais robusto, mas overkill pro MVP.
- */
+// =====================================================================
+// REPOSITORY ArtistRepository — acesso a tabela `tatuadores`.
+//
+// Alem das funcoes herdadas de JpaRepository, traz:
+//   - findByUserId  : derived query simples
+//   - buscar        : @Query NATIVA com SQL puro (Postgres)
+//
+// Por que SQL nativo em `buscar`?
+//   Porque a busca calcula DISTANCIA GEOGRAFICA (formula de Haversine)
+//   usando funcoes Postgres: radians(), acos(), cos(), sin(). O JPQL
+//   (linguagem padrao do JPA) nao tem essas funcoes. Como o SQL ja e
+//   especifico do Postgres, escrevemos direto.
+//
+// Os parametros `:semEstilo` e `:semDistancia` deixam os filtros
+// OPCIONAIS na mesma query — quando o front nao manda estilo, o service
+// passa `semEstilo=true` e essa parte do WHERE e "ignorada".
+// =====================================================================
 public interface ArtistRepository extends JpaRepository<Artist, UUID> {
 
+    /** Busca o perfil tatuador a partir do User. */
+    Optional<Artist> findByUserId(UUID userId);
+
+    /**
+     * Busca de tatuadores com filtros opcionais (estilos + distancia).
+     *
+     * Como cada filtro funciona:
+     *  - Se :semEstilo = true   -> ignora o filtro de estilos
+     *    Senao -> tatuador tem que ter pelo menos 1 estilo da lista :estilos
+     *  - Se :semDistancia = true -> ignora o filtro geografico
+     *    Senao -> calcula distancia entre (lat, lng) e a coordenada do
+     *             tatuador via Haversine; aceita se <= raioKm
+     *
+     * 6371 = raio medio da Terra em km. LEAST(1.0, ...) protege contra
+     * imprecisao numerica que poderia fazer acos receber > 1.0 (NaN).
+     *
+     * O retorno e uma PROJECAO (ArtistSearchProjection) em vez da entity:
+     * mais leve, sem disparar relacoes LAZY (estilos M:N).
+     */
     @Query(value = """
             SELECT t.tatuador_id AS tatuadorId,
                    u.nome        AS nome,
