@@ -179,6 +179,18 @@ export interface BusySlotDTO {
   duracaoMinutos: number;
 }
 
+export interface SessaoListItemDTO {
+  sessionId: string;
+  appointmentId: string;
+  data: string;          // 'YYYY-MM-DD'
+  horario: string;       // 'HH:mm:ss' ou 'HH:mm'
+  duracaoMinutos: number;
+  outroNome: string;
+  outroFotoUrl: string | null;
+  valorTotal: number;
+  status: string;
+}
+
 export const appointmentService = {
   async criar(data: {
     chatId: string;
@@ -198,6 +210,11 @@ export const appointmentService = {
     const { data: res } = await api.get<BusySlotDTO[]>('/appointments/busy-slots', {
       params: { date },
     });
+    return res;
+  },
+
+  async listarSessoes(params?: { de?: string; ate?: string }): Promise<SessaoListItemDTO[]> {
+    const { data: res } = await api.get<SessaoListItemDTO[]>('/appointments/minhas-sessoes', { params });
     return res;
   },
 };

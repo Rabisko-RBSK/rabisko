@@ -3,6 +3,7 @@ package com.rabisko.mvp.controller;
 import com.rabisko.mvp.domain.appointment.AppointmentDTO;
 import com.rabisko.mvp.domain.appointment.BusySlotDTO;
 import com.rabisko.mvp.domain.appointment.CreateAppointmentRequest;
+import com.rabisko.mvp.domain.appointment.SessaoListItemDTO;
 import com.rabisko.mvp.domain.user.User;
 import com.rabisko.mvp.service.AppointmentService;
 import jakarta.validation.Valid;
@@ -49,6 +50,20 @@ public class AppointmentController {
             @AuthenticationPrincipal User usuario,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return appointmentService.obterHorariosOcupados(usuario, date);
+    }
+
+    /**
+     * GET /appointments/minhas-sessoes?de=YYYY-MM-DD&ate=YYYY-MM-DD
+     * Lista as sessões do usuário logado.
+     * Cliente: sem params → todas as sessões.
+     * Artista: params de + ate obrigatórios (range da semana para o Gantt).
+     */
+    @GetMapping("/appointments/minhas-sessoes")
+    public List<SessaoListItemDTO> minhasSessoes(
+            @AuthenticationPrincipal User usuario,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate de,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate ate) {
+        return appointmentService.listarSessoes(usuario, de, ate);
     }
 
     /**
