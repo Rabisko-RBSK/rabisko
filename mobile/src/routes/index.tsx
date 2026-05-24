@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { AuthRoutes } from './auth.routes';
 import { AppRoutes } from './app.routes';
+import { ArtistRoutes } from './artist.routes';
 import { useAuthStore } from '../store/authStore';
 import { stompClient } from '../services/ws/stompClient';
 
@@ -20,7 +21,13 @@ export function Router() {
 
   return (
     <NavigationContainer>
-      {isAuthenticated ? <AppRoutes /> : <AuthRoutes />}
+      {!isAuthenticated ? (
+        <AuthRoutes />
+      ) : role === 'artista' ? (
+        <ArtistRoutes />
+      ) : (
+        <AppRoutes />
+      )}
     </NavigationContainer>
   );
 }
