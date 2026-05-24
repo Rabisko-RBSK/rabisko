@@ -1,6 +1,8 @@
 package com.rabisko.mvp.service;
 
+import com.rabisko.mvp.domain.appointment.AppointmentStatus;
 import com.rabisko.mvp.domain.artist.Artist;
+import com.rabisko.mvp.domain.artist.ArtistDashboardDTO;
 import com.rabisko.mvp.domain.artist.ArtistProfileDTO;
 import com.rabisko.mvp.domain.artist.ArtistSearchProjection;
 import com.rabisko.mvp.domain.artist.ArtistSearchResultDTO;
@@ -10,17 +12,27 @@ import com.rabisko.mvp.domain.estilo.Estilo;
 import com.rabisko.mvp.domain.portfolio.PortfolioImagem;
 import com.rabisko.mvp.domain.portfolio.PortfolioImagemDTO;
 import com.rabisko.mvp.domain.user.User;
+import com.rabisko.mvp.domain.user.UserRole;
+import com.rabisko.mvp.repositories.AppointmentRepository;
 import com.rabisko.mvp.repositories.ArtistRepository;
+import com.rabisko.mvp.repositories.ChatRepository;
 import com.rabisko.mvp.repositories.EstiloRepository;
+
+import jakarta.persistence.EntityNotFoundException;
+
 import com.rabisko.mvp.repositories.PortfolioImagemRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -32,13 +44,17 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 // =====================================================================
-// SERVICE ArtistService — duas responsabilidades:
+// SERVICE ArtistService — tres responsabilidades:
 //
 //   1) cadastrarArtista: cria a linha em `tatuadores` e amarra os
 //      estilos escolhidos a M:N `tatuador_estilos`.
 //
 //   2) buscar: expoe a busca de tatuadores por estilo e/ou distancia,
 //      empacotando os filtros pra @Query nativa do ArtistRepository.
+//
+//   3) dashboard: monta o DTO de metricas da home do tatuador logado
+//      (chats abertos, etc.). Valida que o usuario e tatuador antes
+//      de calcular.
 //
 // Nada de dados pessoais (nome/email/cpf) aqui — esses vivem em `users`.
 // =====================================================================
@@ -56,6 +72,8 @@ public class ArtistService {
 
     @Autowired private ArtistRepository artistRepository;
     @Autowired private EstiloRepository estiloRepository;
+    @Autowired private ChatRepository chatRepository;
+    @Autowired private AppointmentRepository appointmentRepository;
     @Autowired private PortfolioImagemRepository portfolioImagemRepository;
     @Autowired private StorageService storageService;
 
@@ -308,4 +326,46 @@ public class ArtistService {
         }
         return new HashSet<>(encontrados);
     }
+
+    /**
+     * Monta o DTO com as metricas da home do tatuador logado.
+     *
+     * Etapas:
+     *   1) Bloqueia chamadas de outros papeis (cliente/estudio/admin) com 403.
+     *   2) Resolve o perfil tatuador a partir do User logado.
+     *   3) Consulta o ChatRepository pra contar chats ativos.
+     *   4) Empacota tudo num ArtistDashboardDTO.
+     *
+     * Quando adicionar metricas novas no v2 (tempo medio de resposta,
+     * novos chats nos ultimos 7 dias, etc.), e SO acrescentar campos no
+     * DTO e calculos aqui — nem o controller nem o front precisam saber
+     * detalhe nenhum.
+     */
+        public ArtistDashboardDTO dashboard(User logado) {
+                if (logado.getRole() != UserRole.tatuador) {
+                        throw new AccessDeniedException("Apenas tatuadores podem acessar o dashboard");
+                }
+
+                Artist meuPerfil = artistRepository.findByUserId(logado.getUserId())
+                        .orElseThrow(() -> new EntityNotFoundException("Perfil tatuador não encontrado"));
+
+                UUID tatuadorId = meuPerfil.getTatuadorId();
+
+                LocalDateTime inicioMes      = YearMonth.now().atDay(1).atStartOfDay();
+                LocalDateTime inicioProxMes  = YearMonth.now().plusMonths(1).atDay(1).atStartOfDay();
+
+                long chatsAbertos = chatRepository.countByTatuadorIdAndAtivoTrue(tatuadorId);
+
+                BigDecimal valorTotalMes = appointmentRepository.somarValorTotalNoPeriodo(
+                        tatuadorId, inicioMes, inicioProxMes);
+
+                long totalAgendamentosMes = appointmentRepository
+                        .countByTatuadorIdAndStatusNotInAndDataCriacaoBetween(
+                                tatuadorId,
+                                List.of(AppointmentStatus.cancelada, AppointmentStatus.no_show),
+                                inicioMes,
+                                inicioProxMes);
+
+                return new ArtistDashboardDTO(chatsAbertos, valorTotalMes, totalAgendamentosMes);
+        }
 }

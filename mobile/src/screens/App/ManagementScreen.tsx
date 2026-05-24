@@ -1,31 +1,159 @@
 import React from 'react';
-import { View, Text } from 'react-native';
-import { LayoutDashboard } from 'lucide-react-native';
+import {
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { CalendarCheck, MessageSquare, RotateCw, Wallet } from 'lucide-react-native';
 
 import { Header } from '../../components/common/Header';
+import { useArtistDashboard } from '../../hooks/useArtistDashboard';
+import { formatarBRL } from '../../services/api/dashboardService';
 
 /**
  * Gestão — primeira aba do fluxo do tatuador (DESIGN.md §10 #13 — Dashboard:
- * visão de reservas e faturamento). Ainda é um stub: a rota e o ícone na
- * `ArtistBottomNav` já existem; o conteúdo entra depois.
+ * visão de reservas e faturamento).
+ *
+ * v1: três KPIs lado a lado (empilhados): chats abertos, faturamento do mês
+ * e total de agendamentos do mês. Próximas métricas (tempo médio de resposta,
+ * mensagens nos últimos 14d, top clientes) entram aqui.
+ *
+ * O hook `useArtistDashboard` cuida do fetch, loading e erro — esta tela só
+ * decide o layout.
  */
 export function ManagementScreen() {
+  const { dashboard, loading, error, reload } = useArtistDashboard();
+
   return (
     <View className="flex-1 bg-background">
       <Header title="GESTÃO" />
 
-      <View className="flex-1 items-center justify-center px-10">
-        <View className="w-16 h-16 rounded-r-pill bg-surface items-center justify-center mb-5">
-          <LayoutDashboard size={28} color="#602C66" />
+      <ScrollView
+        contentContainerStyle={{ padding: 24, paddingBottom: 32 }}
+        refreshControl={
+          <RefreshControl refreshing={loading} onRefresh={reload} tintColor="#602C66" />
+        }
+      >
+        {/* Estado inicial: spinner centralizado enquanto a primeira request roda. */}
+        {loading && !dashboard ? (
+          <View className="items-center justify-center py-20">
+            <ActivityIndicator size="large" color="#602C66" />
+          </View>
+        ) : error ? (
+          <ErrorState message={error} onRetry={reload} />
+        ) : (
+          <View className="gap-4">
+            <KpiCard
+              icon={<MessageSquare size={22} color="#602C66" />}
+              label="Chats abertos"
+              value={dashboard?.chatsAbertos ?? 0}
+              hint="Clientes com conversa ativa no momento."
+            />
+            <KpiCard
+              icon={<Wallet size={22} color="#602C66" />}
+              label="Faturamento do mês"
+              value={formatarBRL(dashboard?.valorTotalMes ?? 0)}
+              hint="Soma dos serviços fechados este mês (exclui cancelados)."
+            />
+            <KpiCard
+              icon={<CalendarCheck size={22} color="#602C66" />}
+              label="Agendamentos do mês"
+              value={dashboard?.totalAgendamentosMes ?? 0}
+              hint="Serviços criados desde o primeiro dia do mês."
+            />
+            {/* TODO v2: tempo médio de resposta + line chart de mensagens 14d + top clientes */}
+          </View>
+        )}
+      </ScrollView>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------
+// Subcomponentes locais — pequenos demais pra virar arquivo separado;
+// se outros dashboards reusarem, promover pra components/common.
+// ---------------------------------------------------------------------
+
+interface KpiCardProps {
+  icon: React.ReactNode;
+  label: string;
+  /**
+   * Aceita number (ex.: contagens) ou string (ex.: "R$ 1.234,56" já formatado).
+   * Quem chama decide a formatação — o card só renderiza.
+   */
+  value: number | string;
+  hint?: string;
+}
+
+/**
+ * Card de KPI: número/valor grande no topo, label em cima, hint opcional embaixo.
+ * Visual segue o design system: surface cream, plum como cor de destaque (única
+ * cor de "ativação" permitida — ver tailwind.config.js).
+ *
+ * `adjustsFontSizeToFit` reduz a fonte se o conteúdo não couber numa linha
+ * (ex.: faturamento muito grande tipo R$ 999.999,99). Funciona bem no iOS;
+ * no Android o efeito é limitado mas o `numberOfLines={1}` evita quebra feia.
+ */
+function KpiCard({ icon, label, value, hint }: KpiCardProps) {
+  return (
+    <View className="bg-surface rounded-r-lg p-5">
+      <View className="flex-row items-center gap-3 mb-3">
+        <View className="w-10 h-10 rounded-r-pill bg-paper items-center justify-center">
+          {icon}
         </View>
-        <Text className="font-aux-bold text-[20px] text-ink text-center mb-2">
-          Sua central de gestão
-        </Text>
-        <Text className="font-body text-[14px] text-fg-2 text-center leading-[20px]">
-          Em breve você acompanha aqui suas reservas, faturamento e o
-          desempenho do seu trabalho.
+        <Text className="font-body-medium text-[14px] text-fg-2 uppercase tracking-wider">
+          {label}
         </Text>
       </View>
+
+      <Text
+        className="font-display text-[56px] text-plum leading-[56px]"
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.5}
+      >
+        {value}
+      </Text>
+
+      {hint && (
+        <Text className="font-body text-[13px] text-fg-3 mt-2">
+          {hint}
+        </Text>
+      )}
+    </View>
+  );
+}
+
+interface ErrorStateProps {
+  message: string;
+  onRetry: () => void;
+}
+
+/**
+ * Estado de erro com botão de retry. Usado quando o fetch do dashboard falha
+ * (rede offline, JWT expirado, 5xx do backend, etc.). `reload` do hook
+ * dispara nova tentativa.
+ */
+function ErrorState({ message, onRetry }: ErrorStateProps) {
+  return (
+    <View className="items-center justify-center py-16 px-6">
+      <Text className="font-body text-[14px] text-error text-center mb-4">
+        {message}
+      </Text>
+      <TouchableOpacity
+        onPress={onRetry}
+        className="flex-row items-center gap-2 bg-plum rounded-r-pill px-5 py-3"
+        accessibilityRole="button"
+        accessibilityLabel="Tentar novamente"
+      >
+        <RotateCw size={16} color="#FFFFFF" />
+        <Text className="font-body-bold text-[14px] text-on-ink">
+          Tentar novamente
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 }

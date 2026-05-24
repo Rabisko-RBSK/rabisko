@@ -1,7 +1,9 @@
 package com.rabisko.mvp.controller;
 
+import com.rabisko.mvp.domain.artist.ArtistDashboardDTO;
 import com.rabisko.mvp.domain.artist.ArtistProfileDTO;
 import com.rabisko.mvp.domain.artist.ArtistSearchResultDTO;
+import com.rabisko.mvp.domain.user.User;
 import com.rabisko.mvp.domain.artist.UploadResponseDTO;
 import com.rabisko.mvp.domain.avaliacao.AvaliacaoDTO;
 import com.rabisko.mvp.domain.portfolio.PortfolioImagemDTO;
@@ -9,6 +11,7 @@ import com.rabisko.mvp.domain.user.User;
 import com.rabisko.mvp.service.ArtistService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,25 +31,13 @@ import java.util.UUID;
 // =====================================================================
 // CONTROLLER ArtistController — endpoints do recurso "artist".
 //
-// Tres familias de endpoints:
+// Endpoints disponiveis:
+//   GET /artist/search    : busca de tatuadores por estilo e/ou distancia
+//   GET /artist/dashboard : metricas da home do tatuador logado
 //
-//   1) BUSCA PUBLICA (cliente procurando tatuador):
-//      - GET  /artist/search
-//
-//   2) PERFIL DO TATUADOR LOGADO (o tatuador olhando/editando o proprio):
-//      - GET   /artist/me                      perfil + portfolio
-//      - PATCH /artist/me                      atualiza bio / fotoUrl
-//      - POST  /artist/me/foto                 upload foto perfil -> URL
-//      - POST  /artist/me/portfolio            upload imagem portfolio
-//      - DELETE /artist/me/portfolio/{id}      remove imagem portfolio
-//
-//   3) AVALIACOES (visivel por qualquer logado):
-//      - GET   /artist/{id}/avaliacoes
-//
-// AUTH: nenhum endpoint aqui usa permitAll — todos exigem JWT valido
-// (regra default do SecurityConfiguration). O User logado chega via
-// @AuthenticationPrincipal pra os endpoints /me — eles inferem o
-// tatuadorId via ArtistRepository.findByUserId.
+// AUTH: nao tem permitAll, entao herda o padrao do SecurityConfiguration
+//   = exige JWT valido. /search e aberto a qualquer usuario logado;
+//   /dashboard adicionalmente exige role=tatuador (checado no service).
 // =====================================================================
 
 @RestController
@@ -71,6 +62,18 @@ public class ArtistController {
             @RequestParam(required = false) Double raioKm
     ) {
         return ResponseEntity.ok(artistService.buscar(estilo, lat, lng, raioKm));
+    }
+
+    /**
+     * GET /artist/dashboard
+     *
+     * Devolve os numeros que aparecem na home do tatuador logado.
+     * O User logado vem do JWT via @AuthenticationPrincipal. O service
+     * valida que o role e tatuador antes de calcular as metricas.
+     */
+    @GetMapping("/dashboard")
+    public ResponseEntity<ArtistDashboardDTO> dashboard(@AuthenticationPrincipal User logado) {
+        return ResponseEntity.ok(artistService.dashboard(logado));
     }
 
     // -----------------------------------------------------------------
