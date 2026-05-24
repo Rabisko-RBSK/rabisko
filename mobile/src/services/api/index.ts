@@ -148,4 +148,58 @@ export const chatService = {
   }
 }
 
+// ─── Agendamentos ────────────────────────────────────────────────────────────
+
+export interface AppointmentSessionInput {
+  data: string;         // 'YYYY-MM-DD'
+  horario: string;      // 'HH:mm'
+  duracaoMinutos: number;
+}
+
+export interface AppointmentSessionDTO {
+  sessionId: string;
+  data: string;
+  horario: string;
+  duracaoMinutos: number;
+}
+
+export interface AppointmentDTO {
+  appointmentId: string;
+  chatId: string;
+  clienteId: string;
+  tatuadorId: string;
+  status: 'agendada' | 'confirmada' | 'em_andamento' | 'concluida' | 'cancelada' | 'no_show';
+  valorTotal: number;
+  sessoes: AppointmentSessionDTO[];
+  dataCriacao: string;
+}
+
+export interface BusySlotDTO {
+  horario: string;      // 'HH:mm'
+  duracaoMinutos: number;
+}
+
+export const appointmentService = {
+  async criar(data: {
+    chatId: string;
+    sessoes: AppointmentSessionInput[];
+    valorTotal: number;
+  }): Promise<AppointmentDTO> {
+    const { data: res } = await api.post<AppointmentDTO>('/appointments', data);
+    return res;
+  },
+
+  async obter(id: string): Promise<AppointmentDTO> {
+    const { data: res } = await api.get<AppointmentDTO>(`/appointments/${id}`);
+    return res;
+  },
+
+  async busySlots(date: string): Promise<BusySlotDTO[]> {
+    const { data: res } = await api.get<BusySlotDTO[]>('/appointments/busy-slots', {
+      params: { date },
+    });
+    return res;
+  },
+};
+
 export default api;
