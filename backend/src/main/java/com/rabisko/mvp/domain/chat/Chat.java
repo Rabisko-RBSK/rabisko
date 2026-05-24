@@ -11,6 +11,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -19,7 +20,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "chats")
+@Table(name = "chats", uniqueConstraints = @UniqueConstraint(columnNames = {"cliente_id","tatuador_id"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -33,10 +34,10 @@ public class Chat {
     @Column(name = "chat_id", updatable = false, nullable = false)
     private UUID chatId;
 
-    @Column(name = "cliente_id", nullable = false, unique = true)
+    @Column(name = "cliente_id", nullable = false)
     private UUID clienteId;
 
-    @Column(name = "tatuador_id", nullable = false, unique = true)
+    @Column(name = "tatuador_id", nullable = false)
     private UUID tatuadorId;
 
     private boolean ativo;

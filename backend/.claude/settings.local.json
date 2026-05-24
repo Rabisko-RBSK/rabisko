@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(cd /d \"D:\\\\GitHub\\\\rabisko\\\\mobile\\\\src\\\\services\")",
+      "Bash(dir)"
+    ]
+  }
+}

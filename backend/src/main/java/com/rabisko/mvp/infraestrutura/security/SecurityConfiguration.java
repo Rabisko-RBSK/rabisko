@@ -55,6 +55,7 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.POST, "/user/cadastro/cliente").permitAll()
                         .requestMatchers(HttpMethod.POST, "/user/cadastro/artista").permitAll()
                         .requestMatchers(HttpMethod.POST, "/user/cadastro/estudio").permitAll()
+                        .requestMatchers("/wss/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)

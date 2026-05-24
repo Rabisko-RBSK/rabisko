@@ -5,7 +5,7 @@ const api = axios.create({
   // ATENÇÃO: hardcoded no IP da LAN do dev. Muda toda vez que troca de
   // rede — confere com `ipconfig` (IPv4 do adapter Wi-Fi). TODO: mover
   // pra app.json.extra.apiUrl + Constants.expoConfig.extra.apiUrl.
-  baseURL: 'http://192.168.15.9:8080',
+  baseURL: 'http://192.168.15.5:8080',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -74,6 +74,33 @@ export interface UserMeResponse {
   role: 'admin' | 'cliente' | 'tatuador' | 'estudio';
 }
 
+export interface ChatDTO {
+  chatId: string;
+  outroUsuarioId: string;
+  outroUsuarioNome: string;
+  ultimaMensagem: string | null;
+  dataUltimaMensagem: string | null;
+  ativo: boolean;
+}
+
+export interface MensagemDTO {
+  mensagemId: string;
+  chatId: string;
+  remetenteId: string;
+  destinatarioId: string;
+  conteudo: string;
+  dataEnvio: string;
+}
+
+export interface Page<T> {
+  content: T[];
+  number: number;    
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  last: boolean;
+}
+
 export interface AuthResponse {
   token: string;
 }
@@ -103,5 +130,25 @@ export const authService = {
     return data;
   }
 };
+
+export const chatService = {
+  async abrirChat(outroPerfilId: string): Promise<ChatDTO> {
+    const { data } = await api.post<ChatDTO>('/chats', { outroPerfilId });
+    return data;
+  },
+
+  async listarChats(): Promise<ChatDTO[]> {
+    const { data } = await api.get<ChatDTO[]>('/chats');
+    return data;
+  },
+
+  async listarMensagens(chatId: string, page = 0, size = 30): Promise<Page<MensagemDTO>> {
+    const { data } = await api.get<Page<MensagemDTO>>(
+      `/chats/${chatId}/mensagens`,
+      { params: { page, size } }
+    );
+    return data;
+  }
+}
 
 export default api;

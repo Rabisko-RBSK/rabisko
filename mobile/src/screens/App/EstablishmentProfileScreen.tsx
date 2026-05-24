@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Image, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, Image, TouchableOpacity, Alert } from 'react-native';
 import { Heart, Star } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -8,6 +8,7 @@ import { Header } from '../../components/common/Header';
 import { Button } from '../../components/common/Button';
 import { StatusPill } from '../../components/common/Chip';
 import { HomeStackParamList } from '../../routes/home.stack';
+import { chatService } from '../../services/api';
 
 /* ---------- Mock data (P1 ArtistProfile — replace with real API once wired) ---------- */
 
@@ -85,6 +86,25 @@ function ReviewCard({
 export function EstablishmentProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
   const [favorited, setFavorited] = useState(false);
+  const [iniciandoConversa, setIniciandoConversa] = useState(false);
+
+  async function iniciarConversa() {
+    if (iniciandoConversa) return;
+    setIniciandoConversa(true);
+    try {
+      const chat = await chatService.abrirChat(ARTIST.id);
+      navigation.navigate('ChatThread', {
+        chatId: chat.chatId,
+        outroNome: chat.outroUsuarioNome,
+        outroUsuarioId: chat.outroUsuarioId,
+      });
+    } catch (e) {
+      console.error('Erro ao abrir chat', e);
+      Alert.alert('Erro', 'Não foi possível iniciar a conversa.');
+    } finally {
+      setIniciandoConversa(false);
+    }
+  }
 
   return (
     <View className="flex-1 bg-background">
@@ -178,11 +198,8 @@ export function EstablishmentProfileScreen() {
         </View>
         <View className="flex-1">
           <Button
-            title="Iniciar Conversa"
-            onPress={() => {
-              // TODO: navigate to a chat thread with this artist (P2 — Chat thread/messages
-              // not built yet; for now it's a no-op placeholder).
-            }}
+            title={iniciandoConversa ? 'Abrindo…' : 'Iniciar Conversa'}
+            onPress={iniciarConversa}
           />
         </View>
       </View>
