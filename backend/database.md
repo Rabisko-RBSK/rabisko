@@ -27,6 +27,7 @@ Conversas entre cliente e tatuador
 | `tatuador_id` | `uuid` |  |
 | `data_criacao` | `timestamptz` |  |
 | `ativo` | `bool` |  |
+| `ultima_mensagem_em` | `timestamptz` |  Nullable |
 
 ## Table `clientes`
 
@@ -271,6 +272,7 @@ Perfil profissional de tatuadores, vinculados ou não a estúdios
 | `endereco` | `varchar` |  Nullable |
 | `latitude` | `numeric` |  Nullable |
 | `longitude` | `numeric` |  Nullable |
+| `foto_perfil_url` | `varchar` |  Nullable |
 
 ## Table `users`
 
