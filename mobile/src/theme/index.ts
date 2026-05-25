@@ -1,7 +1,7 @@
 /**
  * Rabisko design tokens (TS mirror of tailwind.config.js / design/src/colors_and_type.css).
  *
- * Prefer NativeWind classes (`bg-surface`, `rounded-r-md`, …) in components; use this object
+ * Prefer NativeWind classes (`bg-surface`, `rounded-rd-md`, …) in components; use this object
  * only where you need a raw value (StyleSheet, react-navigation options, third-party widgets
  * like react-native-calendars).
  *

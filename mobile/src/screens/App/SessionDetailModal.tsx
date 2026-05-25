@@ -122,7 +122,7 @@ export function SessionDetailModal({ visible, onClose, sessao }: Props) {
                 <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: badgeColors.bg }} />
               </View>
               <View
-                className="rounded-r-pill px-3 py-1"
+                className="rounded-rd-pill px-3 py-1"
                 style={{ backgroundColor: badgeColors.bg }}
               >
                 <Text className="font-body-semibold text-[12px]" style={{ color: badgeColors.text }}>

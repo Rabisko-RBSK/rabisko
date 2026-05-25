@@ -169,7 +169,7 @@ export function PortfolioScreen() {
             onPress={adicionarImagem}
             activeOpacity={0.85}
             disabled={working}
-            className="flex-row items-center bg-ink rounded-r-pill pl-3 pr-4 py-2 ml-3"
+            className="flex-row items-center bg-ink rounded-rd-pill pl-3 pr-4 py-2 ml-3"
             accessibilityRole="button"
             accessibilityLabel="Adicionar imagem ao portfólio"
             style={{ opacity: working ? 0.5 : 1 }}
@@ -196,7 +196,7 @@ export function PortfolioScreen() {
         renderItem={({ item }) => (
           <View style={{ width: TILE_WIDTH }}>
             <View
-              className="rounded-r-lg overflow-hidden bg-surface"
+              className="rounded-rd-lg overflow-hidden bg-surface"
               style={{ width: TILE_WIDTH, aspectRatio: 1 }}
             >
               <Image source={{ uri: item.url }} className="w-full h-full" />
@@ -206,7 +206,7 @@ export function PortfolioScreen() {
                   activeOpacity={0.85}
                   disabled={working}
                   hitSlop={6}
-                  className="absolute top-2 right-2 w-8 h-8 rounded-r-pill bg-ink items-center justify-center"
+                  className="absolute top-2 right-2 w-8 h-8 rounded-rd-pill bg-ink items-center justify-center"
                   accessibilityRole="button"
                   accessibilityLabel={
                     item.descricao

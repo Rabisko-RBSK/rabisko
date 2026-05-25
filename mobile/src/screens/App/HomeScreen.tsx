@@ -126,7 +126,7 @@ function SectionHeader({ title, action }: { title: string; action?: string }) {
 function StyleTile({ label, photo }: { label: string; photo: string }) {
   return (
     <TouchableOpacity activeOpacity={0.85} className="mr-3" style={{ width: 96 }}>
-      <View className="rounded-r-lg overflow-hidden bg-surface" style={{ width: 96, height: 128 }}>
+      <View className="rounded-rd-lg overflow-hidden bg-surface" style={{ width: 96, height: 128 }}>
         <Image source={{ uri: photo }} className="w-full h-full" />
       </View>
       <Text className="font-body-medium text-[12px] text-ink mt-2 text-center">{label}</Text>
@@ -137,7 +137,7 @@ function StyleTile({ label, photo }: { label: string; photo: string }) {
 function FlashCard({ title, price, photo }: { title: string; price: string; photo: string }) {
   return (
     <TouchableOpacity activeOpacity={0.9} className="mr-3" style={{ width: 168 }}>
-      <View className="rounded-r-lg overflow-hidden bg-surface" style={{ width: 168, height: 168 }}>
+      <View className="rounded-rd-lg overflow-hidden bg-surface" style={{ width: 168, height: 168 }}>
         <Image source={{ uri: photo }} className="w-full h-full" />
       </View>
       <Text className="font-body-semibold text-[14px] text-ink mt-2" numberOfLines={1}>
@@ -152,10 +152,10 @@ function FavoriteTile({ name, photo }: { name: string; photo: string }) {
   return (
     <TouchableOpacity activeOpacity={0.85} className="mr-3 items-center" style={{ width: 72 }}>
       <View className="relative">
-        <View className="rounded-r-pill overflow-hidden bg-surface" style={{ width: 72, height: 72 }}>
+        <View className="rounded-rd-pill overflow-hidden bg-surface" style={{ width: 72, height: 72 }}>
           <Image source={{ uri: photo }} className="w-full h-full" />
         </View>
-        <View className="absolute -top-1 -right-1 w-6 h-6 rounded-r-pill bg-paper items-center justify-center">
+        <View className="absolute -top-1 -right-1 w-6 h-6 rounded-rd-pill bg-paper items-center justify-center">
           <Heart size={12} color="#602C66" fill="#602C66" />
         </View>
       </View>
@@ -227,7 +227,7 @@ export function HomeScreen() {
             className="relative"
           >
             <Bell size={24} color="#000000" />
-            <View className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-r-pill bg-plum border border-background" />
+            <View className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-rd-pill bg-plum border border-background" />
           </TouchableOpacity>
         </View>
 
@@ -272,7 +272,7 @@ export function HomeScreen() {
           <TouchableOpacity
             activeOpacity={0.92}
             onPress={() => navigation.navigate('EstablishmentProfile', { id: FEATURED.id })}
-            className="rounded-r-xl overflow-hidden bg-ink"
+            className="rounded-rd-xl overflow-hidden bg-ink"
             style={{ aspectRatio: 16 / 11 }}
           >
             <Image source={{ uri: FEATURED.photo }} className="w-full h-full opacity-80" />
@@ -338,9 +338,9 @@ export function HomeScreen() {
         <View className="px-6 mt-8">
           <TouchableOpacity
             activeOpacity={0.9}
-            className="flex-row items-center bg-plum-tint rounded-r-lg p-5"
+            className="flex-row items-center bg-plum-tint rounded-rd-lg p-5"
           >
-            <View className="w-12 h-12 rounded-r-pill bg-plum items-center justify-center mr-4">
+            <View className="w-12 h-12 rounded-rd-pill bg-plum items-center justify-center mr-4">
               <Sparkles size={20} color="#FFFFFF" />
             </View>
             <View className="flex-1">

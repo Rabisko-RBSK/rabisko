@@ -297,7 +297,7 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
                 <TouchableOpacity
                   key={i}
                   onPress={() => setActiveIdx(i)}
-                  className={`flex-row items-center mr-2 px-3 py-1.5 rounded-r-xs border ${
+                  className={`flex-row items-center mr-2 px-3 py-1.5 rounded-rd-xs border ${
                     i === activeIdx ? 'bg-plum border-plum' : 'bg-surface border-surface'
                   }`}
                 >
@@ -320,7 +320,7 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
             </ScrollView>
             <TouchableOpacity
               onPress={addSession}
-              className="self-start bg-plum px-4 py-2 rounded-r-xs"
+              className="self-start bg-plum px-4 py-2 rounded-rd-xs"
             >
               <Text className="font-body text-[13px] text-white">+ Adicionar sessão</Text>
             </TouchableOpacity>
@@ -337,7 +337,7 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
                       <TouchableOpacity
                         key={i}
                         onPress={() => handleDateSelect(day)}
-                        className={`items-center mr-2 px-3 py-2 rounded-r-xs ${
+                        className={`items-center mr-2 px-3 py-2 rounded-rd-xs ${
                           active ? 'bg-ink' : 'bg-surface'
                         }`}
                       >
@@ -364,7 +364,7 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
                         key={slot}
                         onPress={() => !blocked && handleTimeSelect(slot)}
                         disabled={blocked}
-                        className={`px-4 py-2 rounded-r-xs ${
+                        className={`px-4 py-2 rounded-rd-xs ${
                           active ? 'bg-plum' : 'bg-surface'
                         }`}
                         style={{ opacity: blocked ? 0.3 : 1 }}
@@ -378,7 +378,7 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
 
                   {/* Pílula "Outro" com input inline */}
                   {customTimeActive ? (
-                    <View className="flex-row items-center bg-plum px-3 py-2 rounded-r-xs">
+                    <View className="flex-row items-center bg-plum px-3 py-2 rounded-rd-xs">
                       <TextInput
                         ref={customTimeRef}
                         value={customTimeInput}
@@ -402,7 +402,7 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
                   ) : (
                     <TouchableOpacity
                       onPress={handleCustomTimeActivate}
-                      className={`px-4 py-2 rounded-r-xs ${
+                      className={`px-4 py-2 rounded-rd-xs ${
                         customTimeInput ? 'bg-plum' : 'bg-surface'
                       }`}
                     >
@@ -423,7 +423,7 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
                       <TouchableOpacity
                         key={h}
                         onPress={() => handleDurationSelect(h)}
-                        className={`px-4 py-2 rounded-r-xs ${active ? 'bg-plum' : 'bg-surface'}`}
+                        className={`px-4 py-2 rounded-rd-xs ${active ? 'bg-plum' : 'bg-surface'}`}
                       >
                         <Text className={`font-body text-[13px] ${active ? 'text-white' : 'text-ink'}`}>
                           {h}h
@@ -438,7 +438,7 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
 
           {/* ── Valor ── */}
           <Section label="VALOR TOTAL DA TATUAGEM">
-            <View className="flex-row items-center bg-surface rounded-r-xs px-4 py-3">
+            <View className="flex-row items-center bg-surface rounded-rd-xs px-4 py-3">
               <Text className="font-body text-[14px] text-fg-2 mr-1">R$</Text>
               <TextInput
                 value={valorTotal}
@@ -454,7 +454,7 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
 
           {/* ── Resumo ── */}
           {sessions.length > 0 && totalNum > 0 && (
-            <View className="bg-ink rounded-r-md px-4 py-3 mt-2">
+            <View className="bg-ink rounded-rd-md px-4 py-3 mt-2">
               <Text className="font-body text-[14px] text-background">
                 {sessions.length} {sessions.length > 1 ? 'sessões' : 'sessão'} · R${' '}
                 {totalNum.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} total
@@ -472,7 +472,7 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
           <TouchableOpacity
             onPress={handleEnviar}
             disabled={!canSend}
-            className="bg-plum rounded-r-md py-4 items-center"
+            className="bg-plum rounded-rd-md py-4 items-center"
             style={{ opacity: canSend ? 1 : 0.4 }}
           >
             <Text className="font-display text-[16px] text-white tracking-wide">

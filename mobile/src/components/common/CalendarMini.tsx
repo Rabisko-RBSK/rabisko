@@ -47,7 +47,7 @@ export function CalendarMini({ selectedDate, onSelectDate, minDate }: CalendarMi
   const canGoBack = !isBefore(subMonths(monthStart, 1), startOfMonth(floor));
 
   return (
-    <View className="bg-surface rounded-r-lg p-4">
+    <View className="bg-surface rounded-rd-lg p-4">
       {/* month nav */}
       <View className="flex-row items-center justify-between mb-3">
         <TouchableOpacity
@@ -95,7 +95,7 @@ export function CalendarMini({ selectedDate, onSelectDate, minDate }: CalendarMi
                 disabled={disabled}
                 onPress={() => onSelectDate?.(date)}
                 activeOpacity={0.8}
-                className="flex-1 items-center justify-center rounded-r-pill"
+                className="flex-1 items-center justify-center rounded-rd-pill"
                 style={{ backgroundColor: selected ? PLUM : 'transparent' }}
                 accessibilityRole="button"
                 accessibilityState={{ selected, disabled }}

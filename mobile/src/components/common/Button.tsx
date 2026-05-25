@@ -68,7 +68,7 @@ export function Button({
         scale.value = withTiming(1, { duration: 120 });
       }}
       style={animatedStyle}
-      className={`flex-row items-center justify-center rounded-r-md px-10 py-[18px] ${CONTAINER[variant]} ${isDisabled ? 'opacity-50' : ''} ${className ?? ''}`}
+      className={`flex-row items-center justify-center rounded-rd-md px-10 py-[18px] ${CONTAINER[variant]} ${isDisabled ? 'opacity-50' : ''} ${className ?? ''}`}
       {...rest}
     >
       {loading ? (

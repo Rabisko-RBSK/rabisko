@@ -61,9 +61,9 @@ function ReviewCard({
   text: string;
 }) {
   return (
-    <View className="bg-surface-2 rounded-r-lg p-4 mb-3">
+    <View className="bg-surface-2 rounded-rd-lg p-4 mb-3">
       <View className="flex-row items-center mb-2">
-        <View className="w-9 h-9 rounded-r-pill bg-ink items-center justify-center mr-3">
+        <View className="w-9 h-9 rounded-rd-pill bg-ink items-center justify-center mr-3">
           <Text className="font-body-bold text-[12px] text-on-ink">{initials}</Text>
         </View>
         <View className="flex-1">
@@ -133,7 +133,7 @@ export function EstablishmentProfileScreen() {
         {/* Hero — chat-centered profile: photo → 1st tag pill → rating+star → name */}
         <View className="items-center mt-2 mb-6">
           <View
-            className="rounded-r-pill overflow-hidden bg-surface mb-3"
+            className="rounded-rd-pill overflow-hidden bg-surface mb-3"
             style={{ width: 120, height: 120 }}
           >
             <Image source={{ uri: ARTIST.photo }} className="w-full h-full" />
@@ -152,7 +152,7 @@ export function EstablishmentProfileScreen() {
         </View>
 
         {/* Sobre */}
-        <View className="bg-surface rounded-r-lg p-5 mb-8">
+        <View className="bg-surface rounded-rd-lg p-5 mb-8">
           <Text className="font-aux-bold text-[16px] text-ink mb-2">Sobre</Text>
           <Text className="font-body text-[14px] text-fg-2 leading-[20px] mb-3">{ARTIST.about}</Text>
           <Text className="font-body text-[13px] text-fg-3">{ARTIST.handle}</Text>
@@ -167,7 +167,7 @@ export function EstablishmentProfileScreen() {
         </View>
         <View className="flex-row mb-8" style={{ gap: 12 }}>
           {ARTIST.portfolio.slice(0, 2).map((src, i) => (
-            <View key={i} className="flex-1 rounded-r-xl overflow-hidden bg-surface" style={{ aspectRatio: 1 }}>
+            <View key={i} className="flex-1 rounded-rd-xl overflow-hidden bg-surface" style={{ aspectRatio: 1 }}>
               <Image source={{ uri: src }} className="w-full h-full" />
             </View>
           ))}

@@ -77,7 +77,7 @@ export function BookingsScreen() {
         </Text>
 
         {/* Toggle — Próximas / Concluídas */}
-        <View className="flex-row gap-1 p-1 bg-surface rounded-r-pill mb-5">
+        <View className="flex-row gap-1 p-1 bg-surface rounded-rd-pill mb-5">
           {([['upcoming', 'Próximas'], ['past', 'Histórico']] as const).map(([key, label]) => {
             const active = view === key;
             return (
@@ -87,7 +87,7 @@ export function BookingsScreen() {
                 activeOpacity={0.85}
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
-                className={`flex-1 py-2.5 rounded-r-pill items-center ${active ? 'bg-ink' : 'bg-transparent'}`}
+                className={`flex-1 py-2.5 rounded-rd-pill items-center ${active ? 'bg-ink' : 'bg-transparent'}`}
               >
                 <Text className={`font-body-semibold text-[12px] ${active ? 'text-surface' : 'text-ink'}`}>
                   {label}
@@ -137,7 +137,7 @@ function SessionRow({ sessao, today, onOpen }: { sessao: SessaoListItemDTO; toda
     <TouchableOpacity
       onPress={onOpen}
       activeOpacity={0.85}
-      className={`flex-row items-center gap-3 p-4 rounded-r-lg ${isToday ? 'bg-ink' : 'bg-surface'}`}
+      className={`flex-row items-center gap-3 p-4 rounded-rd-lg ${isToday ? 'bg-ink' : 'bg-surface'}`}
       accessibilityRole="button"
       accessibilityLabel={`Sessão com ${sessao.outroNome}`}
     >

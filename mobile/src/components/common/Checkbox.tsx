@@ -8,7 +8,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 /**
- * Checkbox (DESIGN.md §8 — controle de input simples). Caixa 22×22 com `rounded-r-xs`
+ * Checkbox (DESIGN.md §8 — controle de input simples). Caixa 22×22 com `rounded-rd-xs`
  * (8px) que troca de outline-ink pra fill-plum quando marcada. Plum é a única cor
  * de seleção/ativação do app (CLAUDE.md), por isso o accent fica nele.
  *
@@ -48,7 +48,7 @@ export function Checkbox({ checked, onChange, label, accessibilityLabel }: Check
       accessibilityLabel={accessibilityLabel}
     >
       <View
-        className={`rounded-r-xs items-center justify-center ${
+        className={`rounded-rd-xs items-center justify-center ${
           checked ? 'bg-plum border-plum' : 'bg-transparent border-ink'
         }`}
         style={{ width: 22, height: 22, borderWidth: 1.5 }}

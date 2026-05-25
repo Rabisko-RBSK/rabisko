@@ -60,7 +60,7 @@ function MethodTile({
       activeOpacity={0.85}
       accessibilityRole="button"
       accessibilityState={{ selected }}
-      className={`flex-1 items-center justify-center bg-surface rounded-r-md py-5 border-2 ${
+      className={`flex-1 items-center justify-center bg-surface rounded-rd-md py-5 border-2 ${
         selected ? 'border-plum' : 'border-transparent'
       }`}
     >
@@ -101,14 +101,14 @@ export function PaymentScreen() {
         {/* Projeto escolhido */}
         <Text className="font-body text-[13px] text-fg-2 mt-4 mb-2">Projeto escolhido</Text>
         <View
-          className="rounded-r-lg overflow-hidden bg-surface mb-6"
+          className="rounded-rd-lg overflow-hidden bg-surface mb-6"
           style={{ aspectRatio: 16 / 9 }}
         >
           <Image source={{ uri: PROJECT_PHOTO }} className="w-full h-full" />
         </View>
 
         {/* Breakdown card */}
-        <View className="bg-surface rounded-r-lg p-5 mb-8">
+        <View className="bg-surface rounded-rd-lg p-5 mb-8">
           <BreakdownRow label="Valor" value="R$ 200,00" />
           <BreakdownRow label="Sessões" value="3x" />
           <BreakdownRow label="Taxa da Reserva" value="R$ 20,00" />

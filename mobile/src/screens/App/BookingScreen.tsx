@@ -45,7 +45,7 @@ export function BookingScreen() {
 
         {/* Mini artist row */}
         <View className="flex-row items-center mb-5 mt-2">
-          <View className="rounded-r-pill overflow-hidden bg-surface mr-3" style={{ width: 46, height: 46 }}>
+          <View className="rounded-rd-pill overflow-hidden bg-surface mr-3" style={{ width: 46, height: 46 }}>
             <Image source={{ uri: ARTIST.photo }} className="w-full h-full" />
           </View>
           <View className="flex-1">
@@ -68,7 +68,7 @@ export function BookingScreen() {
                 key={time}
                 onPress={() => setSelectedTime(time)}
                 activeOpacity={0.85}
-                className={`items-center justify-center rounded-r-md py-4 ${selected ? 'bg-ink' : 'bg-surface'}`}
+                className={`items-center justify-center rounded-rd-md py-4 ${selected ? 'bg-ink' : 'bg-surface'}`}
                 style={{ width: '31.5%' }}
               >
                 <Text

@@ -177,7 +177,7 @@ export function SearchResultsScreen() {
       <TouchableOpacity
         activeOpacity={0.85}
         onPress={() => navigation.navigate('EstablishmentProfile', { id: item.tatuadorId })}
-        className="bg-surface rounded-r-md p-4 mb-3"
+        className="bg-surface rounded-rd-md p-4 mb-3"
       >
         <Text className="font-aux-bold text-[18px] text-ink" numberOfLines={1}>
           {item.nome}
@@ -216,7 +216,7 @@ export function SearchResultsScreen() {
       </View>
 
       {/* Toggle "perto de mim" */}
-      <View className="px-6 mb-4 flex-row items-center justify-between bg-surface-2 rounded-r-md py-3 px-4 mx-6">
+      <View className="px-6 mb-4 flex-row items-center justify-between bg-surface-2 rounded-rd-md py-3 px-4 mx-6">
         <View className="flex-1 pr-3">
           <Text className="font-body-semibold text-[14px] text-ink">Perto de mim</Text>
           <Text className="font-body text-[12px] text-fg-3 mt-0.5">
@@ -268,7 +268,7 @@ export function SearchResultsScreen() {
                 <TouchableOpacity
                   activeOpacity={0.85}
                   onPress={handleDidYouMean}
-                  className="flex-row items-center bg-plum-tint rounded-r-md px-4 py-3 mt-6"
+                  className="flex-row items-center bg-plum-tint rounded-rd-md px-4 py-3 mt-6"
                 >
                   <Lightbulb size={16} color="#602C66" style={{ marginRight: 8 }} />
                   <Text className="font-body text-[13px] text-ink">

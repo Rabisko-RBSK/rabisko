@@ -88,7 +88,7 @@ export function ChatScreen() {
               }
             >
               <View
-                className="bg-ink items-center justify-center rounded-r-pill mr-3"
+                className="bg-ink items-center justify-center rounded-rd-pill mr-3"
                 style={{ width: 46, height: 46 }}
               >
                 <Text className="font-body-semibold text-[14px] text-white">
@@ -115,7 +115,7 @@ export function ChatScreen() {
         activeOpacity={0.85}
         accessibilityRole="button"
         accessibilityLabel="Nova conversa"
-        className="absolute self-center bg-surface items-center justify-center rounded-r-pill"
+        className="absolute self-center bg-surface items-center justify-center rounded-rd-pill"
         style={{ bottom: 24, width: 48, height: 48 }}
       >
         <MessageSquarePlus size={22} color="#000000" />

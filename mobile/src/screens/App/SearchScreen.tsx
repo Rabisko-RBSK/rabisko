@@ -45,7 +45,7 @@ export function SearchScreen() {
             coordinate={marker.coordinate}
             onPress={() => setSelectedPlace(marker)}
           >
-            <View className="bg-black px-3 py-2 rounded-r-md border-2 border-white">
+            <View className="bg-black px-3 py-2 rounded-rd-md border-2 border-white">
               <Text className="text-white font-bold text-xs">{marker.price}</Text>
             </View>
           </Marker>
@@ -54,7 +54,7 @@ export function SearchScreen() {
 
       {/* Header Search */}
       <View className="absolute top-14 left-6 right-6">
-        <View className="flex-row items-center bg-white rounded-r-md px-4 py-4 border border-hairline">
+        <View className="flex-row items-center bg-white rounded-rd-md px-4 py-4 border border-hairline">
           <View className="mr-3">
             <Search size={24} color="#000" />
           </View>
@@ -63,7 +63,7 @@ export function SearchScreen() {
             placeholderTextColor="#6B6B6B"
             className="flex-1 text-black text-lg"
           />
-          <TouchableOpacity className="bg-surface p-2 rounded-r-md">
+          <TouchableOpacity className="bg-surface p-2 rounded-rd-md">
             <SlidersHorizontal size={20} color="#000" />
           </TouchableOpacity>
         </View>
@@ -73,10 +73,10 @@ export function SearchScreen() {
       {selectedPlace && (
         <View className="absolute bottom-10 left-6 right-6">
           <TouchableOpacity 
-            className="bg-black p-6 rounded-r-lg flex-row items-center"
+            className="bg-black p-6 rounded-rd-lg flex-row items-center"
             activeOpacity={0.9}
           >
-            <View className="bg-surface w-16 h-16 rounded-r-pill items-center justify-center mr-4">
+            <View className="bg-surface w-16 h-16 rounded-rd-pill items-center justify-center mr-4">
               <MapPin size={24} color="#000" />
             </View>
             <View className="flex-1">
@@ -87,7 +87,7 @@ export function SearchScreen() {
               </View>
             </View>
             <TouchableOpacity 
-              className="bg-white px-6 py-3 rounded-r-pill"
+              className="bg-white px-6 py-3 rounded-rd-pill"
               onPress={() => setSelectedPlace(null)}
             >
               <Text className="text-black font-bold">Ver</Text>

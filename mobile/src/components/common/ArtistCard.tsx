@@ -36,7 +36,7 @@ export function ArtistCard({
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.9}
-      className="overflow-hidden rounded-r-lg"
+      className="overflow-hidden rounded-rd-lg"
       accessibilityRole="button"
     >
       <View className="bg-ink px-[22px] pb-[22px] pt-[18px]">
@@ -53,7 +53,7 @@ export function ArtistCard({
         )}
 
         <View
-          className="mx-auto mb-3 mt-2 bg-surface rounded-r-lg overflow-hidden"
+          className="mx-auto mb-3 mt-2 bg-surface rounded-rd-lg overflow-hidden"
           style={{ width: 96, height: 96 }}
         >
           {photo ? <Image source={{ uri: photo }} className="w-full h-full" /> : null}
@@ -77,7 +77,7 @@ export function ArtistCard({
             style={{ gap: 8, minHeight: 58 }}
           >
             {tags.map((t) => (
-              <View key={t} className="rounded-r-pill border border-white px-3 py-1">
+              <View key={t} className="rounded-rd-pill border border-white px-3 py-1">
                 <Text className="font-body-medium text-[11px] text-white">{t}</Text>
               </View>
             ))}

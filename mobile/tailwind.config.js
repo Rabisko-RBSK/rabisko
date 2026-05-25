@@ -6,8 +6,10 @@
  * BORDER RADIUS — single source of truth (F1 in design/IMPLEMENTATION-CHECKLIST.md).
  *   Anchor: the Role selector (Cliente/Artista/Estúdio) in Cadastro = 12px outer container,
  *   8px inner button (12 − 4 padding). Every other radius scales from that beat.
- *   Use the `rounded-r-*` classes below — NEVER hardcode `rounded-[24px]`, `rounded-2xl`,
- *   `rounded-full`, etc. (`rounded-r-pill` is the only "fully round" value.)
+ *   Use the `rounded-rd-*` classes below — NEVER hardcode `rounded-[24px]`, `rounded-2xl`,
+ *   `rounded-full`, etc. (`rounded-rd-pill` is the only "fully round" value.)
+ *   The `rd-` prefix avoids collision with Tailwind's `rounded-r-*` directional modifier
+ *   (which would apply radius to right corners only).
  *
  * COLORS — use the semantic tokens below (`bg-surface`, `text-ink`, `bg-plum`, …).
  *   plum (#602C66) is the ONLY color allowed to indicate selection / activation — never
@@ -31,13 +33,13 @@ const fontFamily = {
 };
 
 const radius = {
-  'r-xs': '8px',      // inner item nested in an `r-md` container (e.g. RoleSwitch buttons)
-  'r-sm': '10px',     // micro chips, inline tags
-  'r-md': '12px',     // DEFAULT — buttons, fields, tabs, role-switch container, most containers
-  'r-lg': '16px',     // cards, sheets, surface tiles
-  'r-xl': '22px',     // hero cards, large media tiles
-  'r-2xl': '28px',    // modal sheets, logo blocks
-  'r-pill': '9999px', // status pills, round icon buttons, segmented full pill
+  'rd-xs': '8px',      // inner item nested in an `rd-md` container (e.g. RoleSwitch buttons)
+  'rd-sm': '10px',     // micro chips, inline tags
+  'rd-md': '12px',     // DEFAULT — buttons, fields, tabs, role-switch container, most containers
+  'rd-lg': '16px',     // cards, sheets, surface tiles
+  'rd-xl': '22px',     // hero cards, large media tiles
+  'rd-2xl': '28px',    // modal sheets, logo blocks
+  'rd-pill': '9999px', // status pills, round icon buttons, segmented full pill
 };
 
 const colors = {

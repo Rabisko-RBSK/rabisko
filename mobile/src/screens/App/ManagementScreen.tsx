@@ -99,9 +99,9 @@ interface KpiCardProps {
  */
 function KpiCard({ icon, label, value, hint }: KpiCardProps) {
   return (
-    <View className="bg-surface rounded-r-lg p-5">
+    <View className="bg-surface rounded-rd-lg p-5">
       <View className="flex-row items-center gap-3 mb-3">
-        <View className="w-10 h-10 rounded-r-pill bg-paper items-center justify-center">
+        <View className="w-10 h-10 rounded-rd-pill bg-paper items-center justify-center">
           {icon}
         </View>
         <Text className="font-body-medium text-[14px] text-fg-2 uppercase tracking-wider">
@@ -145,7 +145,7 @@ function ErrorState({ message, onRetry }: ErrorStateProps) {
       </Text>
       <TouchableOpacity
         onPress={onRetry}
-        className="flex-row items-center gap-2 bg-plum rounded-r-pill px-5 py-3"
+        className="flex-row items-center gap-2 bg-plum rounded-rd-pill px-5 py-3"
         accessibilityRole="button"
         accessibilityLabel="Tentar novamente"
       >

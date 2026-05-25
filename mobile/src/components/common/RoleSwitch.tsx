@@ -7,7 +7,7 @@ import type { UserRoleId } from '../../store/authStore';
  * Cliente / Artista / Estúdio segmented control.
  *
  * This is the CANONICAL CURVATURE ANCHOR of the design system: a cream container at
- * `rounded-r-md` (12px) with 4px padding, holding three inner buttons at `rounded-r-xs`
+ * `rounded-rd-md` (12px) with 4px padding, holding three inner buttons at `rounded-rd-xs`
  * (8px = 12 − 4). Selected = ink fill + white text. Match this curvature beat for any
  * other segmented control. (DESIGN.md §5 / §8.9.)
  */
@@ -27,7 +27,7 @@ interface RoleSwitchProps {
 
 export function RoleSwitch({ value, onChange, className }: RoleSwitchProps) {
   return (
-    <View className={`flex-row bg-surface rounded-r-md p-1 ${className ?? ''}`}>
+    <View className={`flex-row bg-surface rounded-rd-md p-1 ${className ?? ''}`}>
       {ROLE_OPTIONS.map(({ id, label, icon: Icon }) => {
         const active = value === id;
         return (
@@ -37,7 +37,7 @@ export function RoleSwitch({ value, onChange, className }: RoleSwitchProps) {
             activeOpacity={0.8}
             accessibilityRole="button"
             accessibilityState={{ selected: active }}
-            className={`flex-1 flex-row items-center justify-center py-2.5 rounded-r-xs ${active ? 'bg-ink' : 'bg-transparent'}`}
+            className={`flex-1 flex-row items-center justify-center py-2.5 rounded-rd-xs ${active ? 'bg-ink' : 'bg-transparent'}`}
           >
             <Icon size={14} color={active ? '#FFFFFF' : '#000000'} style={{ marginRight: 6 }} />
             <Text className={`font-body-semibold text-[12px] ${active ? 'text-white' : 'text-ink'}`}>
