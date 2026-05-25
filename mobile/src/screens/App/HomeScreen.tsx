@@ -6,10 +6,6 @@ import {
   MapPin,
   Search,
   SlidersHorizontal,
-  Compass,
-  Palette,
-  Tag,
-  CalendarCheck,
   Heart,
   Sparkles,
   ChevronRight,
@@ -21,7 +17,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { HomeStackParamList } from '../../routes/home.stack';
 import { useAuthStore } from '../../store/authStore';
 import { Input } from '../../components/common/Input';
-import { FilterChip, StatusPill } from '../../components/common/Chip';
+import { StatusPill } from '../../components/common/Chip';
 import { ArtistCard } from '../../components/common/ArtistCard';
 import { SuggestionList } from '../../components/common/SuggestionList';
 import { useEstilos } from '../../hooks/useEstilos';
@@ -63,13 +59,6 @@ function rankSuggestions(query: string, catalogo: Estilo[]): Estilo[] {
 }
 
 /* ---------- Mock data (P1 Home — replace with real API once `/services/api` is wired) ---------- */
-
-const FILTERS = [
-  { id: 'perto', label: 'Perto', icon: Compass },
-  { id: 'estilo', label: 'Estilo', icon: Palette },
-  { id: 'preco', label: 'Preço', icon: Tag },
-  { id: 'disponivel', label: 'Disponível', icon: CalendarCheck },
-] as const;
 
 const STYLE_TILES = [
   { id: 'realismo', label: 'Realismo', photo: 'https://images.unsplash.com/photo-1565058379802-bbe93b2f703a?q=80&w=200&auto=format&fit=crop' },
@@ -183,7 +172,6 @@ export function HomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
-  const [activeFilter, setActiveFilter] = useState<string>('perto');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Catalogo cacheado em memoria de processo (useEstilos). Compartilhado
@@ -252,7 +240,7 @@ export function HomeScreen() {
             <Text className="font-body-italic text-[28px] leading-[32px] text-plum lowercase mr-3">
               perto de
             </Text>
-            <Text className="font-display text-[64px] leading-[60px] text-ink">VOCÊ</Text>
+            <Text className="font-display text-[64px] leading-[70px] text-ink">VOCÊ</Text>
           </View>
         </View>
 
@@ -277,24 +265,6 @@ export function HomeScreen() {
             </View>
           )}
         </View>
-
-        {/* Filter chips */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 24, gap: 8, paddingVertical: 4 }}
-          className="-mt-1"
-        >
-          {FILTERS.map((f) => (
-            <FilterChip
-              key={f.id}
-              label={f.label}
-              icon={f.icon}
-              active={activeFilter === f.id}
-              onPress={() => setActiveFilter(f.id)}
-            />
-          ))}
-        </ScrollView>
 
         {/* Em destaque (BOOST hero) — primeira seção após pesquisa+filtros (gancho editorial). */}
         <SectionHeader title="Em destaque" />

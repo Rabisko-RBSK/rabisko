@@ -74,7 +74,12 @@ export function Button({
       {loading ? (
         <ActivityIndicator color={SPINNER_LIGHT.includes(variant) ? '#fff' : '#000'} />
       ) : (
-        <Text className={`font-body-bold text-[20px] ${LABEL[variant]}`}>{title}</Text>
+        <Text
+          className={`font-body-bold text-[20px] ${LABEL[variant]}`}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.75}
+        >{title}</Text>
       )}
     </AnimatedTouchable>
   );
