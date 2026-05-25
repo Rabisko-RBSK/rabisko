@@ -58,7 +58,7 @@ export function Input({
 
       <Animated.View
         style={animatedStyle}
-        className={`flex-row bg-surface rounded-r-md px-[22px] ${
+        className={`flex-row bg-surface rounded-rd-md px-[22px] ${
           multiline ? 'items-start py-3' : 'items-center py-4'
         }`}
       >

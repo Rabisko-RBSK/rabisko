@@ -6,10 +6,6 @@ import {
   MapPin,
   Search,
   SlidersHorizontal,
-  Compass,
-  Palette,
-  Tag,
-  CalendarCheck,
   Heart,
   Sparkles,
   ChevronRight,
@@ -21,7 +17,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { HomeStackParamList } from '../../routes/home.stack';
 import { useAuthStore } from '../../store/authStore';
 import { Input } from '../../components/common/Input';
-import { FilterChip, StatusPill } from '../../components/common/Chip';
+import { StatusPill } from '../../components/common/Chip';
 import { ArtistCard } from '../../components/common/ArtistCard';
 import { SuggestionList } from '../../components/common/SuggestionList';
 import { useEstilos } from '../../hooks/useEstilos';
@@ -63,13 +59,6 @@ function rankSuggestions(query: string, catalogo: Estilo[]): Estilo[] {
 }
 
 /* ---------- Mock data (P1 Home — replace with real API once `/services/api` is wired) ---------- */
-
-const FILTERS = [
-  { id: 'perto', label: 'Perto', icon: Compass },
-  { id: 'estilo', label: 'Estilo', icon: Palette },
-  { id: 'preco', label: 'Preço', icon: Tag },
-  { id: 'disponivel', label: 'Disponível', icon: CalendarCheck },
-] as const;
 
 const STYLE_TILES = [
   { id: 'realismo', label: 'Realismo', photo: 'https://images.unsplash.com/photo-1565058379802-bbe93b2f703a?q=80&w=200&auto=format&fit=crop' },
@@ -137,7 +126,7 @@ function SectionHeader({ title, action }: { title: string; action?: string }) {
 function StyleTile({ label, photo }: { label: string; photo: string }) {
   return (
     <TouchableOpacity activeOpacity={0.85} className="mr-3" style={{ width: 96 }}>
-      <View className="rounded-r-lg overflow-hidden bg-surface" style={{ width: 96, height: 128 }}>
+      <View className="rounded-rd-lg overflow-hidden bg-surface" style={{ width: 96, height: 128 }}>
         <Image source={{ uri: photo }} className="w-full h-full" />
       </View>
       <Text className="font-body-medium text-[12px] text-ink mt-2 text-center">{label}</Text>
@@ -148,7 +137,7 @@ function StyleTile({ label, photo }: { label: string; photo: string }) {
 function FlashCard({ title, price, photo }: { title: string; price: string; photo: string }) {
   return (
     <TouchableOpacity activeOpacity={0.9} className="mr-3" style={{ width: 168 }}>
-      <View className="rounded-r-lg overflow-hidden bg-surface" style={{ width: 168, height: 168 }}>
+      <View className="rounded-rd-lg overflow-hidden bg-surface" style={{ width: 168, height: 168 }}>
         <Image source={{ uri: photo }} className="w-full h-full" />
       </View>
       <Text className="font-body-semibold text-[14px] text-ink mt-2" numberOfLines={1}>
@@ -163,10 +152,10 @@ function FavoriteTile({ name, photo }: { name: string; photo: string }) {
   return (
     <TouchableOpacity activeOpacity={0.85} className="mr-3 items-center" style={{ width: 72 }}>
       <View className="relative">
-        <View className="rounded-r-pill overflow-hidden bg-surface" style={{ width: 72, height: 72 }}>
+        <View className="rounded-rd-pill overflow-hidden bg-surface" style={{ width: 72, height: 72 }}>
           <Image source={{ uri: photo }} className="w-full h-full" />
         </View>
-        <View className="absolute -top-1 -right-1 w-6 h-6 rounded-r-pill bg-paper items-center justify-center">
+        <View className="absolute -top-1 -right-1 w-6 h-6 rounded-rd-pill bg-paper items-center justify-center">
           <Heart size={12} color="#602C66" fill="#602C66" />
         </View>
       </View>
@@ -183,7 +172,6 @@ export function HomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
-  const [activeFilter, setActiveFilter] = useState<string>('perto');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Catalogo cacheado em memoria de processo (useEstilos). Compartilhado
@@ -239,7 +227,7 @@ export function HomeScreen() {
             className="relative"
           >
             <Bell size={24} color="#000000" />
-            <View className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-r-pill bg-plum border border-background" />
+            <View className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-rd-pill bg-plum border border-background" />
           </TouchableOpacity>
         </View>
 
@@ -252,7 +240,7 @@ export function HomeScreen() {
             <Text className="font-body-italic text-[28px] leading-[32px] text-plum lowercase mr-3">
               perto de
             </Text>
-            <Text className="font-display text-[64px] leading-[60px] text-ink">VOCÊ</Text>
+            <Text className="font-display text-[64px] leading-[70px] text-ink">VOCÊ</Text>
           </View>
         </View>
 
@@ -278,31 +266,13 @@ export function HomeScreen() {
           )}
         </View>
 
-        {/* Filter chips */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 24, gap: 8, paddingVertical: 4 }}
-          className="-mt-1"
-        >
-          {FILTERS.map((f) => (
-            <FilterChip
-              key={f.id}
-              label={f.label}
-              icon={f.icon}
-              active={activeFilter === f.id}
-              onPress={() => setActiveFilter(f.id)}
-            />
-          ))}
-        </ScrollView>
-
         {/* Em destaque (BOOST hero) — primeira seção após pesquisa+filtros (gancho editorial). */}
         <SectionHeader title="Em destaque" />
         <Animated.View entering={FadeInDown.duration(400).springify()} className="px-6">
           <TouchableOpacity
             activeOpacity={0.92}
             onPress={() => navigation.navigate('EstablishmentProfile', { id: FEATURED.id })}
-            className="rounded-r-xl overflow-hidden bg-ink"
+            className="rounded-rd-xl overflow-hidden bg-ink"
             style={{ aspectRatio: 16 / 11 }}
           >
             <Image source={{ uri: FEATURED.photo }} className="w-full h-full opacity-80" />
@@ -368,9 +338,9 @@ export function HomeScreen() {
         <View className="px-6 mt-8">
           <TouchableOpacity
             activeOpacity={0.9}
-            className="flex-row items-center bg-plum-tint rounded-r-lg p-5"
+            className="flex-row items-center bg-plum-tint rounded-rd-lg p-5"
           >
-            <View className="w-12 h-12 rounded-r-pill bg-plum items-center justify-center mr-4">
+            <View className="w-12 h-12 rounded-rd-pill bg-plum items-center justify-center mr-4">
               <Sparkles size={20} color="#FFFFFF" />
             </View>
             <View className="flex-1">

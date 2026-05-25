@@ -14,7 +14,7 @@ import { Button } from '../../components/common/Button';
  * Criar conta".
  *
  * Logo: marca "Bisko Branco" (polvo branco sobre ink) em `assets/images/bisko-branco.png`. O
- * PNG já tem o fundo ink embutido (512×512); o container `rounded-r-2xl overflow-hidden` clipa
+ * PNG já tem o fundo ink embutido (512×512); o container `rounded-rd-2xl overflow-hidden` clipa
  * os cantos arredondados sobre a imagem.
  */
 export function LandingScreen() {
@@ -29,7 +29,7 @@ export function LandingScreen() {
       {/* Logo block — marca Bisko Branco (polvo). PNG já é ink+branco; overflow-hidden clipa
           os cantos arredondados sobre a imagem. */}
       <View
-        className="bg-ink rounded-r-2xl overflow-hidden mb-7"
+        className="bg-ink rounded-rd-2xl overflow-hidden mb-7"
         style={{ width: 132, height: 132 }}
       >
         <Image

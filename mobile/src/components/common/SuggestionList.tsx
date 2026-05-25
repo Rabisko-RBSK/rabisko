@@ -19,7 +19,7 @@ interface SuggestionListProps {
 export function SuggestionList({ suggestions, onSelect }: SuggestionListProps) {
   if (suggestions.length === 0) return null;
   return (
-    <View className="bg-surface rounded-r-md overflow-hidden">
+    <View className="bg-surface rounded-rd-md overflow-hidden">
       {suggestions.map((s, i) => (
         <TouchableOpacity
           key={s.estiloId}

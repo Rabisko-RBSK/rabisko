@@ -22,7 +22,7 @@ export function ForgotPasswordScreen() {
           Insira seu e-mail cadastrado para receber as instruções de recuperação.
         </Text>
 
-        <View className="bg-surface rounded-r-md px-4 py-4 mb-8 flex-row items-center">
+        <View className="bg-surface rounded-rd-md px-4 py-4 mb-8 flex-row items-center">
           <View className="mr-3">
             <Mail size={20} color="#000" />
           </View>
@@ -37,7 +37,7 @@ export function ForgotPasswordScreen() {
       </View>
 
       <TouchableOpacity
-        className="bg-black rounded-r-md py-5 mt-12 items-center"
+        className="bg-black rounded-rd-md py-5 mt-12 items-center"
         onPress={() => navigation.navigate('NewPassword', { email: 'test@example.com' })}
       >
         <Text className="text-white font-bold text-lg">Enviar Link</Text>

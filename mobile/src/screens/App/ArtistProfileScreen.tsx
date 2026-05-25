@@ -73,7 +73,7 @@ function formatHandle(instagram: string): string {
 /** Foto de perfil circular */
 function ProfilePhoto({ uri }: { uri: string | null }) {
   return (
-    <View className="w-full h-full rounded-r-pill overflow-hidden bg-surface items-center justify-center">
+    <View className="w-full h-full rounded-rd-pill overflow-hidden bg-surface items-center justify-center">
       {uri ? (
         <Image source={{ uri }} className="w-full h-full" />
       ) : (
@@ -88,7 +88,7 @@ function ProfilePhoto({ uri }: { uri: string | null }) {
  *  o backend mandar um valor (ver `ArtistProfile.tier`). */
 function TierBadge({ tier }: { tier: string }) {
   return (
-    <View className="bg-surface-2 border border-hairline rounded-r-pill px-3 py-1">
+    <View className="bg-surface-2 border border-hairline rounded-rd-pill px-3 py-1">
       <Text
         className="font-body-semibold text-[10px] text-fg-2"
         style={{ letterSpacing: 0.5 }}
@@ -104,7 +104,7 @@ function RetryButton({ onPress }: { onPress: () => void }) {
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.85}
-      className="bg-ink rounded-r-md px-5 py-2.5"
+      className="bg-ink rounded-rd-md px-5 py-2.5"
       accessibilityRole="button"
       accessibilityLabel="Tentar de novo"
     >
@@ -122,7 +122,7 @@ function LoadError({
   onRetry: () => void;
 }) {
   return (
-    <View className="bg-surface-2 rounded-r-lg p-5 items-center">
+    <View className="bg-surface-2 rounded-rd-lg p-5 items-center">
       <Text className="font-body text-[13px] text-fg-2 text-center mb-3">
         {message}
       </Text>
@@ -184,9 +184,9 @@ function StarRow({ value, size = 12 }: { value: number; size?: number }) {
 
 function ReviewCard({ avaliacao }: { avaliacao: Avaliacao }) {
   return (
-    <View className="bg-surface-2 rounded-r-lg p-4 mb-3">
+    <View className="bg-surface-2 rounded-rd-lg p-4 mb-3">
       <View className="flex-row items-center mb-2">
-        <View className="w-9 h-9 rounded-r-pill bg-ink items-center justify-center mr-3">
+        <View className="w-9 h-9 rounded-rd-pill bg-ink items-center justify-center mr-3">
           <Text className="font-body-bold text-[12px] text-on-ink">
             {iniciais(avaliacao.remetenteNome)}
           </Text>
@@ -439,7 +439,7 @@ export function ArtistProfileScreen() {
                 <ProfilePhoto uri={fotoUri} />
                 {/* Selo "trocar foto" no canto inferior direito. */}
                 <View
-                  className="absolute bottom-0 right-0 w-9 h-9 rounded-r-pill bg-ink items-center justify-center"
+                  className="absolute bottom-0 right-0 w-9 h-9 rounded-rd-pill bg-ink items-center justify-center"
                   style={{
                     borderWidth: 2,
                     borderColor: '#F8F9FA',
@@ -488,7 +488,7 @@ export function ArtistProfileScreen() {
 
         {/* Sobre */}
         <View className="px-6 mt-7">
-          <View className="bg-surface rounded-r-lg p-5">
+          <View className="bg-surface rounded-rd-lg p-5">
             <Text className="font-aux-bold text-[16px] text-ink mb-2">Sobre</Text>
             {editing ? (
               <>
@@ -581,7 +581,7 @@ export function ArtistProfileScreen() {
           ) : avaliacoesError ? (
             <LoadError message={avaliacoesError} onRetry={reloadAvaliacoes} />
           ) : avaliacoes.length === 0 ? (
-            <View className="bg-surface-2 rounded-r-lg p-6 items-center">
+            <View className="bg-surface-2 rounded-rd-lg p-6 items-center">
               <Text className="font-aux-bold text-[15px] text-ink mb-1 text-center">
                 Sem avaliações ainda
               </Text>

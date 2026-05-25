@@ -25,7 +25,7 @@ export function SearchScreen() {
     <View className="flex-1 bg-background">
       {/* Header Search */}
       <View style={{ paddingTop: 56, paddingHorizontal: 24 }}>
-        <View className="flex-row items-center bg-paper rounded-r-md px-4 py-4 border border-hairline">
+        <View className="flex-row items-center bg-paper rounded-rd-md px-4 py-4 border border-hairline">
           <View className="mr-3">
             <Search size={24} color={theme.colors.ink} />
           </View>
@@ -34,7 +34,7 @@ export function SearchScreen() {
             placeholderTextColor={theme.colors.fg3}
             className="flex-1 text-ink text-lg"
           />
-          <TouchableOpacity className="bg-surface p-2 rounded-r-md">
+          <TouchableOpacity className="bg-surface p-2 rounded-rd-md">
             <SlidersHorizontal size={20} color={theme.colors.ink} />
           </TouchableOpacity>
         </View>

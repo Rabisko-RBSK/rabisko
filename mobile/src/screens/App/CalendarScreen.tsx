@@ -319,7 +319,7 @@ export function CalendarScreen() {
                   key={s.sessionId}
                   onPress={() => openDetail(s)}
                   activeOpacity={0.85}
-                  className="flex-row items-center bg-surface rounded-r-lg px-4 py-3"
+                  className="flex-row items-center bg-surface rounded-rd-lg px-4 py-3"
                   accessibilityRole="button"
                 >
                   <View className="flex-1 min-w-0">

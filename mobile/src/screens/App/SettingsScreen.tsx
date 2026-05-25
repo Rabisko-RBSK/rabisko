@@ -55,7 +55,7 @@ export function SettingsScreen() {
           Gerencie sua conta, pedidos, pagamentos e preferências
         </Text>
 
-        <View className="bg-surface rounded-r-lg overflow-hidden">
+        <View className="bg-surface rounded-rd-lg overflow-hidden">
           {rows.map((row, i) => {
             const Icon = row.icon;
             return (

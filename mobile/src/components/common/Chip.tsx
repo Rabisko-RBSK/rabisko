@@ -26,7 +26,7 @@ export function FilterChip({ label, icon: Icon, active, onPress }: FilterChipPro
       activeOpacity={0.8}
       accessibilityRole="button"
       accessibilityState={{ selected: !!active }}
-      className={`flex-row items-center rounded-r-pill px-4 py-2 ${active ? 'bg-ink' : 'bg-surface'}`}
+      className={`flex-row items-center rounded-rd-pill px-4 py-2 ${active ? 'bg-ink' : 'bg-surface'}`}
     >
       {Icon && <Icon size={14} color={active ? '#FFFFFF' : '#000000'} style={{ marginRight: 8 }} />}
       <Text className={`font-body text-[14px] ${active ? 'text-white' : 'text-ink'}`}>{label}</Text>
@@ -47,7 +47,7 @@ export function PrefChip({ label, selected, onPress }: PrefChipProps) {
       activeOpacity={0.8}
       accessibilityRole="button"
       accessibilityState={{ selected: !!selected }}
-      className={`rounded-r-pill px-[18px] py-2.5 border-[1.5px] ${
+      className={`rounded-rd-pill px-[18px] py-2.5 border-[1.5px] ${
         selected ? 'bg-plum border-plum' : 'bg-transparent border-ink'
       }`}
     >
@@ -72,7 +72,7 @@ export function StatusPill({ label, tone = 'ink' }: StatusPillProps) {
   const isPlum = tone === 'plum';
   return (
     <View
-      className={`rounded-r-pill px-3.5 py-1.5 ${isPlum ? 'bg-plum' : 'bg-surface border border-ink'}`}
+      className={`rounded-rd-pill px-3.5 py-1.5 ${isPlum ? 'bg-plum' : 'bg-surface border border-ink'}`}
     >
       <Text className={`font-body-bold text-[12px] ${isPlum ? 'text-white' : 'text-ink'}`}>{label}</Text>
     </View>

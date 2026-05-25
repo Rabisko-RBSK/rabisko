@@ -21,7 +21,7 @@ export function NewPasswordScreen() {
           Crie uma nova senha forte para proteger sua conta.
         </Text>
 
-        <View className="bg-surface rounded-r-md px-4 py-4 mb-4 flex-row items-center">
+        <View className="bg-surface rounded-rd-md px-4 py-4 mb-4 flex-row items-center">
           <View className="mr-3">
             <Lock size={20} color="#000" />
           </View>
@@ -36,7 +36,7 @@ export function NewPasswordScreen() {
           </TouchableOpacity>
         </View>
 
-        <View className="bg-surface rounded-r-md px-4 py-4 mb-8 flex-row items-center">
+        <View className="bg-surface rounded-rd-md px-4 py-4 mb-8 flex-row items-center">
           <View className="mr-3">
             <Lock size={20} color="#000" />
           </View>
@@ -49,7 +49,7 @@ export function NewPasswordScreen() {
         </View>
 
         <TouchableOpacity
-          className="bg-black rounded-r-md py-5 mt-12 items-center"
+          className="bg-black rounded-rd-md py-5 mt-12 items-center"
           onPress={() => navigation.navigate('Login' as never)}
         >
           <Text className="text-white font-bold text-lg">Alterar Senha</Text>

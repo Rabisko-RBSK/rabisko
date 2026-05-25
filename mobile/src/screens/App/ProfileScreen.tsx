@@ -12,7 +12,7 @@ export function ProfileScreen() {
     <View className="flex-1 bg-white">
       <View className="px-6 pt-14 pb-6 bg-surface rounded-b-r-2xl items-center">
         <View className="relative">
-          <View className="w-32 h-32 rounded-r-pill bg-white items-center justify-center border-4 border-white overflow-hidden">
+          <View className="w-32 h-32 rounded-rd-pill bg-white items-center justify-center border-4 border-white overflow-hidden">
              {user?.avatar ? (
                <Image source={{ uri: user.avatar }} className="w-full h-full" />
              ) : (
@@ -20,7 +20,7 @@ export function ProfileScreen() {
              )}
           </View>
           <TouchableOpacity 
-            className="absolute bottom-0 right-0 bg-black p-2 rounded-r-pill border-2 border-white"
+            className="absolute bottom-0 right-0 bg-black p-2 rounded-rd-pill border-2 border-white"
             onPress={() => navigation.navigate('Settings' as never)}
           >
             <Settings size={16} stroke="#fff" />
@@ -33,18 +33,18 @@ export function ProfileScreen() {
 
       <ScrollView className="px-6 pt-8" showsVerticalScrollIndicator={false}>
         <View className="flex-row justify-between mb-10">
-          <View className="items-center bg-surface-2 p-6 rounded-r-lg flex-1 mr-2">
+          <View className="items-center bg-surface-2 p-6 rounded-rd-lg flex-1 mr-2">
             <Text className="text-2xl font-bold text-black">12</Text>
             <Text className="text-gray-500 text-xs uppercase font-bold">Reservas</Text>
           </View>
-          <View className="items-center bg-surface-2 p-6 rounded-r-lg flex-1 ml-2">
+          <View className="items-center bg-surface-2 p-6 rounded-rd-lg flex-1 ml-2">
             <Text className="text-2xl font-bold text-black">4</Text>
             <Text className="text-gray-500 text-xs uppercase font-bold">Avaliações</Text>
           </View>
         </View>
 
         <Text className="text-gray-400 font-bold text-xs uppercase tracking-widest mb-4">Informações</Text>
-        <View className="bg-surface-2 rounded-r-lg p-6 space-y-6 mb-10">
+        <View className="bg-surface-2 rounded-rd-lg p-6 space-y-6 mb-10">
           <View className="flex-row items-center mb-6">
             <View className="mr-4">
               <Mail size={20} color="#000" />

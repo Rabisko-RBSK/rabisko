@@ -32,7 +32,7 @@ export function PortfolioCarousel({ images, onImagePress }: PortfolioCarouselPro
   if (images.length === 0) {
     return (
       <View className="px-6">
-        <View className="bg-surface-2 rounded-r-xl items-center justify-center py-12">
+        <View className="bg-surface-2 rounded-rd-xl items-center justify-center py-12">
           <Text className="font-body text-[13px] text-fg-3">
             Nenhuma imagem no portfólio ainda.
           </Text>
@@ -61,7 +61,7 @@ export function PortfolioCarousel({ images, onImagePress }: PortfolioCarouselPro
           style={{ width: itemWidth }}
         >
           <View
-            className="rounded-r-xl overflow-hidden bg-surface"
+            className="rounded-rd-xl overflow-hidden bg-surface"
             style={{ width: itemWidth, aspectRatio: 3 / 4 }}
           >
             <Image source={{ uri: item.url }} className="w-full h-full" />

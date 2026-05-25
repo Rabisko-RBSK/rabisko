@@ -115,8 +115,8 @@ export function ConfirmedScreen() {
         </Text>
 
         {/* Summary card */}
-        <View className="bg-surface rounded-r-lg p-4 mt-7 flex-row items-center">
-          <View className="rounded-r-pill overflow-hidden bg-paper mr-3" style={{ width: 46, height: 46 }}>
+        <View className="bg-surface rounded-rd-lg p-4 mt-7 flex-row items-center">
+          <View className="rounded-rd-pill overflow-hidden bg-paper mr-3" style={{ width: 46, height: 46 }}>
             <Image source={{ uri: FALLBACK.photo }} className="w-full h-full" />
           </View>
           <View className="flex-1">

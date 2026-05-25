@@ -111,8 +111,8 @@ export function ChatThreadScreen() {
             <View
               className={
                 minha
-                  ? 'self-end bg-plum rounded-r-md mb-2 px-3 py-2'
-                  : 'self-start bg-surface rounded-r-md mb-2 px-3 py-2'
+                  ? 'self-end bg-plum rounded-rd-md mb-2 px-3 py-2'
+                  : 'self-start bg-surface rounded-rd-md mb-2 px-3 py-2'
               }
               style={{ maxWidth: '80%' }}
             >
@@ -132,7 +132,7 @@ export function ChatThreadScreen() {
 
       <View className="flex-row items-center px-4 py-3 bg-surface">
         <TextInput
-          className="flex-1 bg-background rounded-r-pill px-4 py-2 mr-2 font-body text-[14px] text-ink"
+          className="flex-1 bg-background rounded-rd-pill px-4 py-2 mr-2 font-body text-[14px] text-ink"
           value={texto}
           onChangeText={setTexto}
           placeholder="Mensagem"
@@ -143,7 +143,7 @@ export function ChatThreadScreen() {
           disabled={!texto.trim() || enviando}
           accessibilityRole="button"
           accessibilityLabel="Enviar"
-          className="w-10 h-10 items-center justify-center bg-plum rounded-r-pill"
+          className="w-10 h-10 items-center justify-center bg-plum rounded-rd-pill"
           style={{ opacity: !texto.trim() || enviando ? 0.5 : 1 }}
         >
           <Send size={18} color="#ffffff" />
