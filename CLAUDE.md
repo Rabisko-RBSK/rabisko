@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a monorepo for **Rabisko**, a tattoo-booking marketplace (clients ↔ artists ↔ studios, Brazil). All user-facing copy, domain names, and API messages are in **Brazilian Portuguese** — keep new code consistent with that.
 
-- `backend/` — Spring Boot 4.0.6 REST API, Java 21, MongoDB Atlas, JWT auth, BoofCV (computer vision).
+- `backend/` — Spring Boot 4.0.6 REST API, Java 21, PostgreSQL (Supabase), JWT auth, BoofCV (computer vision).
 - `mobile/` — Expo SDK 54 / React Native 0.81 / React 19 app (TypeScript).
 - `mobile/design/DESIGN.md` — the design-system contract for the mobile UI (color/type/spacing tokens, screen specs). Treat its tokens as hard requirements; the app's current screens predate it and use an ad-hoc palette (e.g. `#eaddd7`/`#bfa094` in `src/routes/app.routes.tsx` and `src/theme/index.ts`), not these tokens.
 
@@ -17,7 +17,7 @@ This is a monorepo for **Rabisko**, a tattoo-booking marketplace (clients ↔ ar
 - Build: `./mvnw clean package`
 - All tests: `./mvnw test`
 - Single test: `./mvnw test -Dtest=MvpApplicationTests#contextLoads`
-- Requires env var `JWT_SECRET` (falls back to `my-secret-key`). The MongoDB Atlas URI is hardcoded in `src/main/resources/application.properties`; server runs on port 8080.
+- Requires env var `JWT_SECRET` (falls back to `my-secret-key`). The PostgreSQL (Supabase) JDBC URL is hardcoded in `src/main/resources/application.properties`; server runs on port 8080.
 
 ### Mobile (`cd mobile`)
 - Install: `npm install`. Add new native/Expo modules with `npx expo install <pkg>` so versions stay aligned with SDK 54 (`node_modules/expo/bundledNativeModules.json`) — e.g. `react-native-svg` is pinned to that file's version because `lucide-react-native` needs it.
@@ -28,13 +28,36 @@ This is a monorepo for **Rabisko**, a tattoo-booking marketplace (clients ↔ ar
 
 ## Backend architecture
 
-Classic layered Spring app, packages under `com.rabisko.mvp`:
-- `controller/` → `service/` → `repositories/` (Spring Data Mongo) → `domain/` (entities + DTOs, grouped per aggregate: `user`, `artist`, `client`, `studio`).
+**Modular monolith** under `com.rabisko.mvp`. Each business domain is a self-contained vertical slice with its own `domain/`, `controller/`, `service/`, and `repository/` sub-packages. Do **not** add new classes to a flat `controller/`, `service/`, or `domain/` root — always place them inside the appropriate module.
+
+### Module map
+
+| Module | Package | Contents |
+|---|---|---|
+| `user` | `com.rabisko.mvp.user` | `User`, `UserRole`, auth DTOs, `UserRepository`, `AuthorizationService`, `UserService`, `AuthenticationControler`, `UserController` |
+| `artist` | `com.rabisko.mvp.artist` | `Artist`, `PortfolioImagem`, `AvaliacaoDTO`, all artist DTOs, `ArtistRepository`, `PortfolioImagemRepository`, `ArtistService`, `ArtistController` |
+| `client` | `com.rabisko.mvp.client` | `Client`, `ClientDTO`, `ClientRepository`, `ClientService` |
+| `studio` | `com.rabisko.mvp.studio` | `Studio`, `StudioDTO`, `RegisterEstudioDTO`, `StudioRepository`, `StudioService` |
+| `estilo` | `com.rabisko.mvp.estilo` | `Estilo`, `EstiloDTO`, `EstiloRepository`, `EstiloService`, `EstiloController` |
+| `chat` | `com.rabisko.mvp.chat` | `Chat`, `Message`, all chat/message DTOs, `ChatRepository`, `MessageRepository`, `ChatService`, `ChatController`, `ChatWsController` |
+| `appointment` | `com.rabisko.mvp.appointment` | `Appointment`, `AppointmentSession`, `AppointmentStatus`, all appointment DTOs, `AppointmentRepository`, `AppointmentSessionRepository`, `AppointmentService`, `AppointmentController` |
+| `simulation` | `com.rabisko.mvp.simulation` | `SimulationService`, `SimulationController` (BoofCV background removal) |
+| `shared` | `com.rabisko.mvp.shared` | `StorageService` (Supabase Storage), `SecurityConfiguration`, `SecurityFilter`, `TokenService`, `WebSocketConfig`, `JwtChannelInterceptor` |
+
+### Cross-module dependencies (via Spring DI — expected and correct)
+- `UserService` → `ArtistService`, `ClientService`, `StudioService` (orchestrates registration)
+- `ArtistService` → `ChatRepository`, `AppointmentRepository` (dashboard metrics)
+- `AppointmentService` → `ChatRepository`, `ArtistRepository`, `ClientRepository`, `UserRepository`
+- `ChatService` → `ArtistRepository`, `ClientRepository`, `UserRepository`
+- `shared.SecurityFilter` → `user.UserRepository`
+- `shared.SecurityConfiguration` → `user.AuthorizationService`
+
+### Key conventions
 - **Auth is stateless JWT.** `AuthenticationControler` (`POST /auth/login`) authenticates via `AuthenticationManager` and returns a token from `TokenService` (HMAC256, issuer `auth-api`, 2h expiry, timezone `-03:00`). `SecurityFilter` (a `OncePerRequestFilter`) reads the `Authorization: Bearer …` header, validates the token, loads the user, and populates the `SecurityContext`. `SecurityConfiguration` permits only `POST /auth/login` and `POST /user/cadastro`; everything else requires authentication; CSRF disabled, sessions `STATELESS`.
-- `User` implements `UserDetails`; `UserRole` (`ADMIN`/`USER`/`CLIENT`/`TATUADOR`) is mapped to Spring authorities in `User.getAuthorities()`. `AuthorizationService` is the `UserDetailsService` (`findByEmail`). Passwords are BCrypt-hashed in `UserService.cadastrarUser`.
+- `User` implements `UserDetails`; `UserRole` enum values are lowercase (`admin`, `cliente`, `tatuador`, `estudio`) to match the Postgres native enum. `AuthorizationService` is the `UserDetailsService` (`findByEmail`). Passwords are BCrypt-hashed in `UserService.cadastrarUser`.
 - On registration, `UserService` saves the `User` then conditionally creates an `Artist` or `Client` profile. **Caveat:** it currently compares the `UserRole` enum against the string literals `"tatuador"`/`"cliente"`, so that branch never fires — fix the comparison if you touch profile creation.
 - Lombok is used heavily (`@Getter/@Setter/@Builder/@AllArgsConstructor/@EqualsAndHashCode`) and configured as an annotation processor in `pom.xml` — keep IDE annotation processing enabled.
-- `boofcv-all` is a dependency for a planned image/tattoo-simulation feature (pairs with `expo-image-picker` on mobile); not wired up yet, and there is currently no "Simulação" screen.
+- `boofcv-all` backs `SimulationService.removeBackground` (PNG transparency from a black-on-white sketch); the mobile "Simulação" screen is not yet built.
 
 ## Mobile architecture
 
