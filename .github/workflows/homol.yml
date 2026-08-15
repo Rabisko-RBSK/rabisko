@@ -57,12 +57,10 @@ jobs:
 
       - name: Aplicar Migrations no Supabase Homol
         run: |
-          supabase link --project-ref $SUPABASE_PROJECT_ID_HOMOL --password $SUPABASE_DB_PASSWORD_HOMOL
+          supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_ID_HOMOL }}" --password "${{ secrets.SUPABASE_DB_PASSWORD_HOMOL }}"
           supabase db push
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID_HOMOL }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD_HOMOL }}
 
       - name: Atualizar API no Railway Homol
         working-directory: ./backend
