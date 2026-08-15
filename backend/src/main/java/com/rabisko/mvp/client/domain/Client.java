@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 // =====================================================================
-// ENTIDADE Client — linha da tabela `clientes`.
+// ENTIDADE Client — linha da tabela `clientes`
 //
 // Modelo de dados que usamos no projeto:
 //   Toda CONTA vive em `users` (login, senha, nome, cpf...). Quando o
