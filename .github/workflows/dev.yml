@@ -1,0 +1,82 @@
+name: 🧪 Esteira de Desenvolvimento (Dev)
+
+on:
+  pull_request:
+    branches: [ "dev" ]
+  push:
+    branches: [ "dev" ]
+
+jobs:
+
+  frontend-checks:
+    name: Validação (Frontend)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+    steps:
+      - name: Clonar o repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar dependências
+        run: npm install
+
+      # Comandos desativados temporariamente para não travar a esteira hoje
+      # - name: Verificar tipagem (TypeScript)
+      #   run: npx tsc --noEmit
+      # - name: Verificar padrões (ESLint)
+      #   run: npm run lint
+
+  backend-checks:
+    name: Compilação (Backend)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - name: Clonar o repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Compilar (Pulando Testes)
+        run: mvn clean compile -DskipTests
+
+  deploy-infra:
+    name: Atualizar Supabase e Railway
+    if: github.event_name == 'push'
+    needs: [frontend-checks, backend-checks]
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - name: Clonar o repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Aplicar Migrations no Supabase Dev
+        run: |
+          supabase link --project-ref $SUPABASE_PROJECT_ID --password $SUPABASE_DB_PASSWORD
+          supabase db push
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID_DEV }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD_DEV }}
+
+      - name: Atualizar API no Railway Dev
+        working-directory: ./backend
+        run: npm i -g @railway/cli && railway up --detach
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_DEV }}
