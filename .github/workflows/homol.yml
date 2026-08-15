@@ -7,6 +7,19 @@ on:
     branches: [ "homol" ]
 
 jobs:
+  check-source-branch:
+    name: Validar Branch de Origem
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Bloquear origens não autorizadas
+        if: github.head_ref != 'develop' && !startsWith(github.head_ref, 'hotfix/')
+        run: |
+          echo "ERRO DE GIT FLOW"
+          echo "Pull Requests para a branch 'homol' só podem vir da 'dev' ou de um 'hotfix/'!"
+          echo "Sua branch atual é: ${{ github.head_ref }}"
+          exit 1
+
   frontend-checks:
     name: Validação (Frontend)
     runs-on: ubuntu-latest
