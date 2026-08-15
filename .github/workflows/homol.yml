@@ -41,23 +41,30 @@ jobs:
       - run: mvn clean compile -DskipTests
 
   deploy-infra:
-    name: Atualizar Supabase e Railway (Homol)
+    name: Atualizar Supabase e Railway
     if: github.event_name == 'push'
-    needs: [frontend-checks, backend-checks]
+    needs: [ frontend-checks, backend-checks ]
     runs-on: ubuntu-latest
+    environment: dev
     steps:
-      - uses: actions/checkout@v4
-      - uses: supabase/setup-cli@v1
-        with: { version: latest }
+      - name: Clonar o repositório
+        uses: actions/checkout@v4
 
-      - name: Aplicar Migrations no Supabase Homol
+      - name: Configurar Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Aplicar Migrations no Supabase Dev
         run: |
           supabase link --project-ref $SUPABASE_PROJECT_ID_HOMOL --password $SUPABASE_DB_PASSWORD_HOMOL
           supabase db push
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID_DEV }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD_DEV }}
 
-      - name: Atualizar API no Railway Homol
+      - name: Atualizar API no Railway Dev
         working-directory: ./backend
         run: |
           rm -rf ../.git
