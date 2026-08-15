@@ -1,4 +1,4 @@
-name: 🧪 Esteira de Desenvolvimento (Dev)
+name: Esteira de Desenvolvimento (Dev)
 
 on:
   pull_request:
