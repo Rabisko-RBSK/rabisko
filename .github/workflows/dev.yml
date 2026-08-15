@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./frontend
+        working-directory: ./mobile
     steps:
       - name: Clonar o repositório
         uses: actions/checkout@v4
