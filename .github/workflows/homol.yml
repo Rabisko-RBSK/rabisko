@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Bloquear origens não autorizadas
-        if: github.head_ref != 'develop' && !startsWith(github.head_ref, 'hotfix/')
+        if: github.head_ref != 'dev' && !startsWith(github.head_ref, 'hotfix/')
         run: |
           echo "ERRO DE GIT FLOW"
           echo "Pull Requests para a branch 'homol' só podem vir da 'dev' ou de um 'hotfix/'!"
