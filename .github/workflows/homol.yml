@@ -45,7 +45,7 @@ jobs:
     if: github.event_name == 'push'
     needs: [ frontend-checks, backend-checks ]
     runs-on: ubuntu-latest
-    environment: dev
+    environment: homol
     steps:
       - name: Clonar o repositório
         uses: actions/checkout@v4
