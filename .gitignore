@@ -30,6 +30,7 @@ build/
 !**/src/test/**/build/
 supabase/.temp/
 
+
 ### VS Code ###
 .vscode/
 
