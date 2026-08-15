@@ -77,6 +77,6 @@ jobs:
 
       - name: Atualizar API no Railway Dev
         working-directory: ./backend
-        run: npm i -g @railway/cli && railway up --detach
+        run: npm i -g @railway/cli && railway up --detach --service "rabisko-dev"
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_DEV }}
