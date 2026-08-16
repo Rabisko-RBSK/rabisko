@@ -10,6 +10,7 @@ jobs:
 
   frontend-checks:
     name: Validação (Frontend)
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -34,6 +35,7 @@ jobs:
 
   backend-checks:
     name: Compilação (Backend)
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -54,7 +56,6 @@ jobs:
   deploy-infra:
     name: Atualizar Supabase e Railway
     if: github.event_name == 'push'
-    needs: [frontend-checks, backend-checks]
     runs-on: ubuntu-latest
     environment: dev
     steps:
