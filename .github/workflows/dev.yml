@@ -56,7 +56,6 @@ jobs:
   deploy-infra:
     name: Atualizar Supabase e Railway
     if: github.event_name == 'push'
-    needs: [frontend-checks, backend-checks]
     runs-on: ubuntu-latest
     environment: dev
     steps:
