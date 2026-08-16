@@ -22,6 +22,7 @@ jobs:
 
   frontend-checks:
     name: Validação (Frontend)
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: ./mobile } }
     steps:
@@ -32,6 +33,7 @@ jobs:
 
   backend-checks:
     name: Compilação (Backend)
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: ./backend } }
     steps:
