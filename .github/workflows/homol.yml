@@ -68,6 +68,33 @@ jobs:
         run: |
           rm -rf ../.git
           npm i -g @railway/cli
+          railway status
           railway up --detach --service "52f3763a-bdbd-47f6-ad24-6f203c1ec0ce"
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_HOMOL }}
+
+  build-mobile:
+    name: Gerar APK (Mobile)
+    # if: github.event_name == 'push' -- Descomentar e comentar a linha abaixo para buildar o apk
+    if: false
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: ./mobile } }
+    steps:
+      - name: Clonar o repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with: { node-version: '20' }
+
+      - name: Instalar Dependências
+        run: npm install
+
+      - name: Configurar Expo e EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Disparar Build do APK
+        run: eas build --platform android --profile preview --non-interactive
