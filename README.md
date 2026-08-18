@@ -94,20 +94,20 @@ Mobile:
 Instalar Docker
 
 ```bash
-cd backend
-
-# iniciar banco de dados (Supabase)
-supabase init
+# iniciar banco de dados local (Supabase CLI — rodar na raiz do repositório)
 supabase start
+# anote a "API URL" e a "service_role key" exibidas ao final do comando
 
-# defina as variáveis de ambiente necessárias (ver seção Configuração)
-export JWT_SECRET=sua-chave-secreta
-export SUPABASE_DB_PASSWORD=sua-senha-do-supabase
+# aplicar todas as migrations para criar as tabelas no banco local
+supabase db reset
+
+# configure as variáveis de ambiente do backend (ver seção Configuração)
+# crie o arquivo backend/.env com base em backend/env-example.md
 
 # rodar em modo desenvolvimento
+cd backend
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=local       # Windows: mvnw.cmd spring-boot:run
 ```
-Após o banco iniciar, anotar a API URL e a anon key gerada
 
 A API sobe em `http://localhost:8080`.
 
@@ -127,9 +127,9 @@ cd mobile
 npm install
 
 # configure a URL da API (ver seção Configuração)
+# crie mobile/.env com base em mobile/env-example.md
+# substitua [SEU-IP] pelo IP da sua máquina na rede local
 echo "EXPO_PUBLIC_API_URL=http://[SEU-IP]:8080" >> .env
-echo "EXPO_PUBLIC_SUPABASE_URL=http://[SEU-IP]:54321" >> .env
-echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=ano_key_gerada" >> .env
 
 # inicie o Metro bundler (modo offline por padrão)
 npm start
