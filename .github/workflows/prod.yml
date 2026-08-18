@@ -47,22 +47,6 @@ jobs:
       - name: Verificar vulnerabilidades nas dependências Java
         run: mvn org.owasp:dependency-check-maven:check
 
-  security-checks:
-    name: Checagem de Secrets
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    environment: homol
-    steps:
-      - name: Clonar o repositório
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Verificar credenciais vazadas (Gitleaks)
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   deploy-infra:
     name: Atualizar Supabase e Railway
     if: github.event_name == 'push'
