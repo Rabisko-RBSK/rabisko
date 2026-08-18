@@ -1,0 +1,30 @@
+name: Esteira de Desenvolvimento (Dev)
+
+on:
+  workflow_dispatch:
+    inputs:
+      validar_front:
+        description: 'Validar Frontend'
+        type: boolean
+        default: true
+
+jobs:
+
+  frontend-checks:
+    name: Validação (Frontend)
+    if: ${{ inputs.validar_front }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./mobile
+    steps:
+      - name: Clonar o repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar dependências
+        run: npm install
