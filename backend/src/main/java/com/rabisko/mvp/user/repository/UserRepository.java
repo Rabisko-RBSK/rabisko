@@ -8,27 +8,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
-// =====================================================================
-// REPOSITORY UserRepository — acesso a tabela `users`.
-//
-// O que e um Repository no Spring Data JPA?
-//   E uma INTERFACE que voce extende de JpaRepository<Entity, ID>. Voce
-//   nao escreve a implementacao — o Spring Data gera ela em tempo de
-//   execucao. So por extender, voce ja ganha:
-//     - save(entity)        : INSERT ou UPDATE
-//     - findById(id)        : SELECT por chave primaria
-//     - findAll()           : SELECT *
-//     - deleteById(id)      : DELETE
-//     - existsById(id)      : boolean
-//   E mais um monte.
-//
-// "Derived queries" (queries derivadas do nome do metodo):
-//   O Spring Data lê o nome do metodo e gera a SQL automaticamente.
-//   Ex.: `existsByEmail(String email)` vira
-//        `SELECT count(*) > 0 FROM users WHERE email = ?`
-//   Ex.: `findByNomeAndStatusTrue` vira
-//        `SELECT * FROM users WHERE nome = ? AND status = true`
-// =====================================================================
 public interface UserRepository extends JpaRepository<User, UUID> {
 
     /** Checa se ja existe usuario com esse email — usado pra evitar email duplicado no cadastro. */

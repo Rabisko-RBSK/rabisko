@@ -14,34 +14,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-// =====================================================================
-// CONFIG SecurityConfiguration — regras de seguranca da API.
-//
-// O que esse arquivo define:
-//   1) Quais URLs sao PUBLICAS (sem login)
-//   2) Quais URLs exigem JWT valido
-//   3) Como tratar sessao (no nosso caso: NAO ter sessao = stateless)
-//   4) Onde encaixar o NOSSO filtro JWT na pipeline de filtros do Spring
-//   5) Beans utilitarios: AuthenticationManager (pra validar login) e
-//      PasswordEncoder (BCrypt — pra fazer hash/compare de senha)
-//
-// Pipeline simplificada de uma request HTTP:
-//
-//   request -> [SecurityFilter (le o JWT)]
-//           -> [UsernamePasswordAuthenticationFilter (no-op aqui)]
-//           -> Controller (ja com @AuthenticationPrincipal disponivel)
-//
-// "Stateless" significa que o servidor NAO guarda sessao em memoria —
-// cada request precisa carregar o JWT no header. Vantagem: escala
-// horizontal sem precisar de "sticky session" no load balancer.
-// =====================================================================
 
-@Configuration            // diz ao Spring: essa classe define beans/config
-@EnableWebSecurity        // ativa o Spring Security e permite customizar
+@Configuration
+@EnableWebSecurity
 public class SecurityConfiguration {
 
     @Autowired
-    SecurityFilter securityFilter;       // nosso filtro JWT custom
+    SecurityFilter securityFilter;
 
     /**
      * Bean principal: declara a "regra de filtros" do Spring Security
@@ -50,27 +29,19 @@ public class SecurityConfiguration {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity
-                // CSRF desligado: so faz sentido com cookies de sessao;
-                // como usamos JWT no header, nao tem o que proteger.
                 .csrf(csrf -> csrf.disable())
 
-                // STATELESS: nao gera HttpSession nenhuma.
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // Regras de autorizacao por URL — a ordem importa!
-                // permitAll = liberado sem login. anyRequest().authenticated()
-                // = tudo que nao for explicitamente liberado exige JWT.
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/user/cadastro/cliente").permitAll()
                         .requestMatchers(HttpMethod.POST, "/user/cadastro/artista").permitAll()
                         .requestMatchers(HttpMethod.POST, "/user/cadastro/estudio").permitAll()
-                        .requestMatchers("/wss/**").permitAll()        // handshake do WebSocket — auth e via STOMP CONNECT
-                        .requestMatchers("/simulation/**").permitAll() // endpoint de simulacao de tattoo (sem login)
+                        .requestMatchers("/wss/**").permitAll()
+                        .requestMatchers("/simulation/**").permitAll()
                         .anyRequest().authenticated())
 
-                // Insere NOSSO filtro JWT ANTES do filtro de login padrao
-                // do Spring. Assim o SecurityContext ja chega populado.
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
