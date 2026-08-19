@@ -25,8 +25,8 @@ interface InputProps extends TextInputProps {
   secure?: boolean;
 }
 
-const COLOR_REST = '#EAE0D5'; // surface — invisible border at rest
-const COLOR_FOCUS = '#602C66'; // plum
+const COLOR_REST = '#EAE0D5';
+const COLOR_FOCUS = '#602C66';
 const COLOR_ERROR = '#B33A3A';
 
 export function Input({
@@ -62,8 +62,6 @@ export function Input({
           multiline ? 'items-start py-3' : 'items-center py-4'
         }`}
       >
-        {/* No multiline o ícone ganha 2px de marginTop pra alinhar com a linha-de-base
-            da primeira linha do TextInput (que tem ~22px de line-height). */}
         {Icon && (
           <Icon
             size={18}

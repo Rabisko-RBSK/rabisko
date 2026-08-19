@@ -24,16 +24,12 @@ import { DMSans_400Regular, DMSans_700Bold } from '@expo-google-fonts/dm-sans';
 
 import { Router } from './src/routes';
 
-// Keep the splash screen up until the design-system fonts are ready (F3).
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
-// If fonts don't resolve within this many ms, render anyway with system fonts.
-// Without this, a slow/blocked Google Fonts CDN would leave the app stuck on the splash.
 const FONT_LOAD_TIMEOUT_MS = 8000;
 
 export default function App() {
     const [fontsLoaded, fontError] = useFonts({
-        // keys here become the font-family names referenced by tailwind.config.js `fontFamily`
         BebasNeue_400Regular,
         Inter_300Light,
         Inter_400Regular,
@@ -60,9 +56,6 @@ export default function App() {
 
     const ready = fontsLoaded || !!fontError || timedOut;
 
-    // Hide the splash from a useEffect (fires after commit) with a single retry —
-    // on Expo Go SDK 54 / Android the first call sometimes resolves OK but the
-    // splash overlay lingers. Two attempts at 0ms + 500ms covers the timing window.
     useEffect(() => {
         if (!ready) return;
         const hide = () => SplashScreen.hideAsync().catch(() => {});

@@ -27,7 +27,6 @@ export function SimuladorScreen() {
   const [isProcessing, setIsProcessing] = useState(false);
   const viewShotRef = useRef<any>(null);
 
-  // Reanimated values for pan, zoom, and rotation
   const offset = useSharedValue({ x: 0, y: 0 });
   const scale = useSharedValue(1);
   const rotation = useSharedValue(0);
@@ -50,7 +49,6 @@ export function SimuladorScreen() {
       const response = await fetch(API_URL, {
         method: 'POST',
         body: formData,
-        // React Native fetch with FormData will automatically set the correct Content-Type with boundary
       });
 
       if (!response.ok) {
@@ -75,10 +73,8 @@ export function SimuladorScreen() {
 
   const handleImageAdded = (uri: string, width: number, height: number) => {
     if (images.length === 0) {
-      // Primeira imagem (Base)
       setImages([{ uri, width, height }]);
     } else if (images.length === 1) {
-      // Segunda imagem (Referência) -> Manda pro Backend
       processReferenceImage(uri, width, height);
     }
   };
@@ -143,12 +139,10 @@ export function SimuladorScreen() {
       if (!viewShotRef.current) return;
       const uri = await viewShotRef.current.capture();
 
-      // 1. Tenta pedir permissão do MediaLibrary
       const permission = await MediaLibrary.requestPermissionsAsync();
       
       if (permission.granted) {
         try {
-          // 2. Se tiver permissão, tenta salvar diretamente
           await MediaLibrary.saveToLibraryAsync(uri);
           Alert.alert('Sucesso!', 'A simulação foi salva na sua galeria.');
           return;
@@ -157,8 +151,6 @@ export function SimuladorScreen() {
         }
       }
 
-      // 3. Fallback: Se não tiver permissão ou se o salvamento direto falhar (limitações do Android/Expo Go),
-      // usamos o compartilhamento nativo para permitir que o usuário salve a imagem.
       const isSharingAvailable = await Sharing.isAvailableAsync();
       if (isSharingAvailable) {
         await Sharing.shareAsync(uri, {
@@ -226,7 +218,6 @@ export function SimuladorScreen() {
         contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 24 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero — copy + selo "novidade" */}
         <View className="flex-row items-center mt-1 mb-3" style={{ gap: 8 }}>
           <View
             className="bg-plum items-center justify-center"
@@ -248,9 +239,6 @@ export function SimuladorScreen() {
           gente compõe a simulação pra você ver como vai ficar.
         </Text>
 
-        {/* Hero ilustrativo (placeholder até o fluxo real). `width: '100%'` é obrigatório:
-            quando uma View tem só `aspectRatio` (sem width), o Yoga sized-to-content em vez de
-            esticar — ela encolhe pro tamanho dos filhos e sobra margem na direita. */}
         <GestureHandlerRootView>
           <ViewShot ref={viewShotRef} options={{ format: 'jpg', quality: 0.9 }}>
             <View
@@ -303,7 +291,7 @@ export function SimuladorScreen() {
 
         {images.length < 2 && (
           <>
-            <TouchableOpacity // Botão tirar foto
+            <TouchableOpacity
               activeOpacity={0.65}
               className="bg-ink flex-row items-center justify-center py-4 rounded-md mb-3"
               style={{ gap: 10 }}
@@ -315,7 +303,7 @@ export function SimuladorScreen() {
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity // Botão importar foto
+            <TouchableOpacity
               activeOpacity={0.65}
               className="bg-surface flex-row items-center justify-center py-4 rounded-md mb-3"
               style={{ gap: 10 }}

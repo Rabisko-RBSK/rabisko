@@ -31,7 +31,6 @@ const INK = '#000000';
 const CREAM = '#EAE0D5';
 const SPRING = { damping: 16, stiffness: 200 } as const;
 
-// Mapa padrão (fluxo do cliente) — route name → ícone lucide. Rota fora do mapa é pulada.
 const CLIENT_ICONS: Record<string, LucideIcon> = {
   Home,
   Chat: MessageCircle,
@@ -40,7 +39,6 @@ const CLIENT_ICONS: Record<string, LucideIcon> = {
   Settings,
 };
 
-// Labels de acessibilidade padrão (fluxo do cliente) — cai pro route name se faltar.
 const CLIENT_LABELS: Record<string, string> = {
   Home: 'Início',
   Chat: 'Mensagens',
@@ -57,8 +55,6 @@ interface BottomNavProps extends BottomTabBarProps {
 }
 
 function TabIcon({ Icon, focused }: { Icon: LucideIcon; focused: boolean }) {
-  // Single shared progress drives both the icon scale and the underline pill width.
-  // Spring (not timing) so taps feel like physical pucks, not switches.
   const progress = useDerivedValue(() => withSpring(focused ? 1 : 0, SPRING));
   const iconStyle = useAnimatedStyle(() => ({ transform: [{ scale: 1 + progress.value * 0.12 }] }));
   const underlineStyle = useAnimatedStyle(() => ({ width: progress.value * 18 }));
@@ -86,18 +82,10 @@ export function BottomNav({
 }: BottomNavProps) {
   const insets = useSafeAreaInsets();
 
-  // Honor `tabBarStyle: { display: 'none' }` set by the focused screen — the default
-  // BottomTabBar handles this automatically, but a custom tabBar has to opt in.
-  // Used by ConfirmedScreen to hide the bar during the success state.
   const focused = state.routes[state.index];
   const focusedStyle = descriptors[focused.key].options.tabBarStyle as { display?: 'none' | 'flex' } | undefined;
   if (focusedStyle?.display === 'none') return null;
 
-  // Extend the bar into the safe-area inset on devices with a home indicator or system
-  // gesture bar so the icons aren't crowded against the phone's bottom controls. On
-  // iPhone the inset itself (~34px) is enough buffer above the home indicator; on
-  // Androids without an inset we floor at 6px so the icons aren't flush with the edge.
-  // Icon area (height − paddings) stays a constant 58px regardless of device.
   const bottomPad = Math.max(insets.bottom, 6);
   return (
     <View

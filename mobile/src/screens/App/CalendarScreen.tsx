@@ -9,20 +9,18 @@ import { Header } from '../../components/common/Header';
 import { SessionDetailModal } from './SessionDetailModal';
 import { appointmentService, SessaoListItemDTO } from '../../services/api';
 
-// ─── Constants ───────────────────────────────────────────────────────────────
 
-const GANTT_START  = 8;   // 08:00
-const GANTT_END    = 21;  // 21:00
-const PX_PER_MIN   = 1.5; // 90px per hour
+const GANTT_START  = 8;
+const GANTT_END    = 21;
+const PX_PER_MIN   = 1.5;
 const ROW_HEIGHT   = 52;
 const LABEL_WIDTH  = 52;
 const TIME_AXIS_H  = 24;
-const GRID_WIDTH   = (GANTT_END - GANTT_START) * 60 * PX_PER_MIN; // 1170px
+const GRID_WIDTH   = (GANTT_END - GANTT_START) * 60 * PX_PER_MIN;
 
 const PT_MONTHS_SHORT   = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 const PT_WDAYS_SHORT    = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function formatDate(d: Date): string {
   const y = d.getFullYear();
@@ -34,7 +32,7 @@ function formatDate(d: Date): string {
 function getMonday(offset: number): Date {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
-  const dow = d.getDay(); // 0=Sun
+  const dow = d.getDay();
   d.setDate(d.getDate() - (dow === 0 ? 6 : dow - 1) + offset * 7);
   return d;
 }
@@ -79,7 +77,6 @@ function formatDataHora(dateStr: string, horario: string): string {
   return `${PT_WDAYS_SHORT[date.getDay()]} ${d} · ${formatHorario(horario)}`;
 }
 
-// ─── Component ───────────────────────────────────────────────────────────────
 
 export function CalendarScreen() {
   const [weekOffset, setWeekOffset] = React.useState(0);
@@ -93,7 +90,6 @@ export function CalendarScreen() {
   const sunday = React.useMemo(() => addDays(monday, 6), [monday]);
   const days   = React.useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(monday, i)), [monday]);
 
-  // Fetch sessions for the visible week
   React.useEffect(() => {
     setLoading(true);
     appointmentService
@@ -103,7 +99,6 @@ export function CalendarScreen() {
       .finally(() => setLoading(false));
   }, [weekOffset, monday, sunday]);
 
-  // Update "now" line every minute when showing current week
   React.useEffect(() => {
     if (weekOffset !== 0) { setNowX(null); return; }
     function compute() {
@@ -138,7 +133,6 @@ export function CalendarScreen() {
       <Header title="AGENDA" />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
-        {/* ── Week navigation ──────────────────────────────────── */}
         <View className="flex-row items-center justify-center px-4 py-3" style={{ gap: 16 }}>
           <TouchableOpacity
             onPress={() => setWeekOffset((w) => Math.max(0, w - 1))}
@@ -158,9 +152,7 @@ export function CalendarScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* ── Gantt ────────────────────────────────────────────── */}
         <View className="flex-row" style={{ marginLeft: 8 }}>
-          {/* Fixed day labels */}
           <View style={{ width: LABEL_WIDTH }}>
             <View style={{ height: TIME_AXIS_H }} />
             {days.map((d, i) => {
@@ -187,10 +179,8 @@ export function CalendarScreen() {
             })}
           </View>
 
-          {/* Scrollable time grid */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }}>
             <View style={{ width: GRID_WIDTH }}>
-              {/* Time axis */}
               <View style={{ height: TIME_AXIS_H, flexDirection: 'row' }}>
                 {TIME_LABELS.map((label, i) => (
                   <Text
@@ -207,7 +197,6 @@ export function CalendarScreen() {
                 ))}
               </View>
 
-              {/* Day rows */}
               {days.map((d, rowIdx) => {
                 const daySessoes = sessoes.filter((s) => s.data === formatDate(d));
                 const isToday = formatDate(d) === todayStr;
@@ -222,7 +211,6 @@ export function CalendarScreen() {
                       position: 'relative',
                     }}
                   >
-                    {/* Hour grid lines */}
                     {Array.from({ length: GANTT_END - GANTT_START }, (_, i) => (
                       <View
                         key={i}
@@ -237,7 +225,6 @@ export function CalendarScreen() {
                       />
                     ))}
 
-                    {/* "Now" indicator */}
                     {isToday && nowX !== null && (
                       <View
                         style={{
@@ -252,7 +239,6 @@ export function CalendarScreen() {
                       />
                     )}
 
-                    {/* Session blocks */}
                     {daySessoes.map((s) => {
                       const startMin = toMinutes(s.horario) - GANTT_START * 60;
                       const blockLeft  = Math.max(0, startMin * PX_PER_MIN);
@@ -296,7 +282,6 @@ export function CalendarScreen() {
           </ScrollView>
         </View>
 
-        {/* ── Sessions list ────────────────────────────────────── */}
         <View className="px-5 mt-5">
           <Text className="font-aux-bold text-[10px] tracking-widest text-fg-3 mb-3">
             SESSÕES DA SEMANA

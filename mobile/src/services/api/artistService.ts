@@ -52,7 +52,6 @@ export interface AtualizarPerfilDTO {
  */
 function multipartImage(uri: string, fieldName: string, descricao?: string): FormData {
   const form = new FormData();
-  // Nome inferido do final da URI; cai num default se não rolar.
   const nome = uri.split('/').pop() || 'imagem.jpg';
   const ext = nome.split('.').pop()?.toLowerCase();
   const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
