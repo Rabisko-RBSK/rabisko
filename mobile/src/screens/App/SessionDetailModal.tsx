@@ -6,7 +6,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SessaoListItemDTO } from '../../services/api';
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const PT_WEEKDAYS = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
 const PT_MONTHS   = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
@@ -55,7 +54,6 @@ function statusBadgeColors(status: string): { bg: string; text: string } {
   }
 }
 
-// ─── Component ───────────────────────────────────────────────────────────────
 
 interface Props {
   visible: boolean;
@@ -71,7 +69,6 @@ export function SessionDetailModal({ visible, onClose, sessao }: Props) {
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView className="flex-1 bg-surface">
-        {/* Header */}
         <View className="flex-row items-center px-4 pt-2 pb-3 border-b border-surface">
           <Text className="flex-1 font-display text-[22px] text-ink tracking-widest text-center">
             DETALHES DA SESSÃO
@@ -86,7 +83,6 @@ export function SessionDetailModal({ visible, onClose, sessao }: Props) {
           contentContainerStyle={{ paddingTop: 28, paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}
         >
-          {/* Avatar */}
           <View className="items-center mb-5">
             {sessao.outroFotoUrl ? (
               <Image
@@ -107,10 +103,8 @@ export function SessionDetailModal({ visible, onClose, sessao }: Props) {
             </Text>
           </View>
 
-          {/* Divider */}
           <View className="h-px bg-surface mb-5" style={{ backgroundColor: '#E5E0E8' }} />
 
-          {/* Detail rows */}
           <View style={{ gap: 16 }}>
             <DetailRow icon={<CalendarDays size={18} color="#602C66" />} label={formatDataLonga(sessao.data)} />
             <DetailRow

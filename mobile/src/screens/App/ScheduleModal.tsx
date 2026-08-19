@@ -13,11 +13,10 @@ import { X } from 'lucide-react-native';
 
 import { appointmentService, BusySlotDTO } from '../../services/api';
 
-// ─── Tipos internos ───────────────────────────────────────────────────────────
 
 interface Session {
   data: Date;
-  horario: string | null; // 'HH:mm'
+  horario: string | null;
   duracaoMinutos: number;
 }
 
@@ -29,7 +28,6 @@ interface Props {
   onSent: () => void;
 }
 
-// ─── Constantes ───────────────────────────────────────────────────────────────
 
 const FIXED_SLOTS = [
   '09:00', '10:00', '11:00', '12:00', '13:00',
@@ -76,7 +74,6 @@ function formatBRL(raw: string): string {
   return Number(digits).toLocaleString('pt-BR');
 }
 
-// ─── Componente ───────────────────────────────────────────────────────────────
 
 export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: Props) {
   const insets = useSafeAreaInsets();
@@ -90,12 +87,10 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
   const [enviando, setEnviando] = useState(false);
   const [busySlots, setBusySlots] = useState<BusySlotDTO[]>([]);
 
-  // Estado da pílula "Outro"
   const [customTimeActive, setCustomTimeActive] = useState(false);
   const [customTimeInput, setCustomTimeInput] = useState('');
   const customTimeRef = useRef<TextInput>(null);
 
-  // Carrega busy-slots ao mudar data ou duração
   useEffect(() => {
     if (!visible) return;
     appointmentService
@@ -104,7 +99,6 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
       .catch(() => setBusySlots([]));
   }, [selectedDate, selectedDuration, visible]);
 
-  // Sincroniza seletores com a sessão ativa
   useEffect(() => {
     if (sessions.length === 0 || activeIdx >= sessions.length) return;
     const s = sessions[activeIdx];
@@ -120,7 +114,6 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
     }
   }, [activeIdx]);
 
-  // Propaga mudança de campo para a sessão ativa
   const updateActive = useCallback(
     (patch: Partial<Session>) => {
       setSessions((prev) => {
@@ -180,10 +173,6 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
     const durMin = selectedDuration * 60;
     return busySlots.some((b) => {
       const bMin = toMinutes(b.horario);
-      // Intervalo novo:      [slotMin,  slotMin + durMin]
-      // Intervalo existente: [bMin,     bMin + b.duracaoMinutos]
-      // Há sobreposição se o novo começa antes do existente terminar
-      // e termina depois do existente começar.
       return slotMin < bMin + b.duracaoMinutos && slotMin + durMin > bMin;
     });
   }
@@ -243,7 +232,6 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
     }
   }
 
-  // Reset ao fechar
   useEffect(() => {
     if (!visible) {
       setSessions([]);
@@ -270,7 +258,6 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen">
       <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
 
-        {/* ── Header ── */}
         <View className="flex-row items-start px-6 pt-2 pb-4">
           <View className="w-8 items-start pt-1">
             <TouchableOpacity onPress={onClose} hitSlop={8} accessibilityRole="button" accessibilityLabel="Fechar">
@@ -290,7 +277,6 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
           keyboardShouldPersistTaps="handled"
         >
 
-          {/* ── Sessões ── */}
           <Section label="SESSÕES">
             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
               {sessions.map((s, i) => (
@@ -328,7 +314,6 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
 
           {sessions.length > 0 && (
             <>
-              {/* ── Data ── */}
               <Section label="DATA">
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   {DAYS.map((day, i) => {
@@ -353,7 +338,6 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
                 </ScrollView>
               </Section>
 
-              {/* ── Horário ── */}
               <Section label="HORÁRIO">
                 <View className="flex-row flex-wrap gap-2">
                   {FIXED_SLOTS.map((slot) => {
@@ -376,7 +360,6 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
                     );
                   })}
 
-                  {/* Pílula "Outro" com input inline */}
                   {customTimeActive ? (
                     <View className="flex-row items-center bg-plum px-3 py-2 rounded-rd-xs">
                       <TextInput
@@ -414,7 +397,6 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
                 </View>
               </Section>
 
-              {/* ── Duração ── */}
               <Section label="DURAÇÃO ESTIMADA">
                 <View className="flex-row flex-wrap gap-2">
                   {DURATIONS_H.map((h) => {
@@ -436,7 +418,6 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
             </>
           )}
 
-          {/* ── Valor ── */}
           <Section label="VALOR TOTAL DA TATUAGEM">
             <View className="flex-row items-center bg-surface rounded-rd-xs px-4 py-3">
               <Text className="font-body text-[14px] text-fg-2 mr-1">R$</Text>
@@ -452,7 +433,6 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
             </View>
           </Section>
 
-          {/* ── Resumo ── */}
           {sessions.length > 0 && totalNum > 0 && (
             <View className="bg-ink rounded-rd-md px-4 py-3 mt-2">
               <Text className="font-body text-[14px] text-background">
@@ -464,7 +444,6 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
 
         </ScrollView>
 
-        {/* ── CTA fixo ── */}
         <View
           className="absolute bottom-0 left-0 right-0 px-6 bg-background"
           style={{ paddingBottom: insets.bottom + 16, paddingTop: 12 }}

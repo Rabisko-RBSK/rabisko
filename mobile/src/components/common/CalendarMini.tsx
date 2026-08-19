@@ -36,7 +36,7 @@ export function CalendarMini({ selectedDate, onSelectDate, minDate }: CalendarMi
   const [viewMonth, setViewMonth] = React.useState(() => startOfMonth(selectedDate ?? new Date()));
 
   const monthStart = startOfMonth(viewMonth);
-  const leading = getDay(monthStart); // 0 = Sunday
+  const leading = getDay(monthStart);
   const daysInMonth = getDaysInMonth(viewMonth);
   const cells: (number | null)[] = [
     ...Array(leading).fill(null),
@@ -48,7 +48,6 @@ export function CalendarMini({ selectedDate, onSelectDate, minDate }: CalendarMi
 
   return (
     <View className="bg-surface rounded-rd-lg p-4">
-      {/* month nav */}
       <View className="flex-row items-center justify-between mb-3">
         <TouchableOpacity
           onPress={() => canGoBack && setViewMonth((m) => subMonths(m, 1))}
@@ -72,7 +71,6 @@ export function CalendarMini({ selectedDate, onSelectDate, minDate }: CalendarMi
         </TouchableOpacity>
       </View>
 
-      {/* weekday header */}
       <View className="flex-row mb-1">
         {WEEKDAYS.map((w, i) => (
           <View key={i} className="flex-1 items-center">
@@ -81,7 +79,6 @@ export function CalendarMini({ selectedDate, onSelectDate, minDate }: CalendarMi
         ))}
       </View>
 
-      {/* day grid */}
       <View className="flex-row flex-wrap">
         {cells.map((day, i) => {
           if (day == null) return <View key={i} style={{ width: `${100 / 7}%`, aspectRatio: 1 }} />;

@@ -39,7 +39,6 @@ export function SearchResultsScreen() {
 
   const estilo = route.params?.estilo?.trim() || undefined;
 
-  // Catalogo cacheado (compartilhado com a Home). Usado pro did-you-mean.
   const { estilos: catalogo } = useEstilos();
 
   const [results, setResults] = useState<ArtistSearchResult[]>([]);
@@ -68,8 +67,6 @@ export function SearchResultsScreen() {
     navigation.setParams({ estilo: didYouMean.item.nome });
   }, [didYouMean, navigation]);
 
-  // Distancia: estado local. Mantemos lat/lng separado pra poder re-fetch
-  // mesmo se o usuario desligar e ligar o switch (sem pedir permissao de novo).
   const [usarDistancia, setUsarDistancia] = useState(false);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [pedindoLocalizacao, setPedindoLocalizacao] = useState(false);
@@ -87,8 +84,6 @@ export function SearchResultsScreen() {
         });
         setResults(data);
       } catch (err: any) {
-        // Erros 4xx/5xx do axios viram exception. Mensagem amigavel — o
-        // detalhe tecnico fica no log do dev.
         console.warn('[SearchResults] erro na busca', err?.response?.status, err?.message);
         setError('Nao foi possivel carregar os resultados. Tente de novo.');
         setResults([]);
@@ -99,7 +94,6 @@ export function SearchResultsScreen() {
     [estilo],
   );
 
-  // Primeira carga: somente filtro de estilo (se houver).
   useEffect(() => {
     fetchResults({});
   }, [fetchResults]);
@@ -117,7 +111,6 @@ export function SearchResultsScreen() {
         return;
       }
 
-      // Liga: precisa de coords. Se ja temos, so reusa.
       if (coords) {
         setUsarDistancia(true);
         await fetchResults({ lat: coords.lat, lng: coords.lng });
@@ -128,9 +121,6 @@ export function SearchResultsScreen() {
       try {
         const perm = await Location.requestForegroundPermissionsAsync();
         if (!perm.granted) {
-          // Permissao negada: mantem switch desligado, avisa o usuario.
-          // Se for negacao permanente (canAskAgain=false), oferece abrir
-          // as configuracoes — caso contrario o switch fica inutil.
           if (!perm.canAskAgain) {
             Alert.alert(
               'Permissao necessaria',
@@ -215,7 +205,6 @@ export function SearchResultsScreen() {
         <Text className="font-body text-[13px] text-fg-2">{headerSubtitle}</Text>
       </View>
 
-      {/* Toggle "perto de mim" */}
       <View className="px-6 mb-4 flex-row items-center justify-between bg-surface-2 rounded-rd-md py-3 px-4 mx-6">
         <View className="flex-1 pr-3">
           <Text className="font-body-semibold text-[14px] text-ink">Perto de mim</Text>

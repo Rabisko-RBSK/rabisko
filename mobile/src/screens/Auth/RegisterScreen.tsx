@@ -150,31 +150,21 @@ export function RegisterScreen() {
   const insets = useSafeAreaInsets();
   const { role, setRole, setUser, setToken } = useAuthStore();
 
-  // ---- Inputs controlados, agrupados por papel a que pertencem -----------
-  // Comuns aos 3 papéis. `nome` aqui mapeia pra User.nome (cliente/artista) ou
-  // pra Studio.nome (estúdio — o backend replica em ambos no StudioService).
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [telefone, setTelefone] = useState('');
 
-  // Cliente + Artista (PJ não tem dataNasc/CPF — backend RegisterEstudioDTO
-  // não tem esses campos e os ignora se vierem).
   const [dataNasc, setDataNasc] = useState('');
   const [cpf, setCpf] = useState('');
 
-  // Artista — `endereco` agora vai no payload (varchar simples no Artist;
-  // pra estúdio idem). A tabela polimórfica `enderecos` (owner_id+owner_type)
-  // fica pra quando precisarmos de campos estruturados (rua/número/bairro/UF).
   const [bio, setBio] = useState('');
   const [endereco, setEndereco] = useState('');
   const [instagram, setInstagram] = useState('');
   const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
 
-  // Estúdio
   const [cnpj, setCnpj] = useState('');
 
-  // Estado transversal
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -188,7 +178,6 @@ export function RegisterScreen() {
   const handleRegister = useCallback(async () => {
     setErro(null);
 
-    // Validações comuns aos 3 papéis (alinhadas com @NotBlank/@Size do back).
     if (!nome.trim() || !email.trim() || senha.length < 8) {
       setErro('Preencha nome, e-mail e senha (mínimo 8 caracteres).');
       return;
@@ -198,7 +187,6 @@ export function RegisterScreen() {
       return;
     }
     if (!termsAccepted) {
-      // O Checkbox já bloqueia o botão (disabled), mas defesa em profundidade.
       setErro('Você precisa aceitar os termos para continuar.');
       return;
     }
@@ -209,9 +197,6 @@ export function RegisterScreen() {
 
     setLoading(true);
     try {
-      // Cada papel chama um endpoint diferente. O backend retorna o token JWT
-      // direto no 201 (auto-login pós-cadastro), evitando um round-trip extra
-      // pra /auth/login. Ver UserController.cadastrarCliente/Artista/Estudio.
       let token: string;
       if (role === 'cliente') {
         ({ token } = await authService.registerCliente({
@@ -233,12 +218,7 @@ export function RegisterScreen() {
           cpf: cpf || undefined,
           bio: bio || undefined,
           instagram: instagram || undefined,
-          // Endereço só faz sentido pra tatuador autônomo. Quando o cadastro
-          // tiver passo de "vincular a um estúdio", a UI pode omitir esse
-          // input e o payload pode mandar undefined.
           endereco: endereco || undefined,
-          // `estilos` é List<String> no back; ainda não persiste (TODO no
-          // ArtistService até a tabela tatuador_estilos ter entity/repo).
           estilos: selectedStyles.length ? selectedStyles : undefined,
           termosAceitos: termsAccepted,
         }));
@@ -254,16 +234,11 @@ export function RegisterScreen() {
         }));
       }
 
-      // Mesma sequência de hidratação do LoginScreen: salva token → busca
-      // perfil → popula store → sincroniza role. Quando setUser dispara,
-      // isAuthenticated vira true e o <Router/> troca AuthRoutes → AppRoutes.
       setToken(token);
       const me = await authService.me();
       setUser({ id: me.userId, name: me.nome, email: me.email });
       setRole(backendRoleToFront(me.role));
     } catch (e: any) {
-      // Log completo só pra dev — facilita ver no console do Metro o que
-      // realmente quebrou (network vs validação vs 500 do back).
       console.warn('[Register] erro:', e?.response?.status, e?.response?.data, e?.message);
       setErro(parseAxiosError(e, 'Falha no cadastro.'));
     } finally {
@@ -289,7 +264,6 @@ export function RegisterScreen() {
           paddingBottom: insets.bottom + 24,
         }}
       >
-        {/* Hero — Bebas 32 + role subtitle */}
         <View className="mb-6">
           <Text className="font-display text-[32px] leading-[34px] text-ink mb-3">
             CRIE SUA CONTA
@@ -301,8 +275,6 @@ export function RegisterScreen() {
 
         <RoleSwitch value={role} onChange={setRole} className="mb-8" />
 
-        {/* Comum aos 3 papéis. O label/placeholder do "Nome" muda pra
-            "Nome do estúdio" quando role === 'estudio'. */}
         <Input
           label={role === 'estudio' ? 'Nome do estúdio' : 'Nome completo'}
           placeholder={role === 'estudio' ? 'Ex: Estúdio Fênix' : 'Ex: Maria Silva'}
@@ -365,8 +337,6 @@ export function RegisterScreen() {
           editable={!loading}
         />
 
-        {/* Campos exclusivos do artista. Endereço é capturado mas não vai
-            no payload — ver comentário no useState acima. */}
         {role === 'artista' && (
           <>
             <Input
@@ -413,7 +383,6 @@ export function RegisterScreen() {
           </>
         )}
 
-        {/* Campos exclusivos do estúdio. */}
         {role === 'estudio' && (
           <>
             <Input
@@ -425,9 +394,6 @@ export function RegisterScreen() {
               textAlignVertical="top"
               maxLength={400}
               style={{ minHeight: 92 }}
-              // bio do estúdio NÃO está no schema do back hoje — capturado em
-              // `bio` mas o RegisterEstudioDTO não tem o campo. Reutilizando
-              // o state local pra não criar um setBioEstudio idêntico.
               value={bio}
               onChangeText={setBio}
               editable={!loading}
@@ -467,7 +433,6 @@ export function RegisterScreen() {
           />
         </View>
 
-        {/* Mensagem de erro (validação local ou string que o backend devolveu) */}
         {erro && (
           <Text className="font-body text-[12px] text-error mt-2 mb-3 ml-1">{erro}</Text>
         )}

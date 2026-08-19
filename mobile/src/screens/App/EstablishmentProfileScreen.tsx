@@ -10,7 +10,6 @@ import { StatusPill } from '../../components/common/Chip';
 import { HomeStackParamList } from '../../routes/home.stack';
 import { chatService } from '../../services/api';
 
-/* ---------- Mock data (P1 ArtistProfile — replace with real API once wired) ---------- */
 
 const ARTIST = {
   id: 'cacc1353-c691-49b4-9a66-ce4a73891f3c',
@@ -45,7 +44,6 @@ const REVIEWS = [
   },
 ];
 
-/* ---------- Leaf components ---------- */
 
 function ReviewCard({
   initials,
@@ -81,7 +79,6 @@ function ReviewCard({
   );
 }
 
-/* ---------- Screen ---------- */
 
 export function EstablishmentProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
@@ -130,7 +127,6 @@ export function EstablishmentProfileScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 120 }}
       >
-        {/* Hero — chat-centered profile: photo → 1st tag pill → rating+star → name */}
         <View className="items-center mt-2 mb-6">
           <View
             className="rounded-rd-pill overflow-hidden bg-surface mb-3"
@@ -151,14 +147,12 @@ export function EstablishmentProfileScreen() {
           </Text>
         </View>
 
-        {/* Sobre */}
         <View className="bg-surface rounded-rd-lg p-5 mb-8">
           <Text className="font-aux-bold text-[16px] text-ink mb-2">Sobre</Text>
           <Text className="font-body text-[14px] text-fg-2 leading-[20px] mb-3">{ARTIST.about}</Text>
           <Text className="font-body text-[13px] text-fg-3">{ARTIST.handle}</Text>
         </View>
 
-        {/* Portfólio */}
         <View className="flex-row items-end justify-between mb-3">
           <Text className="font-aux-bold text-[20px] text-ink">Portfólio</Text>
           <TouchableOpacity hitSlop={8}>
@@ -173,18 +167,12 @@ export function EstablishmentProfileScreen() {
           ))}
         </View>
 
-        {/* Avaliações */}
         <Text className="font-aux-bold text-[20px] text-ink mb-3">Avaliações</Text>
         {REVIEWS.map((r) => (
           <ReviewCard key={r.id} {...r} />
         ))}
       </ScrollView>
 
-      {/* Sticky CTA. Primary = "Iniciar Conversa" (links to Chat once threading is built, P2).
-       *  Secondary = "Reservar" — temporary DEV entry point to the Booking flow so we can test
-       *  Booking→Payment→Confirmed end-to-end. Product decided the canonical entry is via Chat,
-       *  not this profile screen; remove or rethink this button when the Chat→Booking handoff
-       *  is wired. */}
       <View
         className="absolute left-0 right-0 bottom-0 bg-background pt-3 px-6 flex-row"
         style={{ paddingBottom: 24, gap: 10 }}

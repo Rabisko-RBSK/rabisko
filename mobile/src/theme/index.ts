@@ -12,7 +12,6 @@
  */
 export const theme = {
   colors: {
-    // brand / surface
     background: '#F8F9FA',
     surface: '#EAE0D5',
     surface2: '#F2EBE0',
@@ -20,13 +19,11 @@ export const theme = {
     inkSoft: '#1A1A1A',
     paper: '#FFFFFF',
     hairline: '#D9D9D9',
-    // accent — plum is the ONLY selection/activation color
     plum: '#602C66',
     plumDeep: '#4A2150',
     plumTint: '#EFE6F0',
     indigo: '#2C4466',
     steel: '#2E3238',
-    // semantic text
     fg2: '#404040',
     fg3: '#6B6B6B',
     onInk: '#FFFFFF',
@@ -47,7 +44,6 @@ export const theme = {
     10: 40,
     12: 48,
     16: 64,
-    // legacy aliases
     xs: 4,
     sm: 8,
     md: 16,
