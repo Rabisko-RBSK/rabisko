@@ -28,7 +28,6 @@ function ConfirmedHero() {
 
   useEffect(() => {
     checkScale.value = withDelay(120, withSpring(1, { damping: 9, stiffness: 140 }));
-    // Two expanding rings looping with a stagger for a "pulse" effect
     const ringLoop = () =>
       withSequence(
         withTiming(1, { duration: 1100, easing: Easing.out(Easing.cubic) }),
@@ -89,7 +88,6 @@ export function ConfirmedScreen() {
   const { artistName = FALLBACK.artistName, dateTime = FALLBACK.dateTime, total = FALLBACK.total } =
     route.params ?? {};
 
-  // Hide the parent bottom tab bar while on this full-screen confirmation.
   useEffect(() => {
     const parent = navigation.getParent();
     parent?.setOptions({ tabBarStyle: { display: 'none' } });
@@ -114,7 +112,6 @@ export function ConfirmedScreen() {
           Você receberá uma confirmação do artista em até 24h. Acompanhe pelo chat.
         </Text>
 
-        {/* Summary card */}
         <View className="bg-surface rounded-rd-lg p-4 mt-7 flex-row items-center">
           <View className="rounded-rd-pill overflow-hidden bg-paper mr-3" style={{ width: 46, height: 46 }}>
             <Image source={{ uri: FALLBACK.photo }} className="w-full h-full" />
@@ -133,7 +130,6 @@ export function ConfirmedScreen() {
         <Button
           title={`Abrir Chat com ${artistName.split(' ')[0]}`}
           onPress={() => {
-            // TODO: navigate to a thread screen once Chat (P2 #08) is built.
           }}
         />
         <Button

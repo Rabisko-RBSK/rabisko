@@ -8,15 +8,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-// =====================================================================
-// SERVICE EstiloService — expoe a lista do catalogo de estilos.
-//
-// Por enquanto so 1 metodo: `listar()`, ordenando por nome. O resultado
-// alimenta o autocomplete da busca no app.
-//
-// Sem paginacao porque o catalogo e PEQUENO (dezenas de itens, nao
-// milhares). O mobile guarda em memoria depois da primeira chamada.
-// =====================================================================
 
 @Service
 public class EstiloService {

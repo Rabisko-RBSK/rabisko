@@ -12,16 +12,6 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-// =====================================================================
-// ENTIDADE Estilo — linha da tabela `estilos`.
-//
-// E o CATALOGO de estilos de tatuagem disponiveis (Realismo, Blackwork,
-// Minimalista, etc.). Funciona como uma "tabela de dominio" — os valores
-// sao cadastrados manualmente no Supabase (seed), nao pelos usuarios.
-//
-// A relacao "quais estilos um tatuador faz" vive na tabela de juncao
-// `tatuador_estilos` (ver mapeamento @ManyToMany em Artist.estilos).
-// =====================================================================
 
 @Entity
 @Table(name = "estilos")

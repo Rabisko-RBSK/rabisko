@@ -10,7 +10,6 @@ export function tempoRelativo(iso: string): string {
   if (Number.isNaN(data.getTime())) return '';
 
   const diffMs = Date.now() - data.getTime();
-  // Datas no futuro (relógios dessincronizados) caem em "Agora mesmo".
   if (diffMs < 60_000) return 'Agora mesmo';
 
   const minutos = Math.floor(diffMs / 60_000);

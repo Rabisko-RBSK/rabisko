@@ -20,18 +20,6 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
-// =====================================================================
-// ENTIDADE Artist — linha da tabela `tatuadores`.
-//
-// Igual ao Client: e o "perfil tatuador" que complementa um User.
-// Aqui guardamos SO o que e proprio do tatuador (bio, instagram, estilos,
-// vinculo com estudio). Nome/email/cpf vivem no User correspondente.
-//
-// Por que NAO duplicar nome/email aqui?
-//   Duplicacao = sincronizacao. Se o usuario editasse o nome, teriamos
-//   que atualizar EM DOIS lugares. Esquecer um = bug classico. Melhor
-//   pegar via JOIN ou consultar UserRepository quando precisar.
-// =====================================================================
 
 @Entity
 @Table(name = "tatuadores")
@@ -116,11 +104,11 @@ public class Artist {
      */
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
-            name = "tatuador_estilos",                              // nome da tabela de juncao
-            joinColumns = @JoinColumn(name = "tatuador_id"),        // FK pra esta entidade
-            inverseJoinColumns = @JoinColumn(name = "estilo_id")    // FK pra Estilo
+            name = "tatuador_estilos",
+            joinColumns = @JoinColumn(name = "tatuador_id"),
+            inverseJoinColumns = @JoinColumn(name = "estilo_id")
     )
-    @Builder.Default        // sem isso, o Builder colocaria null em vez de um Set vazio
+    @Builder.Default
     private Set<Estilo> estilos = new HashSet<>();
 
     @CreationTimestamp

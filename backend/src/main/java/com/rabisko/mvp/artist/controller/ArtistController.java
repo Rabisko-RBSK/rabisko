@@ -26,17 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-// =====================================================================
-// CONTROLLER ArtistController — endpoints do recurso "artist".
-//
-// Endpoints disponiveis:
-//   GET /artist/search    : busca de tatuadores por estilo e/ou distancia
-//   GET /artist/dashboard : metricas da home do tatuador logado
-//
-// AUTH: nao tem permitAll, entao herda o padrao do SecurityConfiguration
-//   = exige JWT valido. /search e aberto a qualquer usuario logado;
-//   /dashboard adicionalmente exige role=tatuador (checado no service).
-// =====================================================================
 
 @RestController
 @RequestMapping("/artist")
@@ -74,9 +63,6 @@ public class ArtistController {
         return ResponseEntity.ok(artistService.dashboard(logado));
     }
 
-    // -----------------------------------------------------------------
-    // /artist/me — perfil do tatuador logado
-    // -----------------------------------------------------------------
 
     /** Devolve o perfil completo do tatuador logado (nome, foto, bio, portfolio). */
     @GetMapping("/me")
@@ -135,9 +121,6 @@ public class ArtistController {
         return ResponseEntity.noContent().build();
     }
 
-    // -----------------------------------------------------------------
-    // /artist/{id}/avaliacoes — leitura publica (entre usuarios logados)
-    // -----------------------------------------------------------------
 
     /**
      * Lista avaliacoes recebidas pelo tatuador (qualquer usuario logado

@@ -18,18 +18,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-// =====================================================================
-// ENTIDADE Message — linha da tabela `mensagens`.
-//
-// Cada balao de mensagem dentro de um chat = 1 linha aqui. Os campos
-// guardam quem mandou (remetente), quem recebe (destinatario), em qual
-// chat e o conteudo.
-//
-// Por que guardar remetente_id E destinatario_id se ja temos o chat?
-//   Atalho de performance. Pra mostrar mensagens nao-lidas do usuario,
-//   o front so precisa filtrar `destinatario_id = userId`. Sem essas
-//   colunas, teriamos que fazer JOIN com `chats` toda vez.
-// =====================================================================
 
 @Entity
 @Table(name = "mensagens")
@@ -61,7 +49,7 @@ public class Message {
     /** Texto da mensagem. Sem suporte a anexos no MVP. */
     private String conteudo;
 
-    @CreationTimestamp        // Hibernate preenche no INSERT (horario do envio)
+    @CreationTimestamp
     @Column(name = "data_envio", updatable = false, nullable = false)
     private LocalDateTime dataEnvio;
 }
