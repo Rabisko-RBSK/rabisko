@@ -30,32 +30,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-// =====================================================================
-// SERVICE ChatService — toda a logica do CHAT.
-//
-// Responsabilidades:
-//   - abrirOuObterChat        : achar (ou criar) o chat unico entre 2 perfis
-//   - listarChatsDoUsuario    : lista de conversas do usuario logado
-//   - listarMensagens         : historico paginado de mensagens de um chat
-//   - enviarMensagem          : persiste a mensagem E faz broadcast por WebSocket
-//   - garantirParticipacao    : guarda de seguranca (usuario logado e do chat?)
-//
-// Observacoes importantes:
-//
-// 1) "outroPerfilId" e o id do PERFIL (clienteId/tatuadorId), nao do User.
-//    A logica troca dependendo de quem esta logado:
-//      - cliente logado: outroPerfilId = id em `tatuadores`
-//      - tatuador logado: outroPerfilId = id em `clientes`
-//
-// 2) garantirParticipacao impede que A leia/envie em chat de B e C.
-//    SEMPRE chamada antes de qualquer leitura/escrita.
-//
-// 3) Envio de mensagem dispara DUAS coisas:
-//    a) save() no `mensagens`
-//    b) convertAndSendToUser para destinatario E remetente
-//       (o remetente tb recebe via WebSocket pra todas suas telas/dispositivos
-//        sincronizarem na hora).
-// =====================================================================
 
 @Service
 public class ChatService {
@@ -66,14 +40,8 @@ public class ChatService {
     @Autowired private ArtistRepository artistRepository;
     @Autowired private UserRepository userRepository;
 
-    // SimpMessagingTemplate = "mensageiro" do Spring pra enviar via STOMP/WebSocket.
-    // O metodo convertAndSendToUser(email, destino, payload) entrega so pro usuario
-    // identificado por aquele email (que e o "username" da sessao STOMP).
     @Autowired private SimpMessagingTemplate messagingTemplate;
 
-    // ==================================================================
-    // ABRIR / OBTER CHAT
-    // ==================================================================
 
     /**
      * Devolve o chat existente entre os dois perfis. Se nao existir, cria.
@@ -83,9 +51,8 @@ public class ChatService {
     public ChatDTO abrirOuObterChat(User logado, AbrirChatRequest req) {
         UUID clienteId;
         UUID tatuadorId;
-        UUID outroUserId;       // userId do interlocutor, pra montar o DTO
+        UUID outroUserId;
 
-        // Resolve quem e cliente e quem e tatuador no chat, dependendo de quem esta logado.
         if (logado.getRole() == UserRole.cliente) {
             Client meuPerfil = clientRepository.findByUserId(logado.getUserId())
                 .orElseThrow(() -> new EntityNotFoundException("Perfil cliente não encontrado"));
@@ -107,11 +74,9 @@ public class ChatService {
             outroUserId = outro.getUserId();
 
         } else {
-            // Admin e estudio nao participam de chat 1-pra-1.
             throw new AccessDeniedException("Esse papel não participa de chat");
         }
 
-        // Busca o chat existente; se nao existir, cria.
         Chat chat = chatRepository.findByClienteIdAndTatuadorId(clienteId, tatuadorId)
             .orElseGet(() -> chatRepository.save(
                 Chat.builder()
@@ -121,7 +86,6 @@ public class ChatService {
                     .build()
             ));
 
-        // Pega o nome do outro e a ultima mensagem (pra preencher o DTO).
         String outroNome = userRepository.findById(outroUserId)
             .map(u -> ((User) u).getNome())
             .orElse("Usuário");
@@ -137,9 +101,6 @@ public class ChatService {
         );
     }
 
-    // ==================================================================
-    // LISTAR CHATS DO USUARIO
-    // ==================================================================
 
     /**
      * Devolve a lista de chats do usuario logado, com o nome do outro
@@ -156,7 +117,6 @@ public class ChatService {
             List<Chat> chats = chatRepository.findByClienteId(meuPerfil.getClientId());
 
             for (int i = 0; i < chats.size(); i++) {
-                // Pra cada chat, pega o tatuador (outro lado) + dados do User dele
                 Artist outro = artistRepository.findById(chats.get(i).getTatuadorId())
                     .orElseThrow(() -> new EntityNotFoundException("Tatuador não encontrado"));
                 User outroUser = userRepository.findById(outro.getUserId())
@@ -174,7 +134,6 @@ public class ChatService {
                 ));
             }
         } else if (logado.getRole() == UserRole.tatuador) {
-            // Mesma logica do bloco acima, mas para tatuador (o outro lado e cliente).
             Artist meuPerfil = artistRepository.findByUserId(logado.getUserId())
                 .orElseThrow(() -> new EntityNotFoundException("Perfil artista não encontrado"));
 
@@ -204,14 +163,11 @@ public class ChatService {
         return listaChats;
     }
 
-    // ==================================================================
-    // LISTAR MENSAGENS DE UM CHAT (historico paginado)
-    // ==================================================================
 
     public Page<MensagemDTO> listarMensagens(User logado, UUID chatId, Pageable pagina){
         Chat chat = chatRepository.findById(chatId)
             .orElseThrow(() -> new EntityNotFoundException("Chat não encontrado"));
-        garantirParticipacao(logado, chat);    // bloqueia bisbilhotagem
+        garantirParticipacao(logado, chat);
 
         return messageRepository.findByChatIdOrderByDataEnvioDesc(chatId, pagina)
             .map(m -> new MensagemDTO(
@@ -221,28 +177,21 @@ public class ChatService {
             ));
     }
 
-    // ==================================================================
-    // ENVIAR MENSAGEM (persiste + broadcast WebSocket)
-    // ==================================================================
 
     public MensagemDTO enviarMensagem(User logado, UUID chatId, EnviarMensagemRequest req){
-        // 1) Carrega o chat e checa se o usuario logado pertence a ele
         Chat chat = chatRepository.findById(chatId)
             .orElseThrow(() -> new EntityNotFoundException("Chat não encontrado"));
         garantirParticipacao(logado, chat);
 
-        // 2) Define quem e remetente (eu) e quem e destinatario (o outro)
         UUID remetenteId = logado.getUserId();
         UUID destinatarioId;
 
         if (logado.getRole() == UserRole.cliente) {
-            // Cliente esta mandando -> destinatario e o tatuador
             Artist outroPerfil = artistRepository.findById(chat.getTatuadorId())
                 .orElseThrow(() -> new EntityNotFoundException("Tatuador não encontrado"));
             destinatarioId = outroPerfil.getUserId();
 
         } else if (logado.getRole() == UserRole.tatuador) {
-            // Tatuador esta mandando -> destinatario e o cliente
             Client outroPerfil = clientRepository.findById(chat.getClienteId())
                 .orElseThrow(() -> new EntityNotFoundException("Cliente não encontrado"));
             destinatarioId = outroPerfil.getUserId();
@@ -251,7 +200,6 @@ public class ChatService {
             throw new AccessDeniedException("Esse papel não participa de chat");
         }
 
-        // 3) Salva a mensagem
         Message salva = messageRepository.save(Message.builder()
             .chatId(chatId)
             .remetenteId(remetenteId)
@@ -259,7 +207,6 @@ public class ChatService {
             .conteudo(req.conteudo())
             .build());
 
-        // 4) Pega o User destinatario pra usar o email como rota WebSocket
         User destinatario = (User) userRepository.findById(destinatarioId)
             .orElseThrow(() -> new EntityNotFoundException("Usuário destinatário não encontrado"));
 
@@ -268,19 +215,12 @@ public class ChatService {
             salva.getConteudo(), salva.getDataEnvio()
         );
 
-        // 5) Broadcast WebSocket:
-        //    - Destinatario recebe a mensagem em tempo real
-        //    - Remetente tb recebe (pra sincronizar entre dispositivos —
-        //      mesmo usuario logado no celular E no web, por ex.)
         messagingTemplate.convertAndSendToUser(destinatario.getEmail(), "/queue/messages", dto);
         messagingTemplate.convertAndSendToUser(logado.getEmail(), "/queue/messages", dto);
 
         return dto;
     }
 
-    // ==================================================================
-    // GUARDA DE SEGURANCA
-    // ==================================================================
 
     /**
      * Checa se o usuario logado realmente faz parte do chat (e o cliente

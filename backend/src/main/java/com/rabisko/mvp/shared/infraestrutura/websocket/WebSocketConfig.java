@@ -14,45 +14,9 @@ import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 import org.springframework.web.socket.server.support.HttpSessionHandshakeInterceptor;
 
-// =====================================================================
-// CONFIG WebSocketConfig — config do CHAT em tempo real (STOMP/WebSocket).
-//
-// Conceitos importantes:
-//
-//   WebSocket
-//     Protocolo que mantem uma conexao ABERTA entre cliente e servidor,
-//     permitindo enviar mensagens nos 2 sentidos a qualquer momento (ao
-//     contrario de HTTP, que e request-response).
-//
-//   STOMP (Simple Text Oriented Messaging Protocol)
-//     Roda em cima do WebSocket. Da uma estrutura tipo "topicos" e
-//     "filas" pra organizar quem manda e quem recebe.
-//
-//   Prefixos do nosso projeto:
-//     /wss        : endpoint de conexao inicial (handshake)
-//     /app/...    : pra onde o CLIENTE envia mensagens (server-bound)
-//                   ex: /app/chat.send -> tratado em ChatWsController
-//     /topic/...  : broadcast PUBLICO (todos inscritos recebem)
-//     /queue/...  : entrega PRIVADA (so 1 usuario recebe)
-//     /user/...   : prefixo especial pra entrega individual; quando
-//                   chamamos convertAndSendToUser(email, "/queue/x", ...),
-//                   o Spring traduz pra /user/<email>/queue/x.
-//
-// Como a SEGURANCA funciona no nosso chat:
-//   1) O cliente abre WebSocket e manda um STOMP CONNECT com
-//      Authorization: Bearer <jwt> no header.
-//   2) JwtChannelInterceptor valida o JWT e seta o "user" da sessao.
-//   3) SecurityContextChannelInterceptor copia esse user pro
-//      SecurityContextHolder antes do handler rodar.
-//   4) AuthenticationPrincipalArgumentResolver permite injetar
-//      @AuthenticationPrincipal User logado no handler.
-//
-// Sem essas 3 pecas conectadas, o @AuthenticationPrincipal vem null
-// dentro dos handlers @MessageMapping.
-// =====================================================================
 
 @Configuration
-@EnableWebSocketMessageBroker      // habilita o suporte a STOMP/WebSocket
+@EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Autowired
@@ -67,7 +31,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/wss")
                 .addInterceptors(new HttpSessionHandshakeInterceptor())
-                .setAllowedOriginPatterns("*")     // CORS: aceita qualquer origem (apertar em prod)
+                .setAllowedOriginPatterns("*")
                 .withSockJS();
     }
 

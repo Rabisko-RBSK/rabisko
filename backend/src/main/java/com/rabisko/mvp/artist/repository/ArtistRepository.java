@@ -11,23 +11,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-// =====================================================================
-// REPOSITORY ArtistRepository — acesso a tabela `tatuadores`.
-//
-// Alem das funcoes herdadas de JpaRepository, traz:
-//   - findByUserId  : derived query simples
-//   - buscar        : @Query NATIVA com SQL puro (Postgres)
-//
-// Por que SQL nativo em `buscar`?
-//   Porque a busca calcula DISTANCIA GEOGRAFICA (formula de Haversine)
-//   usando funcoes Postgres: radians(), acos(), cos(), sin(). O JPQL
-//   (linguagem padrao do JPA) nao tem essas funcoes. Como o SQL ja e
-//   especifico do Postgres, escrevemos direto.
-//
-// Os parametros `:semEstilo` e `:semDistancia` deixam os filtros
-// OPCIONAIS na mesma query — quando o front nao manda estilo, o service
-// passa `semEstilo=true` e essa parte do WHERE e "ignorada".
-// =====================================================================
 public interface ArtistRepository extends JpaRepository<Artist, UUID> {
 
     /** Busca o perfil tatuador a partir do User. */

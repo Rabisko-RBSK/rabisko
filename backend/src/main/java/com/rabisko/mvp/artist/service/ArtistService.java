@@ -44,21 +44,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-// =====================================================================
-// SERVICE ArtistService — tres responsabilidades:
-//
-//   1) cadastrarArtista: cria a linha em `tatuadores` e amarra os
-//      estilos escolhidos a M:N `tatuador_estilos`.
-//
-//   2) buscar: expoe a busca de tatuadores por estilo e/ou distancia,
-//      empacotando os filtros pra @Query nativa do ArtistRepository.
-//
-//   3) dashboard: monta o DTO de metricas da home do tatuador logado
-//      (chats abertos, etc.). Valida que o usuario e tatuador antes
-//      de calcular.
-//
-// Nada de dados pessoais (nome/email/cpf) aqui — esses vivem em `users`.
-// =====================================================================
 
 @Service
 public class ArtistService {
@@ -89,7 +74,7 @@ public class ArtistService {
                 .bio(body.getBio())
                 .instagram(body.getInstagram())
                 .endereco(body.getEndereco())
-                .vinculadoEstudio(false)                  // nasce autonomo
+                .vinculadoEstudio(false)
                 .estilos(resolverEstilos(body.getEstilos()))
                 .build();
 
@@ -111,7 +96,6 @@ public class ArtistService {
             Double lng,
             Double raioKm
     ) {
-        // --- Filtro de estilos ---
         boolean semEstilo = estilos == null || estilos.isEmpty();
         List<String> estilosNormalizados = semEstilo
                 ? Collections.emptyList()
@@ -120,24 +104,19 @@ public class ArtistService {
                         .map(s -> s.trim().toLowerCase(Locale.ROOT))
                         .collect(Collectors.toList());
 
-        // Se a limpeza zerou a lista (so vinha "  " ou null), desliga o filtro.
         if (estilosNormalizados.isEmpty()) {
             semEstilo = true;
         }
 
-        // --- Filtro de distancia ---
         boolean semDistancia = lat == null || lng == null;
         double raio = (raioKm == null || raioKm <= 0) ? RAIO_KM_DEFAULT : raioKm;
 
-        // Mesmo quando o filtro esta desligado (semEstilo/semDistancia = true)
-        // o JDBC EXIGE valores nao-null pros binds. Mandamos sentinelas:
         Collection<String> estilosParam = estilosNormalizados.isEmpty()
                 ? List.of("")
                 : estilosNormalizados;
         double latParam = lat == null ? 0.0 : lat;
         double lngParam = lng == null ? 0.0 : lng;
 
-        // Roda a SQL nativa e converte o resultado pra DTO de resposta.
         List<ArtistSearchProjection> rows = artistRepository.buscar(
                 semEstilo,
                 estilosParam,
@@ -152,9 +131,6 @@ public class ArtistService {
                 .collect(Collectors.toList());
     }
 
-    // =================================================================
-    // PERFIL DO TATUADOR LOGADO — GET / PATCH / upload de foto
-    // =================================================================
 
     /**
      * Retorna o perfil do tatuador logado (nome do User, foto, bio, instagram
@@ -174,7 +150,7 @@ public class ArtistService {
                 artist.getFotoPerfilUrl(),
                 artist.getBio(),
                 artist.getInstagram(),
-                null,                          // tier: sistema ainda nao existe
+                null,
                 portfolio
         );
     }
@@ -227,13 +203,10 @@ public class ArtistService {
      * mostrar a foto local enquanto decide se vai persistir).
      */
     public String uploadFotoPerfil(User user, MultipartFile file) {
-        exigirArtistDoUser(user);             // confirma que o user e tatuador
+        exigirArtistDoUser(user);
         return storageService.uploadFotoPerfil(file);
     }
 
-    // =================================================================
-    // PORTFOLIO — adicionar / remover imagem
-    // =================================================================
 
     public PortfolioImagemDTO adicionarImagemPortfolio(User user, MultipartFile file, String descricao) {
         Artist artist = exigirArtistDoUser(user);
@@ -254,16 +227,10 @@ public class ArtistService {
                 .findByImagemIdAndTatuadorId(imagemId, artist.getTatuadorId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Imagem nao encontrada"));
 
-        // Apaga primeiro do banco (ate' aqui rolou erro = NAO mexemos no storage).
         portfolioImagemRepository.delete(img);
-        // Best-effort no Storage: se falhar, deixa orfa la' (preferivel a
-        // ter linha-zumbi apontando pra arquivo que sumiu).
         storageService.deletePortfolio(img.getUrl());
     }
 
-    // =================================================================
-    // AVALIACOES — stub ate' a tabela `avaliacoes` existir
-    // =================================================================
 
     /**
      * Lista avaliacoes recebidas por um tatuador. STUB: enquanto a tabela
@@ -274,9 +241,6 @@ public class ArtistService {
         return Collections.emptyList();
     }
 
-    // =================================================================
-    // HELPERS
-    // =================================================================
 
     /** Resolve o Artist do User logado; 404 se o user nao for um tatuador. */
     private Artist exigirArtistDoUser(User user) {
@@ -315,7 +279,6 @@ public class ArtistService {
 
         List<Estilo> encontrados = estiloRepository.findByNomeInIgnoreCase(limpos);
 
-        // Se algum nome nao casou, loga quais nao encontramos.
         if (encontrados.size() != limpos.size()) {
             Set<String> encontradosNomes = encontrados.stream()
                     .map(e -> e.getNome().toLowerCase(Locale.ROOT))

@@ -239,8 +239,8 @@ rabisko/
 │   └── design/                    # Design system (DESIGN.md, tokens)
 │
 ├── supabase/                      # Migrations do banco (Postgres/Supabase)
-├── tutorial_inicializacao.md      # Guia detalhado de execução via Expo Go
-└── CLAUDE.md                      # Documentação de arquitetura para o repositório
+└── tutorial_inicializacao.md      # Guia detalhado de execução via Expo Go
+ 
 ```
 
 ## Como contribuir
@@ -250,15 +250,14 @@ rabisko/
    ```bash
    git checkout -b feature/nome-da-funcionalidade
    ```
-3. Siga os padrões já estabelecidos no módulo que você está alterando (ver `CLAUDE.md` para a arquitetura do backend e do mobile).
-4. Escreva commits claros e no padrão [Conventional Commits](https://www.conventionalcommits.org/pt-br/), ex.:
+3. Escreva commits claros e no padrão [Conventional Commits](https://www.conventionalcommits.org/pt-br/), ex.:
    ```
    feat: adiciona busca de tatuadores por estilo
    fix: corrige comparação de UserRole no cadastro
    chore: atualiza dependências do mobile
    ```
-5. Abra um Pull Request para a branch `dev`, descrevendo o que foi alterado e por quê.
-6. Aguarde revisão antes do merge — PRs para `main`/`homol` normalmente passam por `dev` primeiro.
+4. Abra um Pull Request para a branch `dev`, descrevendo o que foi alterado e por quê.
+5. Aguarde revisão antes do merge — PRs para `main`/`homol` normalmente passam por `dev` primeiro.
 
 ## Testes
 
