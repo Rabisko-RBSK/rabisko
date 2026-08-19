@@ -9,10 +9,6 @@ const api = axios.create({
   }
 });
 
-// Lê o token direto do authStore (Zustand). Antes lia de uma chave
-// separada `rabisko:token` no AsyncStorage que nunca era escrita —
-// o authStore.persist já guarda tudo em 'auth-storage'. Uma fonte só
-// de verdade evita o bug "logado mas request autenticada falha 401".
 api.interceptors.request.use((config) => {
   const token = useAuthStore.getState().token;
   if (token && config.headers) {
@@ -45,8 +41,6 @@ export interface RegisterArtistaData {
   cpf?: string;
   bio?: string;
   instagram?: string;
-  // endereço só é relevante quando o tatuador é autônomo (sem estudio_id);
-  // quando vinculado a estúdio, o front pode omitir.
   endereco?: string;
   estilos?: string[];
   termosAceitos: boolean;
@@ -148,11 +142,10 @@ export const chatService = {
   }
 }
 
-// ─── Agendamentos ────────────────────────────────────────────────────────────
 
 export interface AppointmentSessionInput {
-  data: string;         // 'YYYY-MM-DD'
-  horario: string;      // 'HH:mm'
+  data: string;
+  horario: string;
   duracaoMinutos: number;
 }
 
@@ -175,15 +168,15 @@ export interface AppointmentDTO {
 }
 
 export interface BusySlotDTO {
-  horario: string;      // 'HH:mm'
+  horario: string;
   duracaoMinutos: number;
 }
 
 export interface SessaoListItemDTO {
   sessionId: string;
   appointmentId: string;
-  data: string;          // 'YYYY-MM-DD'
-  horario: string;       // 'HH:mm:ss' ou 'HH:mm'
+  data: string;
+  horario: string;
   duracaoMinutos: number;
   outroNome: string;
   outroFotoUrl: string | null;

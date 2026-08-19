@@ -27,7 +27,6 @@ export function BookingScreen() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [selectedTime, setSelectedTime] = useState<string>('14:00');
 
-  // "{dia} Out · {hora}" subline
   const subline = useMemo(() => {
     if (!selectedDate) return '';
     return `${format(selectedDate, "d 'de' MMM", { locale: ptBR })} · ${selectedTime}`;
@@ -43,7 +42,6 @@ export function BookingScreen() {
       >
         <Stepper current={1} />
 
-        {/* Mini artist row */}
         <View className="flex-row items-center mb-5 mt-2">
           <View className="rounded-rd-pill overflow-hidden bg-surface mr-3" style={{ width: 46, height: 46 }}>
             <Image source={{ uri: ARTIST.photo }} className="w-full h-full" />
@@ -56,7 +54,6 @@ export function BookingScreen() {
 
         <CalendarMini selectedDate={selectedDate} onSelectDate={setSelectedDate} />
 
-        {/* Horário section */}
         <Text className="font-aux-bold text-[20px] text-ink mt-7">Horário</Text>
         <Text className="font-body text-[13px] text-fg-2 mt-1 mb-4 capitalize">{subline}</Text>
 
@@ -82,7 +79,6 @@ export function BookingScreen() {
         </View>
       </ScrollView>
 
-      {/* Sticky CTA */}
       <View className="absolute left-0 right-0 bottom-0 bg-background pt-3 px-6" style={{ paddingBottom: 24 }}>
         <Button
           title="Avançar para Pagamento"

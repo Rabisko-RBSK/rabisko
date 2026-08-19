@@ -57,7 +57,6 @@ export function Checkbox({ checked, onChange, label, accessibilityLabel }: Check
           <Check size={14} color="#FFFFFF" strokeWidth={3} />
         </Animated.View>
       </View>
-      {/* `marginTop: 2` alinha opticamente o texto com a caixa (corpo da letra fica ~2px abaixo do topo). */}
       {label && <View className="flex-1" style={{ marginTop: 2 }}>{label}</View>}
     </TouchableOpacity>
   );
