@@ -1,0 +1,20 @@
+name: Load Test Homologacao
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  testes_de_carga:
+    name: Executar k6
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Rodar script do k6
+        uses: grafana/k6-action@v0.3.1
+        with:
+          filename: tests/k6/load-test.js
