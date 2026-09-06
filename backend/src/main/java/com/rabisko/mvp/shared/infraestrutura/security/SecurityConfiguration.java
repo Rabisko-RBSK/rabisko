@@ -38,6 +38,7 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.POST, "/user/cadastro/cliente").permitAll()
                         .requestMatchers(HttpMethod.POST, "/user/cadastro/artista").permitAll()
                         .requestMatchers(HttpMethod.POST, "/user/cadastro/estudio").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/mockToken").permitAll()
                         .requestMatchers("/wss/**").permitAll()
                         .requestMatchers("/simulation/**").permitAll()
                         .anyRequest().authenticated())
