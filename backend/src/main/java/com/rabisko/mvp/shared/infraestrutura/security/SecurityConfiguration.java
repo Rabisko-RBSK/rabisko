@@ -13,6 +13,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.config.Customizer;
 
 
 @Configuration
@@ -29,6 +30,7 @@ public class SecurityConfiguration {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity
+                .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
 
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -38,11 +40,12 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.POST, "/user/cadastro/cliente").permitAll()
                         .requestMatchers(HttpMethod.POST, "/user/cadastro/artista").permitAll()
                         .requestMatchers(HttpMethod.POST, "/user/cadastro/estudio").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/mockToken").permitAll()
                         .requestMatchers("/wss/**").permitAll()
                         .requestMatchers("/simulation/**").permitAll()
                         .anyRequest().authenticated())
 
-                .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
+                // .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 
