@@ -131,6 +131,9 @@ export function LoginScreen() {
           placeholder="••••••••"
           icon={Lock}
           secure
+          autoCapitalize="none"
+          autoCorrect={false}
+          textContentType="password"
           value={senha}
           onChangeText={setSenha}
           editable={!loading}

@@ -332,6 +332,9 @@ export function RegisterScreen() {
           placeholder="••••••••"
           icon={Lock}
           secure
+          autoCapitalize="none"
+          autoCorrect={false}
+          textContentType="newPassword"
           value={senha}
           onChangeText={setSenha}
           editable={!loading}

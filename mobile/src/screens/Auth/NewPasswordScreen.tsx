@@ -30,6 +30,9 @@ export function NewPasswordScreen() {
             placeholderTextColor="#6B6B6B"
             className="flex-1 text-black text-base"
             secureTextEntry={!showPassword}
+            autoCapitalize="none"
+            autoCorrect={false}
+            textContentType="newPassword"
           />
           <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
             {showPassword ? <EyeOff size={20} color="#000" /> : <Eye size={20} color="#000" />}
@@ -45,6 +48,9 @@ export function NewPasswordScreen() {
             placeholderTextColor="#6B6B6B"
             className="flex-1 text-black text-base"
             secureTextEntry={!showPassword}
+            autoCapitalize="none"
+            autoCorrect={false}
+            textContentType="newPassword"
           />
         </View>
 
