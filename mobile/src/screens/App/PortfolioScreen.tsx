@@ -44,7 +44,6 @@ type PortfolioNav = NativeStackNavigationProp<
 >;
 
 const GAP = 12;
-// Largura do tile para 2 colunas dentro da área útil (tela − 2×24 de margem).
 const TILE_WIDTH = (Dimensions.get('window').width - 48 - GAP) / 2;
 
 export function PortfolioScreen() {
@@ -54,7 +53,6 @@ export function PortfolioScreen() {
 
   const { artistName } = route.params;
 
-  // Estado local — seed das params, atualizado pelas operações de edição.
   const [images, setImages] = useState<PortfolioImage[]>(route.params.images);
   const [editing, setEditing] = useState(false);
   /** Bloqueia novas ações enquanto um add/remove está em curso, pra evitar
@@ -68,7 +66,6 @@ export function PortfolioScreen() {
     setWorking(true);
     try {
       const nova = await artistService.adicionarImagemPortfolio(uri);
-      // Prepend pra que o trabalho recém-adicionado apareça primeiro.
       setImages((prev) => [nova, ...prev]);
     } catch (err: any) {
       console.warn(
@@ -123,7 +120,6 @@ export function PortfolioScreen() {
     }
   };
 
-  /* ---------- Header right slot ---------- */
 
   const renderHeaderRight = () => {
     if (working) return <ActivityIndicator color="#602C66" />;

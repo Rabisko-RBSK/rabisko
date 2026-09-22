@@ -58,7 +58,6 @@ function rankSuggestions(query: string, catalogo: Estilo[]): Estilo[] {
   return ranked.slice(0, MAX_SUGGESTIONS).map((r) => r.estilo);
 }
 
-/* ---------- Mock data (P1 Home — replace with real API once `/services/api` is wired) ---------- */
 
 const STYLE_TILES = [
   { id: 'realismo', label: 'Realismo', photo: 'https://images.unsplash.com/photo-1565058379802-bbe93b2f703a?q=80&w=200&auto=format&fit=crop' },
@@ -79,15 +78,12 @@ const FEATURED = {
   name: 'João Santos',
   tagline: 'Realismo · Premiado',
   rating: 4.9,
-  // Homem com tatuagem no braço trabalhando em arte — perfeito pra hero do tatuador.
   photo: 'https://images.unsplash.com/photo-1682406593404-99578759c260?q=80&w=800&auto=format&fit=crop',
 };
 
 const FAVORITES = [
-  // Marina: mulher tatuada (Annie Spratt 2018, retrato clássico).
   { id: 'fav1', name: 'Marina', photo: 'https://images.unsplash.com/photo-1523783419860-28486a354a3b?q=80&w=200&auto=format&fit=crop' },
   { id: 'fav2', name: 'Estúdio Fênix', photo: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=200&auto=format&fit=crop' },
-  // Pedro: tatuador preparando o trabalho.
   { id: 'fav3', name: 'Pedro', photo: 'https://images.unsplash.com/photo-1753259789341-808371092e19?q=80&w=200&auto=format&fit=crop' },
 ];
 
@@ -108,7 +104,6 @@ const NEAR_YOU = [
   },
 ];
 
-/* ---------- Small leaf components ---------- */
 
 function SectionHeader({ title, action }: { title: string; action?: string }) {
   return (
@@ -166,7 +161,6 @@ function FavoriteTile({ name, photo }: { name: string; photo: string }) {
   );
 }
 
-/* ---------- Screen ---------- */
 
 export function HomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
@@ -174,30 +168,23 @@ export function HomeScreen() {
   const user = useAuthStore((s) => s.user);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Catalogo cacheado em memoria de processo (useEstilos). Compartilhado
-  // com SearchResults pro did-you-mean.
   const { estilos } = useEstilos();
 
-  // Sugestoes derivadas: memoiza para nao re-ranquear a cada render do scroll.
   const suggestions = useMemo(
     () => rankSuggestions(searchQuery, estilos),
     [searchQuery, estilos],
   );
 
-  // Enter na barra de busca -> tela de resultados. Vazio = lista todos
-  // os tatuadores ativos (sem filtro de estilo).
   const handleSearchSubmit = () => {
     const estilo = searchQuery.trim() || undefined;
     navigation.navigate('SearchResults', estilo ? { estilo } : undefined);
   };
 
-  // Tap numa sugestao: navega com o nome canonico (sem typo) e limpa a barra.
   const handleSuggestionPress = (estilo: Estilo) => {
     setSearchQuery('');
     navigation.navigate('SearchResults', { estilo: estilo.nome });
   };
 
-  // First name only for the greeting; falls back to "VOCÊ" if no user.
   const firstName = (user?.name?.split(' ')[0] ?? 'VOCÊ').toUpperCase();
 
   return (
@@ -206,10 +193,9 @@ export function HomeScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingTop: insets.top + 16,
-          paddingBottom: insets.bottom + 96, // leave room for the bottom tab bar
+          paddingBottom: insets.bottom + 96,
         }}
       >
-        {/* Greeting row */}
         <View className="flex-row items-start justify-between px-6 mb-5">
           <View className="flex-1">
             <Text className="font-body-semibold text-[12px] text-fg-3 tracking-[1.5px]">
@@ -231,9 +217,6 @@ export function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Editorial headline — 2 linhas: "ARTISTAS" em cima, "perto de VOCÊ" embaixo. O
-            "perto de" italic plum acompanha o "VOCÊ" Bebas pela baseline (alignItems: baseline)
-            pra criar o ritmo editorial sem quebrar em 3 linhas. */}
         <View className="px-6 mb-6">
           <Text className="font-display text-[64px] leading-[60px] text-ink">ARTISTAS</Text>
           <View className="flex-row items-baseline ml-1">
@@ -244,7 +227,6 @@ export function HomeScreen() {
           </View>
         </View>
 
-        {/* Search field */}
         <View className="px-6">
           <Input
             placeholder="Realismo, Aquarela, Blackwork..."
@@ -257,8 +239,6 @@ export function HomeScreen() {
             onSubmitEditing={handleSearchSubmit}
             onTrailingPress={handleSearchSubmit}
           />
-          {/* Dropdown de sugestoes — so renderiza quando ha o que sugerir.
-              `-mt-2` puxa pra perto do Input compensando a `mb-4` interna dele. */}
           {suggestions.length > 0 && (
             <View className="-mt-2 mb-2">
               <SuggestionList suggestions={suggestions} onSelect={handleSuggestionPress} />
@@ -266,7 +246,6 @@ export function HomeScreen() {
           )}
         </View>
 
-        {/* Em destaque (BOOST hero) — primeira seção após pesquisa+filtros (gancho editorial). */}
         <SectionHeader title="Em destaque" />
         <Animated.View entering={FadeInDown.duration(400).springify()} className="px-6">
           <TouchableOpacity
@@ -290,7 +269,6 @@ export function HomeScreen() {
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Favoritos — logo após o destaque pra valorizar retorno do usuário recorrente. */}
         <SectionHeader title="Favoritos" action="Ver tudo" />
         <ScrollView
           horizontal
@@ -302,7 +280,6 @@ export function HomeScreen() {
           ))}
         </ScrollView>
 
-        {/* Por estilo */}
         <SectionHeader title="Por estilo" action="Ver tudo" />
         <ScrollView
           horizontal
@@ -314,7 +291,6 @@ export function HomeScreen() {
           ))}
         </ScrollView>
 
-        {/* Flash do dia */}
         <View className="flex-row items-end justify-between px-6 mb-3 mt-8">
           <View className="flex-row items-center">
             <Text className="font-aux-bold text-[20px] text-ink mr-2">Flash do dia</Text>
@@ -334,7 +310,6 @@ export function HomeScreen() {
           ))}
         </ScrollView>
 
-        {/* Card-dica: NOVIDADE → Simulador */}
         <View className="px-6 mt-8">
           <TouchableOpacity
             activeOpacity={0.9}
@@ -356,7 +331,6 @@ export function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Perto de você (2-col grid of ArtistCard) */}
         <SectionHeader title="Perto de você" />
         <View className="px-6 flex-row flex-wrap" style={{ gap: 12 }}>
           {NEAR_YOU.map((a, i) => (

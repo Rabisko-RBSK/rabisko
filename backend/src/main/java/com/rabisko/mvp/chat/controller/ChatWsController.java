@@ -10,32 +10,6 @@ import com.rabisko.mvp.chat.domain.EnviarMensagemRequest;
 import com.rabisko.mvp.chat.service.ChatService;
 import com.rabisko.mvp.user.domain.User;
 
-// =====================================================================
-// CONTROLLER ChatWsController — handler WebSocket pro envio de mensagens.
-//
-// Esse controller NAO atende HTTP — ele atende mensagens STOMP que
-// chegam via WebSocket. Por isso usa @Controller (sem o "Rest") e
-// @MessageMapping em vez de @PostMapping.
-//
-// Fluxo de uma mensagem em tempo real:
-//
-//   1) Cliente envia STOMP SEND pra /app/chat.send (com payload JSON
-//      do EnviarMensagemRequest no body)
-//   2) Spring roteia pra este handler (porque @MessageMapping("/chat.send"))
-//   3) @AuthenticationPrincipal injeta o User logado (veio do JWT
-//      validado no STOMP CONNECT pelo JwtChannelInterceptor)
-//   4) @Payload injeta o JSON ja desserializado em EnviarMensagemRequest
-//   5) Service salva a mensagem no banco E faz broadcast pelos canais
-//      WebSocket dos dois lados
-//
-// Observacao importante (foi um bug em desenvolvimento):
-//   Pra @AuthenticationPrincipal funcionar aqui no WebSocket precisamos
-//   das 3 pecas configuradas em WebSocketConfig:
-//     - JwtChannelInterceptor (autentica no CONNECT)
-//     - SecurityContextChannelInterceptor (propaga pra thread)
-//     - AuthenticationPrincipalArgumentResolver (injeta no parametro)
-//   Sem isso, `logado` vem null.
-// =====================================================================
 
 @Controller
 public class ChatWsController {

@@ -23,7 +23,6 @@ interface PortfolioCarouselProps {
 }
 
 export function PortfolioCarousel({ images, onImagePress }: PortfolioCarouselProps) {
-  // Largura para caber exatamente 2 imagens + 1 gap dentro da área útil.
   const itemWidth = useMemo(() => {
     const content = Dimensions.get('window').width - SCREEN_PADDING * 2;
     return (content - GAP) / 2;

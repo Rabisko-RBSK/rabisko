@@ -43,7 +43,6 @@ export function useEstilos(): UseEstilosResult {
   useEffect(() => {
     let cancelado = false;
     if (cache) {
-      // ja temos cache; nada a fazer.
       setLoading(false);
       return () => {
         cancelado = true;

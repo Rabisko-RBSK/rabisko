@@ -107,10 +107,6 @@ public class AppointmentService {
             .map(Appointment::getAppointmentId)
             .collect(Collectors.toSet());
 
-        // JDBC já converte TIMESTAMPTZ → LocalDateTime aplicando o fuso do JVM (BRT)
-        // na leitura, então os valores retornados já estão em horário local.
-        // O range da query usa LocalDateTime sem ajuste — o JDBC converte os parâmetros
-        // da mesma forma, mantendo a consistência.
         LocalDateTime inicioDia = data.atStartOfDay();
         LocalDateTime fimDia    = data.atTime(LocalTime.MAX);
 
@@ -215,8 +211,6 @@ public class AppointmentService {
     private AppointmentDTO toDTO(Appointment a, List<AppointmentSession> sessoes) {
         List<AppointmentSessionDTO> sessoesDTO = sessoes.stream()
             .map(s -> {
-                // JDBC já converte TIMESTAMPTZ → LocalDateTime em BRT na leitura;
-                // não aplicar conversão manual aqui.
                 return new AppointmentSessionDTO(
                     s.getSessionId(),
                     s.getDataSessao().toLocalDate(),

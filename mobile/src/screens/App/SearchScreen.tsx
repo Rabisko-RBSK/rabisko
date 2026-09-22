@@ -32,7 +32,6 @@ export function SearchScreen() {
 
   return (
     <View className="flex-1 bg-white">
-      {/* Map */}
       <MapView
         provider={PROVIDER_GOOGLE}
         style={{ width: Dimensions.get('window').width, height: Dimensions.get('window').height }}
@@ -52,7 +51,6 @@ export function SearchScreen() {
         ))}
       </MapView>
 
-      {/* Header Search */}
       <View className="absolute top-14 left-6 right-6">
         <View className="flex-row items-center bg-white rounded-rd-md px-4 py-4 border border-hairline">
           <View className="mr-3">
@@ -69,7 +67,6 @@ export function SearchScreen() {
         </View>
       </View>
 
-      {/* Selected Card Popup */}
       {selectedPlace && (
         <View className="absolute bottom-10 left-6 right-6">
           <TouchableOpacity 

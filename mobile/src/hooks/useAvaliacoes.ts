@@ -38,8 +38,6 @@ export function useAvaliacoes(tatuadorId: string | undefined): UseAvaliacoesResu
       const data = await avaliacaoService.listarPorTatuador(tatuadorId);
       setAvaliacoes(data);
     } catch (err: any) {
-      // Erros 4xx/5xx do axios viram exception. Mensagem amigável na UI —
-      // o detalhe técnico fica no log do dev.
       console.warn(
         '[useAvaliacoes] falha ao carregar avaliações',
         err?.response?.status,

@@ -12,21 +12,6 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-// =====================================================================
-// ENTIDADE Client — linha da tabela `clientes`
-//
-// Modelo de dados que usamos no projeto:
-//   Toda CONTA vive em `users` (login, senha, nome, cpf...). Quando o
-//   usuario e do papel "cliente", criamos TAMBEM uma linha em `clientes`
-//   que aponta pra ele via user_id. Isso e o "perfil cliente".
-//
-// Por que separar em duas tabelas em vez de jogar tudo num User so?
-//   Cada papel tem campos proprios. Cliente tem dados de pagamento;
-//   tatuador tem bio/instagram/estilos; estudio tem cnpj/endereco
-//   comercial. Misturar tudo numa tabela so daria colunas vazias na
-//   maioria das linhas. Separando, cada tabela carrega so o que faz
-//   sentido pra ela.
-// =====================================================================
 
 @Entity
 @Table(name = "clientes")
@@ -39,7 +24,7 @@ import java.util.UUID;
 public class Client {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)   // Java gera o UUID na hora de salvar
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "cliente_id", updatable = false, nullable = false)
     private UUID clientId;
 
@@ -60,7 +45,7 @@ public class Client {
     @Column(name = "dados_pagamento_token")
     private String dadosPagamentoToken;
 
-    @CreationTimestamp        // Hibernate preenche automatico no INSERT
+    @CreationTimestamp
     @Column(name = "data_criacao", updatable = false, nullable = false)
     private LocalDateTime dataCriacao;
 }

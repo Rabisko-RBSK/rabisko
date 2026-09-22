@@ -56,8 +56,6 @@ export function LoginScreen() {
   const insets = useSafeAreaInsets();
   const { role, setRole, setUser, setToken } = useAuthStore();
 
-  // Inputs controlados — antes os <Input> não tinham value/onChangeText e os
-  // valores ficavam só no DOM. Pra mandar pro backend a gente precisa do estado.
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [loading, setLoading] = useState(false);
@@ -66,8 +64,6 @@ export function LoginScreen() {
   const handleLogin = useCallback(async () => {
     setErro(null);
 
-    // Validações client-side mínimas (espelham o @Valid do backend pra falhar
-    // cedo e evitar round-trip inútil quando o usuário esquece um campo).
     if (!email.trim() || senha.length < 8) {
       setErro('Preencha e-mail e senha (mínimo 8 caracteres).');
       return;
@@ -79,24 +75,15 @@ export function LoginScreen() {
 
     setLoading(true);
     try {
-      // 1) Autentica no backend → recebe o JWT.
-      //    O AuthenticationDTO espera { login, senha } — `login` é o email.
       const { token } = await authService.login({ login: email.trim(), senha });
 
-      // 2) Salva o token no store. O interceptor de api/index.ts já lê daqui:
-      //    qualquer chamada subsequente vai com `Authorization: Bearer <token>`.
       setToken(token);
 
-      // 3) Busca o perfil completo. O Bearer token é injetado automaticamente.
       const me = await authService.me();
 
-      // 4) Hidrata o store com o usuário e sincroniza o RoleSwitch com o role
-      //    que veio do banco (mapeando tatuador→artista pro vocabulário do front).
       setUser({ id: me.userId, name: me.nome, email: me.email });
       setRole(backendRoleToFront(me.role));
 
-      // 5) O <Router/> está observando isAuthenticated — assim que setUser
-      //    rodou, ele troca AuthRoutes → AppRoutes e cai em Home automaticamente.
     } catch (e: any) {
       console.warn('[Login] erro:', e?.response?.status, e?.response?.data, e?.message);
       setErro(parseAxiosError(e, 'Falha no login.'));
@@ -120,7 +107,6 @@ export function LoginScreen() {
           paddingBottom: insets.bottom + 24,
         }}
       >
-        {/* Hero — Bebas 32 + role subtitle */}
         <View className="mb-8">
           <Text className="font-display text-[32px] leading-[34px] text-ink mb-3">BEM-VINDO</Text>
           <Text className="font-body text-[15px] leading-[20px] text-fg-2">
@@ -128,10 +114,8 @@ export function LoginScreen() {
           </Text>
         </View>
 
-        {/* Role selector — anchor of the design system curvature beat */}
         <RoleSwitch value={role} onChange={setRole} className="mb-8" />
 
-        {/* Fields controlados */}
         <Input
           label="E-mail"
           placeholder="seu@email.com"
@@ -160,12 +144,10 @@ export function LoginScreen() {
           <Text className="font-body-bold text-[12px] text-plum">Esqueceu a Senha?</Text>
         </TouchableOpacity>
 
-        {/* Mensagem de erro vinda do backend (ou validação local) */}
         {erro && (
           <Text className="font-body text-[12px] text-error mt-2 mb-1 ml-1">{erro}</Text>
         )}
 
-        {/* Spacer keeps the CTA anchored to the bottom regardless of content height */}
         <View className="flex-1" />
 
         <Button title="Entrar" onPress={handleLogin} loading={loading} />

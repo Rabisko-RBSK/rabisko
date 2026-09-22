@@ -67,7 +67,6 @@ export function SettingsScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={row.label}
                 style={{
-                  // 1px hairline divider between rows (not above the first).
                   borderTopWidth: i === 0 ? 0 : 1,
                   borderTopColor: 'rgba(0,0,0,0.06)',
                   gap: 14,

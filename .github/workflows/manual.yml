@@ -1,12 +1,28 @@
-name: Esteira de Desenvolvimento (Dev)
+name: Esteira de Desenvolvimento Manual (Dev)
 
 on:
   workflow_dispatch:
     inputs:
       validar_front:
-        description: 'Validar Frontend'
+        description: 'Validar e Auditar Frontend'
         type: boolean
         default: true
+      validar_back:
+        description: 'Compilar e Auditar Backend'
+        type: boolean
+        default: true
+      deploy_infra:
+        description: 'Atualizar Supabase e Railway'
+        type: boolean
+        default: false
+      build_apk:
+        description: 'Gerar APK de Teste (Android)'
+        type: boolean
+        default: false
+      build_lojas:
+        description: 'Gerar Builds para Lojas (AAB & IPA)'
+        type: boolean
+        default: false
 
 jobs:
 
@@ -14,17 +30,121 @@ jobs:
     name: Validação (Frontend)
     if: ${{ inputs.validar_front }}
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./mobile
+    defaults: { run: { working-directory: ./mobile } }
     steps:
       - name: Clonar o repositório
         uses: actions/checkout@v4
 
       - name: Configurar Node.js
         uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+        with: { node-version: '20' }
 
       - name: Instalar dependências
         run: npm install
+
+      - name: Auditoria de Segurança (Vulnerabilidades Críticas)
+        run: npm audit --audit-level=high
+
+  backend-checks:
+    name: Compilação (Backend)
+    if: ${{ inputs.validar_back }}
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: ./backend } }
+    steps:
+      - name: Clonar o repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with: { java-version: '21', distribution: 'temurin' }
+
+      - name: Compilar Backend
+        run: mvn clean compile -DskipTests
+
+      - name: Verificar vulnerabilidades nas dependências Java
+        run: mvn org.owasp:dependency-check-maven:check
+
+  deploy-infra:
+    name: Atualizar Supabase e Railway
+    if: ${{ inputs.deploy_infra }}
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - name: Clonar o repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Aplicar Migrations no Supabase Dev
+        run: |
+          supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_ID_DEV }}" --password "${{ secrets.SUPABASE_DB_PASSWORD_DEV }}"
+          supabase db push
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Atualizar API no Railway Dev
+        working-directory: ./backend
+        run: |
+          rm -rf ../.git
+          npm i -g @railway/cli
+          railway status
+          # Substitua o ID abaixo pelo Service ID correto de Dev
+          railway up --detach --service "COLE-O-SERVICE-ID-DE-DEV-AQUI"
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_DEV }}
+
+  build-apk:
+    name: Gerar APK (Mobile Preview)
+    if: ${{ inputs.build_apk }}
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: ./mobile } }
+    steps:
+      - name: Clonar o repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with: { node-version: '20' }
+
+      - name: Instalar Dependências
+        run: npm install
+
+      - name: Configurar Expo e EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Disparar Build do APK (Perfil Preview)
+        run: eas build --platform android --profile preview --non-interactive
+
+  build-lojas:
+    name: Gerar Builds para Lojas (Android & iOS)
+    if: ${{ inputs.build_lojas }}
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: ./mobile } }
+    steps:
+      - name: Clonar o repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with: { node-version: '20' }
+
+      - name: Instalar Dependências
+        run: npm install
+
+      - name: Configurar Expo e EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Disparar Build Android (AAB para Google Play)
+        run: eas build --platform android --profile production --non-interactive
+
+      - name: Disparar Build iOS (IPA para App Store)
+        run: eas build --platform ios --profile production --non-interactive

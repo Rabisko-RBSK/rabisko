@@ -4,7 +4,6 @@ import { MensagemDTO } from '../api';
 
 type Listener = (msg: MensagemDTO) => void;
 
-// SockJS usa HTTP/HTTPS no URL (não ws/wss) — ele negocia o transporte sozinho.
 const SOCKJS_URL = (process.env.EXPO_PUBLIC_API_URL ?? '') + '/wss';
 
 let client: Client | null = null;

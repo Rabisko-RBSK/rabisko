@@ -46,11 +46,9 @@ import { escolherImagemDaGaleria } from '../../utils/imagePicker';
  * upload em `POST /artist/me/foto` quando a foto muda).
  */
 
-/* ---------- Constantes ---------- */
 
 const BIO_MAX = 300;
 
-/* ---------- Helpers ---------- */
 
 function iniciais(nome: string): string {
   const partes = nome.trim().split(/\s+/).filter(Boolean);
@@ -68,7 +66,6 @@ function formatHandle(instagram: string): string {
   return `@${instagram.trim().replace(/^@+/, '')}`;
 }
 
-/* ---------- Leaf components ---------- */
 
 /** Foto de perfil circular */
 function ProfilePhoto({ uri }: { uri: string | null }) {
@@ -213,7 +210,6 @@ function ReviewCard({ avaliacao }: { avaliacao: Avaliacao }) {
   );
 }
 
-/* ---------- Screen ---------- */
 
 type ArtistProfileNav = NativeStackNavigationProp<
   ArtistProfileStackParamList,
@@ -230,7 +226,6 @@ export function ArtistProfileScreen() {
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
 
-  // Perfil próprio (nome, foto, "Sobre", portfólio) — do banco.
   const {
     profile,
     loading: profileLoading,
@@ -238,9 +233,6 @@ export function ArtistProfileScreen() {
     reload: reloadProfile,
   } = useArtistProfile();
 
-  // Avaliações — destinatário é o tatuadorId (PK de `tatuadores`, distinto
-  // do user_id). Em rota navegada, vem nos params; no próprio perfil, vem do
-  // profile carregado. `user?.id` não serve aqui — é o user_id.
   const tatuadorId = route.params?.tatuadorId ?? profile?.tatuadorId;
   const {
     avaliacoes,
@@ -251,9 +243,6 @@ export function ArtistProfileScreen() {
     reload: reloadAvaliacoes,
   } = useAvaliacoes(tatuadorId);
 
-  // Recarrega o perfil quando a tela ganha foco DEPOIS da primeira vez (ex.:
-  // voltando do PortfolioScreen, onde o tatuador pode ter editado o portfólio).
-  // O hook já busca no mount; pular o primeiro foco evita o fetch duplo.
   const primeiroFoco = useRef(true);
   useFocusEffect(
     useCallback(() => {
@@ -265,7 +254,6 @@ export function ArtistProfileScreen() {
     }, [reloadProfile]),
   );
 
-  /* ---------- Modo de edição ---------- */
 
   const [editing, setEditing] = useState(false);
   const [editingBio, setEditingBio] = useState('');
@@ -313,13 +301,11 @@ export function ArtistProfileScreen() {
     if (saving) return;
     setSaving(true);
     try {
-      // 1) Foto: se mudou, sobe primeiro e usa a URL retornada no PATCH.
       let novaFotoUrl: string | undefined;
       if (editingFotoUri) {
         novaFotoUrl = await artistService.enviarFotoPerfil(editingFotoUri);
       }
 
-      // 2) PATCH com os campos efetivamente alterados.
       const payload: { bio?: string | null; fotoUrl?: string | null } = {};
       const bioNormalizada = editingBio.trim();
       if (bioNormalizada !== (profile?.bio ?? '')) {
@@ -332,7 +318,6 @@ export function ArtistProfileScreen() {
         await artistService.atualizarMeuPerfil(payload);
       }
 
-      // 3) Recarrega o perfil pra refletir o estado canônico do banco.
       await reloadProfile();
       sairDaEdicao();
     } catch (err: any) {
@@ -350,10 +335,7 @@ export function ArtistProfileScreen() {
     }
   };
 
-  /* ---------- Derivados ---------- */
 
-  // Nome: do perfil; enquanto carrega ou se falhar, usa o nome do cadastro
-  // já guardado no authStore (também veio do banco, no login).
   const displayName = profile?.nome ?? user?.name ?? '—';
   const bio = profile?.bio?.trim();
   const portfolio = profile?.portfolio ?? [];
@@ -362,7 +344,6 @@ export function ArtistProfileScreen() {
     ? (editingFotoUri ?? profile?.fotoUrl ?? null)
     : (profile?.fotoUrl ?? null);
 
-  // Nota do topo = média real das avaliações; "—" enquanto não houver.
   const ratingText =
     total > 0 && notaMedia != null ? formatNota(notaMedia) : '—';
 
@@ -372,7 +353,6 @@ export function ArtistProfileScreen() {
       images: portfolio,
     });
 
-  /* ---------- Header right slot ---------- */
 
   const renderHeaderRight = () => {
     if (editing) {
@@ -404,8 +384,6 @@ export function ArtistProfileScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      {/* Em edição, o chevron passa a significar "sair da edição". Fora dela,
-          só aparece se a tela foi empilhada sobre outra. */}
       <Header
         title="PERFIL"
         onBack={
@@ -423,8 +401,6 @@ export function ArtistProfileScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 96 }}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Hero — foto, nome e nota. Resiliente: renderiza com o nome do
-            authStore e o avatar padrão mesmo antes de o perfil carregar. */}
         <View className="items-center mt-2 px-6">
           <View style={{ width: 120, height: 120 }} className="mb-6">
             {editing ? (
@@ -437,7 +413,6 @@ export function ArtistProfileScreen() {
                 accessibilityLabel="Trocar foto de perfil"
               >
                 <ProfilePhoto uri={fotoUri} />
-                {/* Selo "trocar foto" no canto inferior direito. */}
                 <View
                   className="absolute bottom-0 right-0 w-9 h-9 rounded-rd-pill bg-ink items-center justify-center"
                   style={{
@@ -486,7 +461,6 @@ export function ArtistProfileScreen() {
           </View>
         </View>
 
-        {/* Sobre */}
         <View className="px-6 mt-7">
           <View className="bg-surface rounded-rd-lg p-5">
             <Text className="font-aux-bold text-[16px] text-ink mb-2">Sobre</Text>
@@ -535,10 +509,6 @@ export function ArtistProfileScreen() {
           </View>
         </View>
 
-        {/* Portfólio — carrossel; o botão abre a tela dedicada (onde o
-            tatuador também adiciona/remove imagens). Quando vazio, o rótulo
-            vira "Gerenciar" pra deixar claro que ainda da pra entrar e subir
-            a primeira imagem. */}
         <SectionHeader
           title="Portfólio"
           actionLabel={
@@ -568,7 +538,6 @@ export function ArtistProfileScreen() {
           />
         )}
 
-        {/* Avaliações — carregadas do banco */}
         <SectionHeader
           title="Avaliações"
           count={total > 0 ? total : undefined}

@@ -26,8 +26,6 @@ export function useArtistProfile(): UseArtistProfileResult {
       const data = await artistService.obterMeuPerfil();
       setProfile(data);
     } catch (err: any) {
-      // Erros 4xx/5xx do axios viram exception. Mensagem amigável na UI —
-      // o detalhe técnico fica no log do dev.
       console.warn(
         '[useArtistProfile] falha ao carregar perfil',
         err?.response?.status,

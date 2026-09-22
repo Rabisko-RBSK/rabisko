@@ -12,36 +12,6 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 
-// =====================================================================
-// SERVICE TokenService — emite e valida JWT (JSON Web Token).
-//
-// O que e um JWT?
-//   E uma string em 3 partes separadas por ponto: HEADER.PAYLOAD.SIGNATURE
-//   - HEADER    : metadados (algoritmo de assinatura)
-//   - PAYLOAD   : dados nao-sigilosos (no nosso caso: o email do usuario)
-//   - SIGNATURE : hash criptografico do header + payload, feito com o
-//                 nosso segredo. Se alguem alterar o payload, a
-//                 assinatura nao bate mais e o token e rejeitado.
-//
-// HMAC256: algoritmo SIMETRICO. Quem assina e quem verifica usam o MESMO
-// segredo. Ideal pra nosso caso, porque os dois sao o mesmo servidor.
-//
-// Como configuramos o segredo:
-//   @Value("${api.security.token.secret}") le do application.properties,
-//   que por sua vez le da env var JWT_SECRET (com fallback inseguro em dev).
-//   EM PRODUCAO: usar string longa aleatoria (64+ chars).
-//
-// O QUE o token carrega:
-//   - issuer  ("auth-api") : "quem emitiu este token"
-//   - subject (email)      : "de quem e este token" — o SecurityFilter
-//                            usa pra buscar o User no banco
-//   - exp                  : validade (agora + 2h, fuso de Brasilia)
-//
-// Por que NAO colocar a senha ou dados sensiveis no token?
-//   O PAYLOAD do JWT e legivel por qualquer um — so nao da pra ALTERAR
-//   sem invalidar a assinatura. Pense nele como um envelope com lacre:
-//   da pra ler do lado de fora, mas nao da pra abrir e editar.
-// =====================================================================
 
 @Service
 public class TokenService {
@@ -58,7 +28,7 @@ public class TokenService {
             Algorithm algorithm = Algorithm.HMAC256(secret);
             return JWT.create()
                     .withIssuer("auth-api")
-                    .withSubject(user.getEmail())          // subject = identifica o dono
+                    .withSubject(user.getEmail())
                     .withExpiresAt(generateExpirationDate())
                     .sign(algorithm);
         } catch (JWTCreationException exception) {

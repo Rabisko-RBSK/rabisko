@@ -9,14 +9,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-// =====================================================================
-// REPOSITORY PortfolioImagemRepository — acesso a `portfolio_imagens`.
-//
-// `listarPorTatuador` ordena pelo campo manual `ordem` (NULLs por ultimo)
-// e desempata por imagem_id pra ter ordenacao deterministica. A tabela
-// nao tem coluna de timestamp ainda — se um dia tiver `data_criacao`,
-// trocar o tie-breaker.
-// =====================================================================
 public interface PortfolioImagemRepository extends JpaRepository<PortfolioImagem, UUID> {
 
     @Query("""

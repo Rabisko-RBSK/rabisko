@@ -23,22 +23,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
-// =====================================================================
-// CONTROLLER ChatController — endpoints HTTP do chat.
-//
-// Atencao: este controller cuida das chamadas REST (HTTP tradicionais).
-// O envio de mensagem EM TEMPO REAL nao acontece aqui — acontece em
-// ChatWsController via WebSocket. Aqui ficam as operacoes "frias":
-//
-//   POST /chats                       -> abre ou recupera um chat
-//   GET  /chats                       -> lista de conversas do usuario
-//   GET  /chats/{chatId}/mensagens    -> historico paginado
-//
-// Em todos os endpoints, @AuthenticationPrincipal injeta o User logado
-// (vindo do JWT, populado pelo SecurityFilter).
-//
-// AUTH: herda o padrao -> exige JWT valido.
-// =====================================================================
 
 @RestController
 @RequestMapping("/chats")

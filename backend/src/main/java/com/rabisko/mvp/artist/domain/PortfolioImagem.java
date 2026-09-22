@@ -10,17 +10,6 @@ import lombok.*;
 
 import java.util.UUID;
 
-// =====================================================================
-// ENTIDADE PortfolioImagem — linha da tabela `portfolio_imagens`.
-//
-// Cada imagem do portfolio de um tatuador e uma linha aqui. A imagem em
-// si fica no bucket `portfolio_images` do Supabase Storage; aqui salvamos
-// apenas a URL publica e metadados (descricao, ordem de exibicao).
-//
-// `tatuador_id` e FK pra `tatuadores.tatuador_id` (NAO pra users.user_id).
-// Modelamos como UUID solto (sem @ManyToOne) pra evitar carregar a Artist
-// inteira em toda query — basta o id pra filtrar.
-// =====================================================================
 
 @Entity
 @Table(name = "portfolio_imagens")

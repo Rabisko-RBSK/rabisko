@@ -10,17 +10,6 @@ import lombok.Setter;
 import java.time.LocalDate;
 import java.util.List;
 
-// =====================================================================
-// DTO RegisterArtistaDTO — entrada do POST /user/cadastro/artista.
-//
-// Junta os campos do User base (nome/email/senha/...) + os campos
-// exclusivos de Artist (bio, instagram, endereco, estilos). O backend
-// monta as duas entidades (User + Artist) a partir desse DTO so.
-//
-// O `role` NAO vem aqui: e definido implicitamente pela URL do endpoint
-// (/cadastro/artista -> role = tatuador). Isso impede que alguem se
-// cadastre como ADMIN forjando o JSON.
-// =====================================================================
 
 @Getter
 @Setter
@@ -43,13 +32,12 @@ public class RegisterArtistaDTO {
 
     private String cpf;
 
-    // ----- Campos especificos do Artist (perfil tatuador) -----
 
-    private String bio;            // texto livre sobre o profissional
+    private String bio;
 
-    private String instagram;      // @handle
+    private String instagram;
 
-    private String endereco;       // relevante quando o tatuador e autonomo (sem estudio)
+    private String endereco;
 
     /**
      * Lista de NOMES de estilos que o tatuador faz (ex.: ["Realismo", "Blackwork"]).

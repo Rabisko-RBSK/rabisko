@@ -7,7 +7,6 @@ import { Header } from '../../components/common/Header';
 import { SessionDetailModal } from './SessionDetailModal';
 import { appointmentService, SessaoListItemDTO } from '../../services/api';
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const PT_MONTHS_SHORT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 const PT_WEEKDAYS_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -35,7 +34,6 @@ function formatDuracao(min: number): string {
   return `${h}h ${m}min`;
 }
 
-// ─── Component ───────────────────────────────────────────────────────────────
 
 type Tab = 'upcoming' | 'past';
 
@@ -76,7 +74,6 @@ export function BookingsScreen() {
           MINHA AGENDA
         </Text>
 
-        {/* Toggle — Próximas / Concluídas */}
         <View className="flex-row gap-1 p-1 bg-surface rounded-rd-pill mb-5">
           {([['upcoming', 'Próximas'], ['past', 'Histórico']] as const).map(([key, label]) => {
             const active = view === key;
@@ -127,7 +124,6 @@ export function BookingsScreen() {
   );
 }
 
-// ─── Row ─────────────────────────────────────────────────────────────────────
 
 function SessionRow({ sessao, today, onOpen }: { sessao: SessaoListItemDTO; today: string; onOpen: () => void }) {
   const isToday = sessao.data === today;
@@ -141,7 +137,6 @@ function SessionRow({ sessao, today, onOpen }: { sessao: SessaoListItemDTO; toda
       accessibilityRole="button"
       accessibilityLabel={`Sessão com ${sessao.outroNome}`}
     >
-      {/* Date / time column */}
       <View className="items-center" style={{ minWidth: 52 }}>
         <Text className={`font-body-bold text-[13px] ${isToday ? 'text-surface' : 'text-ink'}`}>
           {isToday ? 'HOJE' : formatDataCurta(sessao.data).split(', ')[1]}
@@ -156,10 +151,8 @@ function SessionRow({ sessao, today, onOpen }: { sessao: SessaoListItemDTO; toda
         )}
       </View>
 
-      {/* Separator */}
       <View className="w-px self-stretch" style={{ backgroundColor: isToday ? 'rgba(255,255,255,0.2)' : '#E5E0E8' }} />
 
-      {/* Name / duration */}
       <View className="flex-1 min-w-0">
         <Text
           className={`font-body-semibold text-[14px] ${isToday ? 'text-surface' : 'text-ink'}`}
@@ -175,7 +168,6 @@ function SessionRow({ sessao, today, onOpen }: { sessao: SessaoListItemDTO; toda
         </Text>
       </View>
 
-      {/* Status indicator */}
       {isDone ? (
         <CheckCircle2 size={20} color={isToday ? '#FFFFFF' : '#602C66'} />
       ) : (

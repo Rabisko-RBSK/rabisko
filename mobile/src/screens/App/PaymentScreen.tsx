@@ -77,7 +77,6 @@ export function PaymentScreen() {
 
   const handleConfirm = useCallback(() => {
     setProcessing(true);
-    // TODO: real payment call. Simulated processing for now (~700ms) before navigating to Confirmed.
     setTimeout(() => {
       setProcessing(false);
       navigation.navigate('Confirmed', {
@@ -98,7 +97,6 @@ export function PaymentScreen() {
       >
         <Stepper current={2} />
 
-        {/* Projeto escolhido */}
         <Text className="font-body text-[13px] text-fg-2 mt-4 mb-2">Projeto escolhido</Text>
         <View
           className="rounded-rd-lg overflow-hidden bg-surface mb-6"
@@ -107,7 +105,6 @@ export function PaymentScreen() {
           <Image source={{ uri: PROJECT_PHOTO }} className="w-full h-full" />
         </View>
 
-        {/* Breakdown card */}
         <View className="bg-surface rounded-rd-lg p-5 mb-8">
           <BreakdownRow label="Valor" value="R$ 200,00" />
           <BreakdownRow label="Sessões" value="3x" />
@@ -116,7 +113,6 @@ export function PaymentScreen() {
           <BreakdownRow label="Valor Total" value="R$ 220,00" bold />
         </View>
 
-        {/* Método de Pagamento */}
         <Text className="font-aux-bold text-[20px] text-ink mb-3">Método de Pagamento</Text>
         <View className="flex-row mb-5" style={{ gap: 10 }}>
           {METHODS.map((m) => (
@@ -130,7 +126,6 @@ export function PaymentScreen() {
           ))}
         </View>
 
-        {/* Encryption note */}
         <View className="flex-row items-center mb-1">
           <View style={{ marginRight: 8 }}>
             <Lock size={12} color="#6B6B6B" />
@@ -141,7 +136,6 @@ export function PaymentScreen() {
         </View>
       </ScrollView>
 
-      {/* Sticky CTA */}
       <View className="absolute left-0 right-0 bottom-0 bg-background pt-3 px-6" style={{ paddingBottom: 24 }}>
         <Button
           title={processing ? 'Processando…' : 'Confirmar Pagamento'}

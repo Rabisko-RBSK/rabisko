@@ -44,7 +44,6 @@ export function ChatScreen() {
     refresh();
   }, [refresh]);
 
-  // Sempre que chegar mensagem nova pelo WS, recarrega a lista pra atualizar preview/ordem.
   useEffect(() => {
     return stompClient.addListener(() => {
       refresh();

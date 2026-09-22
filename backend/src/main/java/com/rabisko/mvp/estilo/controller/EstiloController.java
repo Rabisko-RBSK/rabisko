@@ -10,16 +10,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-// =====================================================================
-// CONTROLLER EstiloController — endpoints do catalogo `estilos`.
-//
-// Hoje so existe um: GET /estilos (lista todos).
-//
-// Usado pelo autocomplete da busca no app. O front cacheia em memoria,
-// entao chamamos uma vez quando o app sobe.
-//
-// AUTH: herda o padrao -> exige JWT valido.
-// =====================================================================
 
 @RestController
 @RequestMapping("/estilos")

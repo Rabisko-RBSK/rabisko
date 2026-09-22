@@ -23,7 +23,6 @@ export function SearchScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      {/* Header Search */}
       <View style={{ paddingTop: 56, paddingHorizontal: 24 }}>
         <View className="flex-row items-center bg-paper rounded-rd-md px-4 py-4 border border-hairline">
           <View className="mr-3">
@@ -40,7 +39,6 @@ export function SearchScreen() {
         </View>
       </View>
 
-      {/* Map Placeholder for Web */}
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.hairline }}>
         <MapPin size={48} color={theme.colors.fg3} />
         <Text style={{ color: theme.colors.fg2, fontSize: 16, marginTop: 12 }}>
@@ -51,7 +49,6 @@ export function SearchScreen() {
         </Text>
       </View>
 
-      {/* Results list */}
       <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
         {MARKERS.map((marker) => (
           <TouchableOpacity

@@ -37,7 +37,6 @@ export function ManagementScreen() {
           <RefreshControl refreshing={loading} onRefresh={reload} tintColor="#602C66" />
         }
       >
-        {/* Estado inicial: spinner centralizado enquanto a primeira request roda. */}
         {loading && !dashboard ? (
           <View className="items-center justify-center py-20">
             <ActivityIndicator size="large" color="#602C66" />
@@ -64,7 +63,6 @@ export function ManagementScreen() {
               value={dashboard?.totalAgendamentosMes ?? 0}
               hint="Serviços criados desde o primeiro dia do mês."
             />
-            {/* TODO v2: tempo médio de resposta + line chart de mensagens 14d + top clientes */}
           </View>
         )}
       </ScrollView>
@@ -72,10 +70,6 @@ export function ManagementScreen() {
   );
 }
 
-// ---------------------------------------------------------------------
-// Subcomponentes locais — pequenos demais pra virar arquivo separado;
-// se outros dashboards reusarem, promover pra components/common.
-// ---------------------------------------------------------------------
 
 interface KpiCardProps {
   icon: React.ReactNode;

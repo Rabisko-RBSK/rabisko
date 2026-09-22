@@ -12,7 +12,6 @@ export function levenshtein(a: string, b: string): number {
   if (a.length === 0) return b.length;
   if (b.length === 0) return a.length;
 
-  // Sempre coloca a menor no eixo da matriz pra otimizar memoria.
   if (a.length > b.length) {
     [a, b] = [b, a];
   }
@@ -26,9 +25,9 @@ export function levenshtein(a: string, b: string): number {
     for (let i = 1; i <= a.length; i++) {
       const cost = a[i - 1] === b[j - 1] ? 0 : 1;
       curr[i] = Math.min(
-        prev[i] + 1,        // deletion
-        curr[i - 1] + 1,    // insertion
-        prev[i - 1] + cost, // substitution
+        prev[i] + 1,
+        curr[i - 1] + 1,
+        prev[i - 1] + cost,
       );
     }
     [prev, curr] = [curr, prev];
@@ -68,7 +67,7 @@ export function closestMatch<T>(
     const d = levenshtein(q, normalize(getName(item)));
     if (best === null || d < best.distance) {
       best = { item, distance: d };
-      if (d === 0) break; // exato; nao tem como melhorar
+      if (d === 0) break;
     }
   }
   if (!best || best.distance > limit) return null;

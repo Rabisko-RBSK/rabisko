@@ -12,20 +12,6 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-// =====================================================================
-// ENTIDADE Studio — linha da tabela `estudios`.
-//
-// Perfil de "casa de tatuagem". Como Artist e Client, complementa um
-// User (o dono do estudio).
-//
-// Diferenca importante em relacao a Artist:
-//   Aqui guardamos nome/email/telefone NA PROPRIA linha do estudio,
-//   mesmo ja tendo esses dados no User. Por que? Porque estudio e uma
-//   ENTIDADE COMERCIAL: pode ter NOME FANTASIA diferente do nome do
-//   dono, EMAIL COMERCIAL diferente do pessoal, etc. No cadastro inicial
-//   sao copiados do User, mas a tela "editar estudio" (futura) deixa
-//   editar separado.
-// =====================================================================
 
 @Entity
 @Table(name = "estudios")
@@ -50,14 +36,12 @@ public class Studio {
     private UUID userId;
 
     @Column(nullable = false)
-    private String nome;       // nome do estudio (pode ser nome fantasia)
+    private String nome;
 
     @Column(name = "email", nullable = false)
-    private String email;      // email comercial
+    private String email;
 
     @Column(unique = true)
-    // cnpj UNIQUE: o banco rejeita 2 estudios com mesmo CNPJ. Nullable pq
-    // dono pode cadastrar o estudio antes de ter o CNPJ formalizado.
     private String cnpj;
 
     private String telefone;

@@ -26,8 +26,6 @@ export function LandingScreen() {
       className="flex-1 bg-background items-center justify-center px-6"
       style={{ paddingTop: insets.top, paddingBottom: insets.bottom + 16 }}
     >
-      {/* Logo block — marca Bisko Branco (polvo). PNG já é ink+branco; overflow-hidden clipa
-          os cantos arredondados sobre a imagem. */}
       <View
         className="bg-ink rounded-rd-2xl overflow-hidden mb-7"
         style={{ width: 132, height: 132 }}

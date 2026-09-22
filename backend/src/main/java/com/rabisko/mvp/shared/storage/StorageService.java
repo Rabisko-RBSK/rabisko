@@ -13,27 +13,6 @@ import java.io.IOException;
 import java.util.Objects;
 import java.util.UUID;
 
-// =====================================================================
-// SERVICE StorageService — fala com o Supabase Storage via REST.
-//
-// Por que REST direto e nao um SDK?
-//   O SDK oficial do Supabase pra Java nao existe; o pro JS nao roda
-//   aqui. A API REST do Storage e estavel e simples — 1 POST cobre
-//   upload, 1 DELETE cobre exclusao.
-//
-// Fluxo de upload:
-//   1) Mobile manda o arquivo multipart para o backend.
-//   2) Aqui geramos um nome unico (UUID + ext) e fazemos
-//      POST {SUPABASE_URL}/storage/v1/object/{bucket}/{nome}
-//      Authorization: Bearer {SERVICE_ROLE_KEY}
-//   3) Devolvemos a URL publica para o caller gravar no banco.
-//
-// IMPORTANTE: usamos a SERVICE_ROLE_KEY, que tem permissao de escrita
-// nos buckets. Ela NUNCA pode ser exposta ao cliente — fica so no .env
-// do backend. Os buckets profile_images / portfolio_images devem estar
-// configurados como `public` no painel do Supabase para que a URL
-// retornada (.../object/public/...) seja acessivel sem token.
-// =====================================================================
 
 @Service
 public class StorageService {
@@ -67,7 +46,6 @@ public class StorageService {
         deleteByUrl(portfolioBucket, url);
     }
 
-    // -----------------------------------------------------------------
 
     private String upload(String bucket, MultipartFile file) {
         if (file == null || file.isEmpty()) {
@@ -114,14 +92,12 @@ public class StorageService {
             throw new RuntimeException("Erro ao subir imagem para o Supabase Storage.", e);
         }
 
-        // URL publica padrao do Supabase Storage (assume bucket publico).
         return supabaseUrl + "/storage/v1/object/public/" + bucket + "/" + objectName;
     }
 
     private void deleteByUrl(String bucket, String url) {
         if (url == null || url.isBlank()) return;
 
-        // Extrai o nome do objeto a partir da URL publica.
         String marker = "/storage/v1/object/public/" + bucket + "/";
         int idx = url.indexOf(marker);
         if (idx < 0) {

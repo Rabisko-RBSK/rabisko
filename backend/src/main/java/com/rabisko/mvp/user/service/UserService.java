@@ -17,29 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 
-// =====================================================================
-// SERVICE UserService — orquestra os fluxos de cadastro e exclusao.
-//
-// O que e a CAMADA DE SERVICO?
-//   Controllers cuidam de HTTP (rota, status, body). Repositorios
-//   cuidam do banco. Entre eles, a CAMADA DE SERVICO carrega a
-//   LOGICA DE NEGOCIO — validacoes, transformacoes, orquestracao
-//   de varios repositorios em uma operacao so.
-//
-// Aqui especificamente:
-//   - Cada papel tem 1 metodo publico de cadastro
-//   - Cada um cria 2 linhas no banco: User + a entidade do papel
-//     (Client, Artist ou Studio), via service do respectivo aggregate
-//   - excluirUser remove a conta por email
-//
-// @Transactional — POR QUE?
-//   Cadastro envolve 2 INSERTs (User + Client/Artist/Studio). Se o
-//   segundo falhar, queremos que o primeiro tambem seja DESFEITO,
-//   senao ficaria um User "orfao" no banco (com email UNIQUE travado).
-//   @Transactional garante que tudo aconteca em uma so transacao:
-//   ou tudo commita, ou tudo da rollback.
-//   Tambem e necessario pra deleteByEmail (regra do Spring Data).
-// =====================================================================
 
 @Service
 public class UserService {
@@ -49,7 +26,6 @@ public class UserService {
     @Autowired private ArtistService artistService;
     @Autowired private StudioService studioService;
 
-    // -------------------- CADASTRO CLIENTE --------------------
 
     @Transactional
     public User cadastrarCliente(UserDTO body) {
@@ -60,15 +36,14 @@ public class UserService {
                 body.getTelefone(),
                 body.getDataNasc(),
                 body.getCpf(),
-                UserRole.cliente,                  // role HARDCODED — nunca vem do payload
+                UserRole.cliente,
                 body.isTermosAceitos()
         );
         User salvo = userRepository.save(novoUser);
-        clientService.cadastrarCliente(salvo);     // cria linha em `clientes` apontando pro User
+        clientService.cadastrarCliente(salvo);
         return salvo;
     }
 
-    // -------------------- CADASTRO ARTISTA --------------------
 
     @Transactional
     public User cadastrarArtista(RegisterArtistaDTO body) {
@@ -83,32 +58,28 @@ public class UserService {
                 body.isTermosAceitos()
         );
         User salvo = userRepository.save(novoUser);
-        artistService.cadastrarArtista(salvo, body);   // cria linha em `tatuadores` + vincula estilos
+        artistService.cadastrarArtista(salvo, body);
         return salvo;
     }
 
-    // -------------------- CADASTRO ESTUDIO --------------------
 
     @Transactional
     public User cadastrarEstudio(RegisterEstudioDTO body) {
-        // Estudio e pessoa juridica: nao tem dataNasc nem cpf.
-        // O nome no User e o nome do estudio (no cadastro inicial sao iguais).
         User novoUser = construirUser(
                 body.getNome(),
                 body.getEmail(),
                 body.getSenha(),
                 body.getTelefone(),
-                null,                  // dataNasc
-                null,                  // cpf
+                null,
+                null,
                 UserRole.estudio,
                 body.isTermosAceitos()
         );
         User salvo = userRepository.save(novoUser);
-        studioService.cadastrarEstudio(salvo, body);   // cria linha em `estudios`
+        studioService.cadastrarEstudio(salvo, body);
         return salvo;
     }
 
-    // -------------------- EXCLUSAO --------------------
 
     @Transactional
     public Long excluirUser(ExcludeDTO body) {
@@ -118,9 +89,6 @@ public class UserService {
         return userRepository.deleteByEmail(body.email());
     }
 
-    // ==================================================================
-    // HELPER PRIVADO
-    // ==================================================================
 
     /**
      * Centraliza a montagem do User pra evitar copy-paste nos 3 metodos
@@ -151,12 +119,12 @@ public class UserService {
         return User.builder()
                 .nome(nome)
                 .email(email)
-                .senha(senhaHash)         // SEMPRE o hash, nunca a senha plain
+                .senha(senhaHash)
                 .telefone(telefone)
                 .dataNasc(dataNasc)
                 .cpf(cpf)
                 .role(role)
-                .status(true)             // nasce ativo
+                .status(true)
                 .termosAceitos(termosAceitos)
                 .build();
     }
