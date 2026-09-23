@@ -7,7 +7,9 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 
@@ -34,13 +36,8 @@ public class PortfolioImagem {
     @Column(nullable = false)
     private String url;
 
-    /** Legenda opcional (ex.: "Realismo, 8h"). */
-    private String descricao;
-
-    /**
-     * Ordem manual de exibicao no carrossel. Nullable — quando null, a UI
-     * cai na ordem de insercao (imagem_id ASC, ordenacao deterministica).
-     * Permite o tatuador "fixar" trabalhos no inicio sem ter que reuploadar.
-     */
-    private Integer ordem;
+    /** Momento do upload — define a ordem de exibicao (mais recentes primeiro). */
+    @CreationTimestamp
+    @Column(name = "data_upload", updatable = false, nullable = false)
+    private LocalDateTime dataUpload;
 }

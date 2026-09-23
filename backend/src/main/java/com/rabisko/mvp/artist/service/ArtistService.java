@@ -73,7 +73,6 @@ public class ArtistService {
                 .userId(user.getUserId())
                 .bio(body.getBio())
                 .instagram(body.getInstagram())
-                .endereco(body.getEndereco())
                 .vinculadoEstudio(false)
                 .estilos(resolverEstilos(body.getEstilos()))
                 .build();
@@ -208,14 +207,13 @@ public class ArtistService {
     }
 
 
-    public PortfolioImagemDTO adicionarImagemPortfolio(User user, MultipartFile file, String descricao) {
+    public PortfolioImagemDTO adicionarImagemPortfolio(User user, MultipartFile file) {
         Artist artist = exigirArtistDoUser(user);
         String url = storageService.uploadPortfolio(file);
 
         PortfolioImagem nova = PortfolioImagem.builder()
                 .tatuadorId(artist.getTatuadorId())
                 .url(url)
-                .descricao((descricao == null || descricao.isBlank()) ? null : descricao.trim())
                 .build();
         nova = portfolioImagemRepository.save(nova);
         return PortfolioImagemDTO.fromEntity(nova);

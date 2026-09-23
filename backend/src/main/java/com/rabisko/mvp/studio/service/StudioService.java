@@ -21,7 +21,6 @@ public class StudioService {
                 .email(user.getEmail())
                 .cnpj(body.getCnpj())
                 .telefone(body.getTelefone())
-                .endereco(body.getEndereco())
                 .build();
 
         return studioRepository.save(novoStudio);

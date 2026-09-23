@@ -26,6 +26,10 @@ public interface ArtistRepository extends JpaRepository<Artist, UUID> {
      *    Senao -> calcula distancia entre (lat, lng) e a coordenada do
      *             tatuador via Haversine; aceita se <= raioKm
      *
+     * Endereco/coordenada do tatuador: se ele e vinculado a um estudio, vale
+     * o endereco do ESTUDIO; se e autonomo, vale o endereco proprio. Ambos
+     * ficam na tabela `enderecos` (via endereco_id).
+     *
      * 6371 = raio medio da Terra em km. LEAST(1.0, ...) protege contra
      * imprecisao numerica que poderia fazer acos receber > 1.0 (NaN).
      *
@@ -35,9 +39,17 @@ public interface ArtistRepository extends JpaRepository<Artist, UUID> {
     @Query(value = """
             SELECT t.tatuador_id AS tatuadorId,
                    u.nome        AS nome,
-                   u.email       AS email
+                   u.email       AS email,
+                   CASE WHEN en.endereco_id IS NULL THEN NULL
+                        ELSE en.logradouro
+                             || COALESCE(', ' || en.numero, '')
+                             || COALESCE(' - ' || en.bairro, '')
+                             || ', ' || en.cidade || '/' || en.uf
+                   END           AS endereco
             FROM tatuadores t
             JOIN users u ON u.user_id = t.user_id
+            LEFT JOIN estudios s ON s.estudio_id = t.estudio_id
+            LEFT JOIN enderecos en ON en.endereco_id = COALESCE(s.endereco_id, t.endereco_id)
             WHERE u.status_ativo = TRUE
               AND (
                     :semEstilo = TRUE
@@ -52,13 +64,13 @@ public interface ArtistRepository extends JpaRepository<Artist, UUID> {
               AND (
                     :semDistancia = TRUE
                     OR (
-                        t.latitude IS NOT NULL
-                        AND t.longitude IS NOT NULL
+                        en.latitude IS NOT NULL
+                        AND en.longitude IS NOT NULL
                         AND 6371 * acos(
                               LEAST(1.0,
-                                  cos(radians(:lat)) * cos(radians(t.latitude))
-                                * cos(radians(t.longitude) - radians(:lng))
-                                + sin(radians(:lat)) * sin(radians(t.latitude))
+                                  cos(radians(:lat)) * cos(radians(en.latitude))
+                                * cos(radians(en.longitude) - radians(:lng))
+                                + sin(radians(:lat)) * sin(radians(en.latitude))
                               )
                         ) <= :raioKm
                     )

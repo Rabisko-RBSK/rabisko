@@ -120,6 +120,12 @@ INSERT INTO "public"."enderecos"
      'Rua Augusta', '500', 'Loja 2', 'Consolação', 'São Paulo', 'SP', -23.5537000, -46.6614900)
 ON CONFLICT ("endereco_id") DO NOTHING;
 
+-- liga o estúdio ao seu endereço (FK estudios.endereco_id; o INSERT de
+-- estudios roda antes de enderecos existir, por isso o UPDATE aqui)
+UPDATE "public"."estudios"
+   SET "endereco_id" = '66666666-6666-6666-6666-666666666603'
+ WHERE "estudio_id" = '33333333-3333-3333-3333-333333333301';
+
 -- ----------------------------------------------------------------------------
 -- portfolio_imagens: galeria de trabalhos de cada tatuador
 -- ----------------------------------------------------------------------------

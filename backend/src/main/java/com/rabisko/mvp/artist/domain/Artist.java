@@ -14,7 +14,6 @@ import jakarta.persistence.Table;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
@@ -44,16 +43,18 @@ public class Artist {
      * Vinculo opcional com um estudio. Nullable porque o tatuador pode ser
      * AUTONOMO (trabalha por conta propria, sem casa de tatuagem). Quando
      * tem estudio, o app mostra o endereco do estudio; quando nao tem,
-     * mostra o `endereco` abaixo.
+     * mostra o endereco proprio (`enderecoId` abaixo).
      */
     @Column(name = "estudio_id")
     private UUID estudioId;
 
     /**
-     * Endereco de quem trabalha autonomo. Texto livre (string) por enquanto.
-     * No futuro, vira FK pra uma tabela `enderecos` polimorfica.
+     * FK pra tabela `enderecos` — endereco de quem trabalha autonomo.
+     * Nullable. As coordenadas (latitude/longitude) usadas na busca por
+     * distancia ficam la, nao aqui.
      */
-    private String endereco;
+    @Column(name = "endereco_id")
+    private UUID enderecoId;
 
     private String bio;
 
@@ -74,16 +75,6 @@ public class Artist {
      */
     @Column(name = "vinculado_estudio", nullable = false)
     private boolean vinculadoEstudio;
-
-    /**
-     * Coordenadas opcionais (latitude/longitude). Usadas pela busca
-     * "tatuadores perto de mim" — o ArtistRepository.buscar() usa formula
-     * de Haversine em SQL nativo pra calcular distancia. Null = o tatuador
-     * nao aparece nesse filtro.
-     */
-    private BigDecimal latitude;
-
-    private BigDecimal longitude;
 
     /**
      * Relacao MUITOS-PRA-MUITOS (Many-to-Many) com a tabela `estilos`.

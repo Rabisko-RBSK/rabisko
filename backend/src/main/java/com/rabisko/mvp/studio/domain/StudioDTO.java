@@ -8,7 +8,8 @@ public record StudioDTO(
     String email,
     String cnpj,
     String telefone,
-    String endereco
+    UUID enderecoId,
+    String fotoPerfilUrl
 ) {
     public static StudioDTO from(Studio s) {
         return new StudioDTO(
@@ -17,7 +18,8 @@ public record StudioDTO(
             s.getEmail(),
             s.getCnpj(),
             s.getTelefone(),
-            s.getEndereco()
+            s.getEnderecoId(),
+            s.getFotoPerfilUrl()
         );
     }
 }

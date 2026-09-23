@@ -99,16 +99,15 @@ public class ArtistController {
     }
 
     /**
-     * Upload de uma imagem para o portfolio. Multipart com campo `file` e
-     * opcional `descricao`. Devolve a imagem ja persistida (com imagemId).
+     * Upload de uma imagem para o portfolio. Multipart com campo `file`.
+     * Devolve a imagem ja persistida (com imagemId).
      */
     @PostMapping("/me/portfolio")
     public ResponseEntity<PortfolioImagemDTO> adicionarImagemPortfolio(
             @AuthenticationPrincipal User user,
-            @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "descricao", required = false) String descricao
+            @RequestParam("file") MultipartFile file
     ) {
-        return ResponseEntity.ok(artistService.adicionarImagemPortfolio(user, file, descricao));
+        return ResponseEntity.ok(artistService.adicionarImagemPortfolio(user, file));
     }
 
     /** Remove imagem do portfolio (apaga linha + tenta apagar do Storage). */
