@@ -85,4 +85,6 @@ public interface ArtistRepository extends JpaRepository<Artist, UUID> {
             @Param("lng") Double lng,
             @Param("raioKm") Double raioKm
     );
+
+    List<Artist> findByEstudioId(UUID estudioId);
 }
