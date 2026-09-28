@@ -328,3 +328,56 @@ ui_kits/mobile-app/
 ```
 
 For production: port to Next.js or React Native. The CSS tokens map 1:1 to a Tailwind config or theme object.
+
+## 13. Dashboard do Estúdio
+
+A tela do Estúdio usa a referência visual aprovada para a issue #93. Os tokens
+específicos ficam em `src/theme/studioDashboard.ts`, sem alterar as telas atuais:
+
+| Token | Valor | Uso |
+|---|---|---|
+| background | #F1EBE4 | Fundo bege |
+| card | #FFFFFF | Cards |
+| text | #1C1917 | Texto principal |
+| muted | #7A7570 | Texto secundário |
+| purple | #5B2368 | Gráfico, seleção e indicadores |
+| tint | #F5EEF7 | Indicadores e avatares |
+| soft | #F8F6F4 | Linhas de tatuadores e trilhas |
+| line | #F1ECE7 | Divisórias e grade |
+| radius.card | 26px | Cards |
+
+Inter reutiliza as fontes já carregadas no app. Cards brancos têm sombra suave
+`0 4px 20px -2px rgba(28,25,23,0.05)`. Margens laterais: 16px; intervalo: 16px;
+cards: 20px de padding; indicadores: 16px. A navegação usa o componente
+`BottomNav` existente, sem alterações visuais: fundo cream, ícones e indicador
+de seleção plum, animação e safe area. Apenas os destinos e labels correspondem
+às abas do Estúdio. O ícone de Dashboard acompanha o de Gestão do tatuador.
+
+Em larguras inferiores a 360px ou com fonte ampliada acima de 120%, indicadores
+ficam empilhados. A página tem largura máxima de 560px e rolagem vertical, com
+um único gráfico principal. A miniatura de receita é decorativa.
+
+### Dados da primeira versão
+
+O indicador “Demonstração” identifica os valores fictícios. Nomes e IDs de
+tatuadores e o catálogo de estilos vêm de `supabase/seed.sql`; nenhum dado é
+consultado ou escrito no banco. Valores, datas e reservas são simulados.
+O modelo de demonstração considera uma reserva por serviço. Receita é o valor
+contratado, excluindo cancelamentos; não representa caixa ou pagamentos.
+Novos/recorrentes classifica agendamentos, e não clientes únicos. A média usa
+os dias transcorridos no mês atual e todos os dias do mês anterior.
+
+Ainda falta um endpoint autenticado do estúdio para substituir a fonte de dados.
+Na integração, filtrar pelo estúdio do usuário, agregar serviços sem duplicar
+valores por sessão e definir a relação de serviço com estilo (ausente no schema).
+Equipe e agenda desta versão consultam o mesmo conjunto de demonstração.
+
+### Validação
+
+- `npm run test:studio` (Node.js 22.18 ou superior): cálculos, cancelamentos,
+  meses curtos, virada de ano e períodos vazios.
+- `npx tsc --noEmit` e `npm run lint` com as dependências do mobile instaladas.
+- Conferir no Expo: perfil Estúdio, seleção dos dois meses, “Ver todos”, abas,
+  voltar, fechamento de modais, logout, 320/360/390/430px e fonte ampliada.
+- Conferir que Cliente e Tatuador mantêm a navegação anterior.
+
