@@ -9,7 +9,8 @@
     "android": "expo start --android --offline",
     "ios": "expo start --ios --offline",
     "web": "expo start --web --offline",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "test:studio": "node --experimental-strip-types tests/studioDashboard.test.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/bebas-neue": "^0.4.1",
@@ -68,3 +69,4 @@
   },
   "private": true
 }
+
