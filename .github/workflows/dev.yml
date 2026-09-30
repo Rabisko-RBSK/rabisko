@@ -27,11 +27,10 @@ jobs:
       - name: Instalar dependências
         run: npm install
 
-      # Comandos desativados temporariamente para não travar a esteira hoje
-      # - name: Verificar tipagem (TypeScript)
-      #   run: npx tsc --noEmit
-      # - name: Verificar padrões (ESLint)
-      #   run: npm run lint
+      - name: Verificar tipagem (TypeScript)
+        run: npx tsc --noEmit
+      - name: Verificar padrões (ESLint)
+        run: npm run lint
 
   backend-checks:
     name: Compilação (Backend)

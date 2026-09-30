@@ -63,10 +63,10 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.4",
+    "@types/sockjs-client": "^1.5.4",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~57.0.2",
     "typescript": "~6.0.3"
   },
   "private": true
 }
-
