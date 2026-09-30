@@ -203,7 +203,7 @@ INSERT INTO "public"."reservas"
      '2026-08-10 09:30:00-03', '2026-08-20 15:00:00-03', 180, 'concluida', 'Sessão realizada sem intercorrências.'),
     ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa03',
      '44444444-4444-4444-4444-444444444403', '22222222-2222-2222-2222-222222222201',
-     now() - interval '1 day', '2026-09-25 10:00:00-03', 240, 'confirmada', 'Primeira sessão do fechamento de costas.')
+     now() - interval '1 day', now() + interval '5 days', 240, 'confirmada', 'Primeira sessão do fechamento de costas.')
 ON CONFLICT ("reserva_id") DO NOTHING;
 
 -- ----------------------------------------------------------------------------
@@ -216,7 +216,7 @@ INSERT INTO "public"."qrcodes"
      '2026-08-20 14:50:00-03', '2026-08-20 20:00:00-03', '2026-08-19 09:00:00-03'),
     ('dddddddd-dddd-dddd-dddd-dddddddddd02', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02',
      'seedtoken0000000000000000000000000000000000000000000000000002', false,
-     NULL, '2026-09-25 23:59:59-03', now())
+     NULL, now() + interval '6 days', now())
 ON CONFLICT ("qrcode_id") DO NOTHING;
 
 -- ----------------------------------------------------------------------------
