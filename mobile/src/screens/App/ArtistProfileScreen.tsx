@@ -17,7 +17,15 @@ import {
   useRoute,
 } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Camera, Check, Pencil, Star, UserRound } from 'lucide-react-native';
+import {
+  Camera,
+  Check,
+  ChevronRight,
+  Pencil,
+  Star,
+  Store,
+  UserRound,
+} from 'lucide-react-native';
 
 import { Header } from '../../components/common/Header';
 import { PortfolioCarousel } from '../../components/common/PortfolioCarousel';
@@ -25,6 +33,7 @@ import { ArtistProfileStackParamList } from '../../routes/artist-profile.stack';
 import { useAuthStore } from '../../store/authStore';
 import { useArtistProfile } from '../../hooks/useArtistProfile';
 import { useAvaliacoes } from '../../hooks/useAvaliacoes';
+import { useConvites } from '../../hooks/useConvites';
 import { Avaliacao } from '../../services/api/avaliacaoService';
 import { artistService } from '../../services/api/artistService';
 import { tempoRelativo } from '../../utils/datas';
@@ -37,7 +46,9 @@ import { escolherImagemDaGaleria } from '../../utils/imagePicker';
  *
  * Tudo vem do banco:
  *  - nome, foto, "Sobre" e portfólio via `useArtistProfile` → GET /artist/me;
- *  - avaliações via `useAvaliacoes` → GET /artist/{id}/avaliacoes.
+ *  - avaliações via `useAvaliacoes` → GET /artist/{id}/avaliacoes;
+ *  - estúdio vinculado (nome/foto) no próprio GET /artist/me, e convites
+ *    pendentes via `useConvites` → GET /artist/me/convites.
  * Sem foto cadastrada, cai num avatar anônimo padrão. Cada seção trata os
  * estados de loading / erro / vazio por conta própria.
  *
@@ -125,6 +136,99 @@ function LoadError({
       </Text>
       <RetryButton onPress={onRetry} />
     </View>
+  );
+}
+
+/** Estúdio ao qual o tatuador pertence, com a ação de sair da equipe. */
+function EstudioVinculadoCard({
+  nome,
+  fotoUrl,
+  saindo,
+  onSair,
+}: {
+  nome: string;
+  fotoUrl: string | null;
+  saindo: boolean;
+  onSair: () => void;
+}) {
+  return (
+    <View className="bg-surface rounded-rd-lg p-5">
+      <Text className="font-aux-bold text-[16px] text-ink mb-3">Estúdio</Text>
+      <View className="flex-row items-center">
+        <View className="w-12 h-12 rounded-rd-pill overflow-hidden bg-surface-2 items-center justify-center mr-3">
+          {fotoUrl ? (
+            <Image source={{ uri: fotoUrl }} className="w-full h-full" />
+          ) : (
+            <Store size={22} color="#6B6B6B" strokeWidth={1.5} />
+          )}
+        </View>
+        <View className="flex-1">
+          <Text
+            className="font-body-semibold text-[15px] text-ink"
+            numberOfLines={1}
+          >
+            {nome}
+          </Text>
+          <Text className="font-body text-[12px] text-fg-3">
+            Você faz parte da equipe
+          </Text>
+        </View>
+        {saindo ? (
+          <ActivityIndicator color="#602C66" />
+        ) : (
+          <TouchableOpacity
+            onPress={onSair}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={`Sair do ${nome}`}
+          >
+            <Text className="font-body-semibold text-[12px] text-fg-2">Sair</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+}
+
+/** Atalho para a tela de convites, com a contagem de pendentes. */
+function ConvitesCard({
+  total,
+  loading,
+  onPress,
+}: {
+  total: number;
+  loading: boolean;
+  onPress: () => void;
+}) {
+  const subtitulo = loading
+    ? 'Carregando...'
+    : total === 0
+      ? 'Nenhum convite pendente'
+      : total === 1
+        ? '1 convite pendente'
+        : `${total} convites pendentes`;
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.85}
+      className="bg-surface rounded-rd-lg p-5 flex-row items-center"
+      accessibilityRole="button"
+      accessibilityLabel={`Convites de estúdio: ${subtitulo}`}
+    >
+      <View className="flex-1">
+        <Text className="font-aux-bold text-[16px] text-ink mb-1">
+          Convites de estúdio
+        </Text>
+        <Text className="font-body text-[13px] text-fg-3">{subtitulo}</Text>
+      </View>
+      {!loading && total > 0 ? (
+        <View className="min-w-[22px] h-[22px] rounded-rd-pill bg-ink items-center justify-center px-1.5 mr-2">
+          <Text className="font-body-bold text-[11px] text-on-ink">{total}</Text>
+        </View>
+      ) : null}
+      <ChevronRight size={20} color="#6B6B6B" />
+    </TouchableOpacity>
   );
 }
 
@@ -243,6 +347,13 @@ export function ArtistProfileScreen() {
     reload: reloadAvaliacoes,
   } = useAvaliacoes(tatuadorId);
 
+  const {
+    convites,
+    loading: convitesLoading,
+    reload: reloadConvites,
+  } = useConvites();
+
+  // Ao voltar da tela de Convites (aceite/recusa), perfil e contagem mudam.
   const primeiroFoco = useRef(true);
   useFocusEffect(
     useCallback(() => {
@@ -251,8 +362,45 @@ export function ArtistProfileScreen() {
         return;
       }
       reloadProfile();
-    }, [reloadProfile]),
+      reloadConvites();
+    }, [reloadProfile, reloadConvites]),
   );
+
+  const [saindoEstudio, setSaindoEstudio] = useState(false);
+
+  const confirmarSaidaEstudio = () => {
+    const nomeEstudio = profile?.nomeEstudio ?? 'estúdio';
+    Alert.alert(
+      `Sair do ${nomeEstudio}?`,
+      'Você deixará de fazer parte da equipe e voltará a atender como autônomo.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Sair',
+          style: 'destructive',
+          onPress: async () => {
+            setSaindoEstudio(true);
+            try {
+              await artistService.sairEstudio();
+              await Promise.all([reloadProfile(), reloadConvites()]);
+            } catch (err: any) {
+              console.warn(
+                '[ArtistProfile] erro ao sair do estúdio',
+                err?.response?.status,
+                err?.message,
+              );
+              Alert.alert(
+                'Erro',
+                'Não foi possível sair do estúdio. Tente novamente.',
+              );
+            } finally {
+              setSaindoEstudio(false);
+            }
+          },
+        },
+      ],
+    );
+  };
 
 
   const [editing, setEditing] = useState(false);
@@ -508,6 +656,25 @@ export function ArtistProfileScreen() {
             )}
           </View>
         </View>
+
+        {profileReady && !editing ? (
+          <View className="px-6 mt-4">
+            {profile?.estudioId ? (
+              <EstudioVinculadoCard
+                nome={profile.nomeEstudio ?? 'Estúdio'}
+                fotoUrl={profile.fotoEstudioUrl}
+                saindo={saindoEstudio}
+                onSair={confirmarSaidaEstudio}
+              />
+            ) : (
+              <ConvitesCard
+                total={convites.length}
+                loading={convitesLoading}
+                onPress={() => navigation.navigate('Convites')}
+              />
+            )}
+          </View>
+        ) : null}
 
         <SectionHeader
           title="Portfólio"

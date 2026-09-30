@@ -30,6 +30,8 @@ export interface ArtistProfile {
   bio: string | null;
   /** tatuadores.instagram — handle, com ou sem "@". */
   instagram: string | null;
+  /** Selo de nível (Bronze/Prata/Ouro); o backend ainda manda sempre null. */
+  tier: string | null;
 
   /** Estúdio ao qual o tatuador está vinculado; null quando é autônomo. */
   estudioId: string | null;

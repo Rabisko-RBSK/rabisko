@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { AuthRoutes } from './auth.routes';
 import { AppRoutes } from './app.routes';
 import { ArtistRoutes } from './artist.routes';
+import { StudioRoutes } from './studio.routes';
 import { useAuthStore } from '../store/authStore';
 import { stompClient } from '../services/ws/stompClient';
 
@@ -26,6 +27,8 @@ export function Router() {
         <AuthRoutes />
       ) : role === 'artista' ? (
         <ArtistRoutes />
+      ) : role === 'estudio' ? (
+        <StudioRoutes />
       ) : (
         <AppRoutes />
       )}
