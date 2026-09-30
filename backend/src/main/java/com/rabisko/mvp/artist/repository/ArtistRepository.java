@@ -35,8 +35,7 @@ public interface ArtistRepository extends JpaRepository<Artist, UUID> {
     @Query(value = """
             SELECT t.tatuador_id AS tatuadorId,
                    u.nome        AS nome,
-                   u.email       AS email,
-                   t.endereco    AS endereco
+                   u.email       AS email
             FROM tatuadores t
             JOIN users u ON u.user_id = t.user_id
             WHERE u.status_ativo = TRUE
