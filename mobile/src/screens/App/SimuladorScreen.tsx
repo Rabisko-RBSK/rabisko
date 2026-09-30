@@ -8,6 +8,7 @@ import ViewShot from 'react-native-view-shot';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle } from 'react-native-reanimated';
 import { Header } from '../../components/common/Header';
+import api from '../../services/api';
 
 /**
  * Simulador (DESIGN.md §10 #07 — BiskoAI.jsx). Pre-visualiza a tatuagem no corpo do cliente
@@ -44,18 +45,15 @@ export function SimuladorScreen() {
         type: 'image/jpeg',
       } as any);
 
-      const API_URL = `${process.env.EXPO_PUBLIC_API_URL}/simulation/removebg`;
-
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        body: formData,
+      // Usa o axios (XMLHttpRequest do RN) em vez do `fetch`: o fetch do Expo não aceita
+      // partes `{ uri, name, type }` no FormData ("Unsupported FormDataPart implementation").
+      // Timeout maior que o padrão da `api` porque a remoção com U2Net pode levar alguns segundos.
+      const { data: blob } = await api.post<Blob>('/simulation/removebg', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        responseType: 'blob',
+        timeout: 60000,
       });
 
-      if (!response.ok) {
-        throw new Error(`Erro na API: ${response.status}`);
-      }
-
-      const blob = await response.blob();
       const reader = new FileReader();
       reader.readAsDataURL(blob);
       reader.onloadend = () => {
