@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert, Image, StyleSheet, ActivityIndicator } from 'react-native';
 import { ImagePlus, Sparkles, Camera, Wand2, Trash2, Save, Send } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
-import * as MediaLibrary from 'expo-media-library';
+import * as MediaLibrary from 'expo-media-library/legacy';
 import * as Sharing from 'expo-sharing';
 import ViewShot from 'react-native-view-shot';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -246,7 +246,7 @@ export function SimuladorScreen() {
               style={{ width: '100%', aspectRatio: images.length > 0 ? images[0].width / images[0].height : 4 / 3, position: 'relative' }}
             >
             {isProcessing && (
-              <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 10, justifyContent: 'center', alignItems: 'center' }]}>
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 10, justifyContent: 'center', alignItems: 'center' }]}>
                 <ActivityIndicator size="large" color="#FFFFFF" />
                 <Text className="font-body-bold text-[14px] text-surface mt-3">Processando imagem...</Text>
               </View>
@@ -269,7 +269,7 @@ export function SimuladorScreen() {
               <>
                 <Image
                   source={{ uri: images[0].uri }}
-                  style={[StyleSheet.absoluteFillObject, { width: '100%', height: '100%', resizeMode: 'cover' }]}
+                  style={[StyleSheet.absoluteFill, { width: '100%', height: '100%', resizeMode: 'cover' }]}
                 />
 
                 {images.length > 1 && (
