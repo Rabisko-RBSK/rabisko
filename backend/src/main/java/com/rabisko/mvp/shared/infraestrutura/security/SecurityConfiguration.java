@@ -44,6 +44,7 @@ public class SecurityConfiguration {
                         .requestMatchers("/wss/**").permitAll()
                         .requestMatchers("/simulation/**").permitAll()
                         .requestMatchers("/studio/**").hasRole("ESTUDIO")
+                        .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated())
 
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)

@@ -42,18 +42,28 @@ public interface ConviteEstudioRepository extends JpaRepository<ConviteEstudio, 
     List<ConviteDetalheDTO> listarDetalhesDoEstudio(@Param("estudioId") UUID estudioId,
                                                     @Param("status") ConviteStatus status);
 
+    // Status vão como parâmetros, não como literais do enum: com literal o
+    // Hibernate gera 'cancelado'::ConviteStatus (nome da classe), mas o tipo
+    // no Postgres é convite_status.
     @Modifying
     @Query("""
         UPDATE ConviteEstudio c
-        SET c.status = com.rabisko.mvp.studio.domain.ConviteStatus.cancelado,
+        SET c.status = :cancelado,
             c.dataResposta = :agora
         WHERE c.tatuadorId = :tatuadorId
-          AND c.status = com.rabisko.mvp.studio.domain.ConviteStatus.pendente
+          AND c.status = :pendente
           AND c.conviteId <> :conviteAceitoId
         """)
     int cancelarOutrosPendentes(@Param("tatuadorId") UUID tatuadorId,
                                 @Param("conviteAceitoId") UUID conviteAceitoId,
-                                @Param("agora") LocalDateTime agora);
+                                @Param("agora") LocalDateTime agora,
+                                @Param("pendente") ConviteStatus pendente,
+                                @Param("cancelado") ConviteStatus cancelado);
+
+    default int cancelarOutrosPendentes(UUID tatuadorId, UUID conviteAceitoId, LocalDateTime agora) {
+        return cancelarOutrosPendentes(tatuadorId, conviteAceitoId, agora,
+                ConviteStatus.pendente, ConviteStatus.cancelado);
+    }
 
 }
 
