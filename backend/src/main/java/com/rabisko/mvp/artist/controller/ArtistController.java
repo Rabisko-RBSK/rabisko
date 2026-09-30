@@ -7,6 +7,7 @@ import com.rabisko.mvp.artist.domain.AvaliacaoDTO;
 import com.rabisko.mvp.artist.domain.PortfolioImagemDTO;
 import com.rabisko.mvp.artist.domain.UploadResponseDTO;
 import com.rabisko.mvp.artist.service.ArtistService;
+import com.rabisko.mvp.studio.domain.ConviteDTO;
 import com.rabisko.mvp.user.domain.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -25,7 +26,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-
 
 @RestController
 @RequestMapping("/artist")
@@ -129,5 +129,26 @@ public class ArtistController {
     @GetMapping("/{tatuadorId}/avaliacoes")
     public ResponseEntity<List<AvaliacaoDTO>> listarAvaliacoes(@PathVariable UUID tatuadorId) {
         return ResponseEntity.ok(artistService.listarAvaliacoes(tatuadorId));
+    }
+
+    @GetMapping("/me/convites")
+    public ResponseEntity<List<ConviteDTO>> listarConvitesPendentes(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(artistService.encontrarConvitesPendentes(user));
+    }
+
+    @PostMapping("/me/convites/{conviteId}/aceitar")
+    public ResponseEntity<ConviteDTO> aceitarConvite(
+            @AuthenticationPrincipal User user,
+            @PathVariable UUID conviteId
+    ) {
+        return ResponseEntity.ok(artistService.aceitarConvite(user, conviteId));
+    }
+
+    @PostMapping("/me/convites/{conviteId}/recusar")
+    public ResponseEntity<ConviteDTO> recusarConvite(
+            @AuthenticationPrincipal User user,
+            @PathVariable UUID conviteId
+    ) {
+        return ResponseEntity.ok(artistService.recusarConvite(user, conviteId));
     }
 }

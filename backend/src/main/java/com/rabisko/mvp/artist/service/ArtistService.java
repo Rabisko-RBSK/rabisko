@@ -17,6 +17,9 @@ import com.rabisko.mvp.chat.repository.ChatRepository;
 import com.rabisko.mvp.estilo.domain.Estilo;
 import com.rabisko.mvp.estilo.repository.EstiloRepository;
 import com.rabisko.mvp.shared.storage.StorageService;
+import com.rabisko.mvp.studio.domain.ConviteDTO;
+import com.rabisko.mvp.studio.domain.ConviteEstudio;
+import com.rabisko.mvp.studio.repository.ConviteEstudioRepository;
 import com.rabisko.mvp.user.domain.User;
 import com.rabisko.mvp.user.domain.UserRole;
 
@@ -28,6 +31,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -43,6 +47,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import static com.rabisko.mvp.studio.domain.ConviteStatus.*;
 
 
 @Service
@@ -62,6 +68,7 @@ public class ArtistService {
     @Autowired private AppointmentRepository appointmentRepository;
     @Autowired private PortfolioImagemRepository portfolioImagemRepository;
     @Autowired private StorageService storageService;
+    @Autowired private ConviteEstudioRepository conviteEstudioRepository;
 
     /**
      * Cria o perfil tatuador apos o User ja ter sido salvo.
@@ -303,31 +310,85 @@ public class ArtistService {
      * DTO e calculos aqui — nem o controller nem o front precisam saber
      * detalhe nenhum.
      */
-        public ArtistDashboardDTO dashboard(User logado) {
-                if (logado.getRole() != UserRole.tatuador) {
-                        throw new AccessDeniedException("Apenas tatuadores podem acessar o dashboard");
-                }
+    public ArtistDashboardDTO dashboard(User logado) {
+            if (logado.getRole() != UserRole.tatuador) {
+                    throw new AccessDeniedException("Apenas tatuadores podem acessar o dashboard");
+            }
 
-                Artist meuPerfil = artistRepository.findByUserId(logado.getUserId())
-                        .orElseThrow(() -> new EntityNotFoundException("Perfil tatuador não encontrado"));
+            Artist meuPerfil = artistRepository.findByUserId(logado.getUserId())
+                    .orElseThrow(() -> new EntityNotFoundException("Perfil tatuador não encontrado"));
 
-                UUID tatuadorId = meuPerfil.getTatuadorId();
+            UUID tatuadorId = meuPerfil.getTatuadorId();
 
-                LocalDateTime inicioMes      = YearMonth.now().atDay(1).atStartOfDay();
-                LocalDateTime inicioProxMes  = YearMonth.now().plusMonths(1).atDay(1).atStartOfDay();
+            LocalDateTime inicioMes      = YearMonth.now().atDay(1).atStartOfDay();
+            LocalDateTime inicioProxMes  = YearMonth.now().plusMonths(1).atDay(1).atStartOfDay();
 
-                long chatsAbertos = chatRepository.countByTatuadorIdAndAtivoTrue(tatuadorId);
+            long chatsAbertos = chatRepository.countByTatuadorIdAndAtivoTrue(tatuadorId);
 
-                BigDecimal valorTotalMes = appointmentRepository.somarValorTotalNoPeriodo(
-                        tatuadorId, inicioMes, inicioProxMes);
+            BigDecimal valorTotalMes = appointmentRepository.somarValorTotalNoPeriodo(
+                    tatuadorId, inicioMes, inicioProxMes);
 
-                long totalAgendamentosMes = appointmentRepository
-                        .countByTatuadorIdAndStatusNotInAndDataCriacaoBetween(
-                                tatuadorId,
-                                List.of(AppointmentStatus.cancelada, AppointmentStatus.no_show),
-                                inicioMes,
-                                inicioProxMes);
+            long totalAgendamentosMes = appointmentRepository
+                    .countByTatuadorIdAndStatusNotInAndDataCriacaoBetween(
+                            tatuadorId,
+                            List.of(AppointmentStatus.cancelada, AppointmentStatus.no_show),
+                            inicioMes,
+                            inicioProxMes);
 
-                return new ArtistDashboardDTO(chatsAbertos, valorTotalMes, totalAgendamentosMes);
+            return new ArtistDashboardDTO(chatsAbertos, valorTotalMes, totalAgendamentosMes);
+    }
+
+    public List<ConviteDTO> encontrarConvitesPendentes(User logado){
+        Artist artist = exigirArtistDoUser(logado);
+
+        UUID tatuadorId = artist.getTatuadorId();
+
+        return conviteEstudioRepository.findByTatuadorIdAndStatus(tatuadorId, pendente)
+                .stream().map(ConviteDTO::from).toList();
+    }
+
+    @Transactional
+    public ConviteDTO aceitarConvite(User logado, UUID conviteId) {
+        Artist artist = exigirArtistDoUser(logado);
+
+        UUID tatuadorId = artist.getTatuadorId();
+
+        ConviteEstudio convite = conviteEstudioRepository.findByConviteIdAndTatuadorId(conviteId, tatuadorId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Convite não encontrado"));
+
+        if(convite.getStatus() != pendente){
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Convite nao esta mais pendente");
         }
+
+        if(artist.getEstudioId() != null){
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Tatuador já possui estúdio vinculado");
+        }
+
+        artist.setEstudioId(convite.getEstudioId());
+        artist.setVinculadoEstudio(true);
+
+        convite.setStatus(aceito);
+        convite.setDataResposta(LocalDateTime.now());
+
+        return ConviteDTO.from(convite);
+    }
+
+    @Transactional
+    public ConviteDTO recusarConvite(User logado, UUID conviteId) {
+        Artist artist = exigirArtistDoUser(logado);
+
+        UUID tatuadorId = artist.getTatuadorId();
+
+        ConviteEstudio convite = conviteEstudioRepository.findByConviteIdAndTatuadorId(conviteId, tatuadorId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Convite não encontrado"));
+
+        if(convite.getStatus() != pendente){
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Convite nao esta mais pendente");
+        }
+
+        convite.setStatus(recusado);
+        convite.setDataResposta(LocalDateTime.now());
+
+        return ConviteDTO.from(convite);
+    }
 }
