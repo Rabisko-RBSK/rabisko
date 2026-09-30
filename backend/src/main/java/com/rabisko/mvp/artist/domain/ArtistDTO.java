@@ -8,7 +8,7 @@ public record ArtistDTO(
     UUID estudioId,
     String bio,
     String instagram,
-    String endereco,
+    UUID enderecoId,
     boolean vinculadoEstudio
 ) {
     /** Conversao Artist -> ArtistDTO (omite campos internos como dataCriacao). */
@@ -19,7 +19,7 @@ public record ArtistDTO(
             a.getEstudioId(),
             a.getBio(),
             a.getInstagram(),
-            a.getEndereco(),
+            a.getEnderecoId(),
             a.isVinculadoEstudio()
         );
     }

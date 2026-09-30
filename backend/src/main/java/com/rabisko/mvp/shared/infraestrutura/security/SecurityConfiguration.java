@@ -43,6 +43,8 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.POST, "/mockToken").permitAll()
                         .requestMatchers("/wss/**").permitAll()
                         .requestMatchers("/simulation/**").permitAll()
+                        .requestMatchers("/studio/**").hasRole("ESTUDIO")
+                        .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated())
 
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)

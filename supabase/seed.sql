@@ -120,6 +120,12 @@ INSERT INTO "public"."enderecos"
      'Rua Augusta', '500', 'Loja 2', 'Consolação', 'São Paulo', 'SP', -23.5537000, -46.6614900)
 ON CONFLICT ("endereco_id") DO NOTHING;
 
+-- liga o estúdio ao seu endereço (FK estudios.endereco_id; o INSERT de
+-- estudios roda antes de enderecos existir, por isso o UPDATE aqui)
+UPDATE "public"."estudios"
+   SET "endereco_id" = '66666666-6666-6666-6666-666666666603'
+ WHERE "estudio_id" = '33333333-3333-3333-3333-333333333301';
+
 -- ----------------------------------------------------------------------------
 -- portfolio_imagens: galeria de trabalhos de cada tatuador
 -- ----------------------------------------------------------------------------
@@ -214,15 +220,25 @@ INSERT INTO "public"."qrcodes"
 ON CONFLICT ("qrcode_id") DO NOTHING;
 
 -- ----------------------------------------------------------------------------
--- avaliacoes: avaliações mútuas após sessão concluída (reserva bb01, Bruno<->Diego)
+-- convites_estudio: convites de estúdios para tatuadores entrarem na equipe
 -- ----------------------------------------------------------------------------
-INSERT INTO "public"."avaliacoes" ("avaliacao_id", "remetente_id", "destinatario_id", "nota", "comentario") VALUES
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee01',
-     '11111111-1111-1111-1111-111111111103', '11111111-1111-1111-1111-111111111105',
-     5, 'Diego é excelente! Resultado ficou incrível e o atendimento foi ótimo do início ao fim.'),
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee02',
-     '11111111-1111-1111-1111-111111111105', '11111111-1111-1111-1111-111111111103',
-     5, 'Bruno foi super tranquilo durante a sessão e seguiu certinho os cuidados pós-tattoo.')
-ON CONFLICT ("avaliacao_id") DO NOTHING;
+INSERT INTO "public"."convites_estudio"
+    ("convite_id", "estudio_id", "tatuador_id", "status", "data_criacao", "data_resposta") VALUES
+    -- Tinta Negra -> Carla (independente): convite ainda aguardando resposta
+    ('cccccccc-cccc-cccc-cccc-cccccccccc01',
+    '33333333-3333-3333-3333-333333333301', '44444444-4444-4444-4444-444444444401',
+    'pendente', now() - interval '1 day', NULL),
+
+    -- Tinta Negra -> Diego: convite aceito (histórico do vínculo que já existe)
+    ('cccccccc-cccc-cccc-cccc-cccccccccc02',
+    '33333333-3333-3333-3333-333333333301', '44444444-4444-4444-4444-444444444402',
+    'aceito', now() - interval '30 days', now() - interval '29 days'),
+
+    -- Tinta Negra -> Filipe: convite aceito (histórico do vínculo que já existe)
+    ('cccccccc-cccc-cccc-cccc-cccccccccc03',
+    '33333333-3333-3333-3333-333333333301', '44444444-4444-4444-4444-444444444403',
+    'aceito', now() - interval '20 days', now() - interval '19 days')
+
+ON CONFLICT ("convite_id") DO NOTHING;
 
 COMMIT;

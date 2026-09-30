@@ -30,11 +30,16 @@ export interface ArtistProfile {
   bio: string | null;
   /** tatuadores.instagram — handle, com ou sem "@". */
   instagram: string | null;
-  /**
-   * Nível do tatuador (ex.: "Prata"). Reservado — o sistema de níveis ainda
-   * não existe no banco; o backend pode omitir e o selo fica oculto.
-   */
-  tier?: string | null;
+  /** Selo de nível (Bronze/Prata/Ouro); o backend ainda manda sempre null. */
+  tier: string | null;
+
+  /** Estúdio ao qual o tatuador está vinculado; null quando é autônomo. */
+  estudioId: string | null;
+  /** estudios.nome — null quando é autônomo. */
+  nomeEstudio: string | null;
+  /** estudios.foto_perfil_url — null quando é autônomo ou o estúdio não tem foto. */
+  fotoEstudioUrl: string | null;
+
   /** Galeria de trabalhos (portfolio_imagens), já ordenada por `ordem`. */
   portfolio: PortfolioImage[];
 }
@@ -43,6 +48,29 @@ export interface ArtistProfile {
 export interface AtualizarPerfilDTO {
   bio?: string | null;
   fotoUrl?: string | null;
+}
+
+export type ConviteStatus = 'pendente' | 'aceito' | 'recusado' | 'cancelado';
+
+export interface ConviteDTO {
+  conviteId: string;
+  estudioId: string;
+  tatuadorId: string;
+  status: ConviteStatus;
+  dataCriacao: string;
+  dataResposta: string | null;
+}
+
+export interface ConviteDetalheDTO {
+  conviteId: string;
+  status: ConviteStatus;
+  dataCriacao: string;
+  estudioId: string;
+  nomeEstudio: string;
+  fotoEstudioUrl: string | null;
+  tatuadorId: string;
+  nomeTatuador: string;
+  fotoTatuadorUrl: string | null;
 }
 
 /**
@@ -125,5 +153,24 @@ export const artistService = {
    */
   async removerImagemPortfolio(imagemId: string): Promise<void> {
     await api.delete(`/artist/me/portfolio/${imagemId}`);
+  },
+
+  async aceitarConvite(conviteId: string): Promise<ConviteDTO> {
+    const { data } = await api.post<ConviteDTO>(`/artist/me/convites/${conviteId}/aceitar`);
+    return data;
+  },
+
+  async recusarConvite(conviteId: string): Promise<ConviteDTO> {
+    const { data } = await api.post<ConviteDTO>(`/artist/me/convites/${conviteId}/recusar`);
+    return data;
+  },
+
+  async sairEstudio(): Promise<void> {
+    await api.delete<void>(`/artist/me/estudio`);
+  },
+
+  async listarConvites(): Promise<ConviteDetalheDTO[]> {
+    const { data } = await api.get<ConviteDetalheDTO[]>(`/artist/me/convites`);
+    return data;
   },
 };

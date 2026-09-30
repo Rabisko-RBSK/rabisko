@@ -4,9 +4,17 @@ import { CalendarDays, LayoutDashboard, Settings, Users, type LucideIcon } from 
 
 import { BottomNav } from '../components/common/BottomNav';
 import { StudioDashboardProvider } from '../hooks/useStudioDashboard';
-import { StudioAgendaScreen, StudioDashboardScreen, StudioTeamScreen } from '../screens/App/StudioDashboardScreen';
+import { StudioAgendaScreen, StudioDashboardScreen } from '../screens/App/StudioDashboardScreen';
 import { SettingsScreen } from '../screens/App/SettingsScreen';
+import { StudioEquipeStack } from './studio-equipe.stack';
 
+/**
+ * Abas do fluxo do ESTÚDIO. O `<Router/>` monta estas rotas quando
+ * `authStore.role === 'estudio'`.
+ *
+ * Team é a gestão real da equipe (colaboradores + convites, via
+ * StudioEquipeStack); Dashboard e Agenda ainda usam dados de demonstração.
+ */
 export type StudioRoutesParamList = {
   Dashboard: undefined;
   Team: undefined;
@@ -24,7 +32,7 @@ export function StudioRoutes() {
       <Navigator tabBar={(props) => <BottomNav {...props} icons={icons} labels={labels} />}
         screenOptions={{ headerShown: false }}>
         <Screen name="Dashboard" component={StudioDashboardScreen} />
-        <Screen name="Team" component={StudioTeamScreen} />
+        <Screen name="Team" component={StudioEquipeStack} />
         <Screen name="Agenda" component={StudioAgendaScreen} />
         <Screen name="Settings" component={SettingsScreen} />
       </Navigator>

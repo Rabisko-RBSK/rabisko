@@ -27,8 +27,6 @@ public class RegisterEstudioDTO {
 
     private String cnpj;
 
-    private String endereco;
-
     @AssertTrue(message = "Voce deve aceitar os termos de uso")
     private boolean termosAceitos;
 }

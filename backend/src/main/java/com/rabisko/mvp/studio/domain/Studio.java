@@ -46,8 +46,16 @@ public class Studio {
 
     private String telefone;
 
-    /** Endereco fisico. String livre por enquanto (futuro: tabela `enderecos`). */
-    private String endereco;
+    /** FK pra tabela `enderecos` — endereco fisico do estudio. Nullable. */
+    @Column(name = "endereco_id")
+    private UUID enderecoId;
+
+    /**
+     * URL publica da foto de perfil (bucket `profile_images` do Supabase
+     * Storage). Nullable: sem foto, a UI mostra o avatar padrao.
+     */
+    @Column(name = "foto_perfil_url")
+    private String fotoPerfilUrl;
 
     @CreationTimestamp
     @Column(name = "data_criacao", updatable = false, nullable = false)
