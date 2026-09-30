@@ -10,5 +10,9 @@ public record ArtistProfileDTO(
         String bio,
         String instagram,
         String tier,
+        UUID estudioId,
+        String nomeEstudio,
+        String fotoEstudioUrl,
         List<PortfolioImagemDTO> portfolio
 ) {}
+

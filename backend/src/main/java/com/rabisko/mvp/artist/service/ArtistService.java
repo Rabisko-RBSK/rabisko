@@ -1,15 +1,7 @@
 package com.rabisko.mvp.artist.service;
 
 import com.rabisko.mvp.appointment.domain.AppointmentStatus;
-import com.rabisko.mvp.artist.domain.Artist;
-import com.rabisko.mvp.artist.domain.ArtistDashboardDTO;
-import com.rabisko.mvp.artist.domain.ArtistProfileDTO;
-import com.rabisko.mvp.artist.domain.ArtistSearchProjection;
-import com.rabisko.mvp.artist.domain.ArtistSearchResultDTO;
-import com.rabisko.mvp.artist.domain.AvaliacaoDTO;
-import com.rabisko.mvp.artist.domain.PortfolioImagem;
-import com.rabisko.mvp.artist.domain.PortfolioImagemDTO;
-import com.rabisko.mvp.artist.domain.RegisterArtistaDTO;
+import com.rabisko.mvp.artist.domain.*;
 import com.rabisko.mvp.artist.repository.ArtistRepository;
 import com.rabisko.mvp.artist.repository.PortfolioImagemRepository;
 import com.rabisko.mvp.appointment.repository.AppointmentRepository;
@@ -20,7 +12,9 @@ import com.rabisko.mvp.shared.storage.StorageService;
 import com.rabisko.mvp.studio.domain.ConviteDTO;
 import com.rabisko.mvp.studio.domain.ConviteDetalheDTO;
 import com.rabisko.mvp.studio.domain.ConviteEstudio;
+import com.rabisko.mvp.studio.domain.Studio;
 import com.rabisko.mvp.studio.repository.ConviteEstudioRepository;
+import com.rabisko.mvp.studio.repository.StudioRepository;
 import com.rabisko.mvp.user.domain.User;
 import com.rabisko.mvp.user.domain.UserRole;
 
@@ -70,6 +64,7 @@ public class ArtistService {
     @Autowired private PortfolioImagemRepository portfolioImagemRepository;
     @Autowired private StorageService storageService;
     @Autowired private ConviteEstudioRepository conviteEstudioRepository;
+    @Autowired private StudioRepository studioRepository;
 
     /**
      * Cria o perfil tatuador apos o User ja ter sido salvo.
@@ -151,6 +146,10 @@ public class ArtistService {
                 .map(PortfolioImagemDTO::fromEntity)
                 .collect(Collectors.toList());
 
+        Studio estudio = artist.getEstudioId() == null
+                ? null
+                : studioRepository.findById(artist.getEstudioId()).orElse(null);
+
         return new ArtistProfileDTO(
                 artist.getTatuadorId(),
                 user.getNome(),
@@ -158,6 +157,9 @@ public class ArtistService {
                 artist.getBio(),
                 artist.getInstagram(),
                 null,
+                artist.getEstudioId(),
+                estudio != null ? estudio.getNome() : null,
+                estudio != null ? estudio.getFotoPerfilUrl() : null,
                 portfolio
         );
     }

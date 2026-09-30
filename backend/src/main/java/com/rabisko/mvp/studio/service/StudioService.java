@@ -1,6 +1,7 @@
 package com.rabisko.mvp.studio.service;
 
 import com.rabisko.mvp.artist.domain.Artist;
+import com.rabisko.mvp.artist.domain.ArtistStudioSearchResultDTO;
 import com.rabisko.mvp.artist.repository.ArtistRepository;
 import com.rabisko.mvp.studio.domain.*;
 import com.rabisko.mvp.studio.repository.ConviteEstudioRepository;
@@ -117,5 +118,16 @@ public class StudioService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Usuario nao possui perfil de estudio"
                 ));
+    }
+
+    public List<ArtistStudioSearchResultDTO> buscarTatuadores(User logado, String termo) {
+        exigirEstudioDoUser(logado);
+        String t = termo == null ? "" : termo.trim().replaceFirst("^@", "");
+        if (t.length() < 2) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe ao menos 2 caracteres");
+        }
+        return artistRepository.buscarParaConvite(t).stream()
+                .map(ArtistStudioSearchResultDTO::fromProjection)
+                .toList();
     }
 }

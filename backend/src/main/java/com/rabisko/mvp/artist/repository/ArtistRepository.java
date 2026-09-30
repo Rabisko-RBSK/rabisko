@@ -2,6 +2,7 @@ package com.rabisko.mvp.artist.repository;
 
 import com.rabisko.mvp.artist.domain.Artist;
 import com.rabisko.mvp.artist.domain.ArtistSearchProjection;
+import com.rabisko.mvp.artist.domain.ArtistStudioSearch;
 import com.rabisko.mvp.studio.domain.ColaboradorDTO;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -97,4 +98,22 @@ public interface ArtistRepository extends JpaRepository<Artist, UUID> {
         """)
     List<ColaboradorDTO> listarColaboradores(@Param("estudioId") UUID estudioId);
 
+    @Query(value = """
+        SELECT t.tatuador_id     AS tatuadorId,
+               u.nome            AS nome,
+               t.instagram       AS instagram,
+               t.foto_perfil_url AS fotoPerfilUrl
+        FROM tatuadores t
+        JOIN users u ON u.user_id = t.user_id
+        WHERE u.status_ativo = TRUE
+          AND t.estudio_id IS NULL
+          AND (
+                u.nome      ILIKE '%' || :termo || '%'
+             OR u.email     ILIKE '%' || :termo || '%'
+             OR t.instagram ILIKE '%' || :termo || '%'
+          )
+        ORDER BY u.nome
+        LIMIT 20
+        """, nativeQuery = true)
+    List<ArtistStudioSearch> buscarParaConvite(@Param("termo") String termo);
 }

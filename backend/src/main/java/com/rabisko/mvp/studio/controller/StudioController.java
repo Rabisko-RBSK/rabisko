@@ -1,5 +1,6 @@
 package com.rabisko.mvp.studio.controller;
 
+import com.rabisko.mvp.artist.domain.ArtistStudioSearchResultDTO;
 import com.rabisko.mvp.studio.domain.ColaboradorDTO;
 import com.rabisko.mvp.studio.domain.ConviteDTO;
 import com.rabisko.mvp.studio.domain.ConviteDetalheDTO;
@@ -61,6 +62,14 @@ public class StudioController {
     ) {
         studioService.removerColaborador(logado, tatuadorId);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/tatuadores")
+    public ResponseEntity<List<ArtistStudioSearchResultDTO>> buscarTatuadores(
+            @AuthenticationPrincipal User logado,
+            @RequestParam String termo
+    ) {
+        return ResponseEntity.ok(studioService.buscarTatuadores(logado, termo));
     }
 }
 
