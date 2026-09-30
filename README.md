@@ -131,13 +131,15 @@ Antes de rodar o backend, copie `.env.example` para **`backend/.env`** (não par
 ```bash
 # aba 2 (dentro do Dev Container) — backend
 cd backend
-./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+./run-dev.sh
 
 # aba 3 (dentro do Dev Container) — mobile
 cd mobile
 npm run tunnel   # = expo start --tunnel
 ```
 
+> Use `./run-dev.sh` como comando **padrão** para o backend (não `mvnw spring-boot:run` direto). Dentro do Dev Container, `mvnw spring-boot:run` trava a JVM com SIGSEGV ao inicializar — o classpath "achatado" que ele monta expõe simultaneamente os binários nativos do JavaCPP/BoofCV (OpenCV/FFmpeg) para Linux, Windows e macOS, e algo nessa combinação derruba o processo. `run-dev.sh` builda e roda via `java -jar` (classloader aninhado do Spring Boot), o que evita o crash. Custo: sem hot-reload do DevTools — rode o script de novo a cada mudança de código.
+>
 > Use `npm run tunnel` como comando **padrão** para o mobile (não `npm start`/`npx expo start` puro). Dentro do Dev Container, o Metro roda num container Docker — o celular físico com Expo Go não alcança o IP interno dele numa rede local comum, então o modo túnel (relé da Expo pela internet) é o que funciona de forma confiável independente da rede. Veja mais detalhes na seção abaixo.
 
 ### Testando no celular com Expo Go
@@ -167,8 +169,10 @@ supabase db reset
 
 # rodar em modo desenvolvimento
 cd backend
-./mvnw spring-boot:run -Dspring-boot.run.profiles=local       # Windows: mvnw.cmd spring-boot:run
+./run-dev.sh
 ```
+
+> `run-dev.sh` builda o jar e roda via `java -jar` em vez de `mvnw spring-boot:run` — dentro do Dev Container, `spring-boot:run` trava a JVM (SIGSEGV) por causa de como expõe os binários nativos do JavaCPP/BoofCV no classpath. Fora do Dev Container o script funciona igual, só sem o hot-reload do DevTools (rode de novo a cada mudança de código).
 
 A API sobe em `http://localhost:8080`.
 
