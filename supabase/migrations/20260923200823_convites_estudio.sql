@@ -1,7 +1,7 @@
 create type convite_status as enum ('pendente', 'aceito', 'recusado', 'cancelado');
 
 create table public.convites_estudio (
-    convite_id    uuid primary key default uuid_generate_v4(),
+    convite_id    uuid primary key default extensions.uuid_generate_v4(),
     estudio_id    uuid not null references public.estudios(estudio_id) on delete cascade,
     tatuador_id   uuid not null references public.tatuadores(tatuador_id) on delete cascade,
     status        convite_status not null default 'pendente',
