@@ -31,6 +31,7 @@ Todo o conteúdo voltado ao usuário (telas, mensagens de API, nomes de domínio
 - [Funcionalidades principais](#funcionalidades-principais)
 - [Stack técnica](#stack-técnica)
 - [Pré-requisitos](#pré-requisitos)
+- [Ambiente de Desenvolvimento](#ambiente-de-desenvolvimento)
 - [Instalação](#instalação)
   - [Backend](#backend)
   - [Mobile](#mobile)
@@ -88,6 +89,66 @@ Mobile:
 - App **Expo Go** no celular ([Android](https://play.google.com/store/apps/details?id=host.exp.exponent) / [iOS](https://apps.apple.com/br/app/expo-go/id982107779)) — não é necessário build nativo para desenvolvimento
 - Celular e computador na mesma rede (ou usar o modo túnel do Expo)
 
+## Ambiente de Desenvolvimento
+
+O projeto usa **Dev Containers** para padronizar o ambiente local (Java 21, Node 20 e Supabase CLI já provisionados), com **Maven nativo** (sem Docker Compose) para rodar o backend e **Supabase CLI** para subir Postgres/Auth/Storage localmente em containers Docker.
+
+### Pré-requisito: Docker Desktop (Windows)
+
+- Instale o [Docker Desktop](https://www.docker.com/products/docker-desktop/) e deixe-o em execução — ele é quem hospeda tanto os containers do Supabase local quanto o próprio Dev Container.
+- O `.devcontainer/devcontainer.json` usa a feature `docker-outside-of-docker`: o Docker CLI, quando rodado *dentro* do Dev Container, se conecta ao Docker Desktop do Windows (host) em vez de rodar Docker aninhado.
+
+### ⚠️ `supabase start` roda fora do Dev Container
+
+O Supabase CLI **não funciona de forma confiável dentro do Dev Container**: ele sobe os containers do Postgres/Auth/Storage via `docker-outside-of-docker` (containers "irmãos" no Docker Desktop do host), mas em seguida tenta verificar se o Postgres subiu conectando em `127.0.0.1` — que, de dentro do Dev Container, é o loopback do próprio container, não o do host Windows. Isso faz o comando falhar e derrubar os containers logo em seguida (`ECONNREFUSED 127.0.0.1:54322`). É uma limitação conhecida do CLI, sem flag de contorno ([supabase/cli#1939](https://github.com/supabase/cli/issues/1939)).
+
+Por isso, o fluxo é dividido:
+- **`supabase start` / `supabase stop`** → rodam num **Git Bash nativo do Windows** (fora do VS Code conectado ao container). Use Git Bash especificamente: `start-dev.sh` é um script bash e não roda em PowerShell/cmd diretamente.
+- **Backend e mobile** → rodam normalmente **dentro** do Dev Container, e se conectam ao Supabase local via `host.docker.internal` (em vez de `localhost`) — já configurado em `.env.example`.
+
+### Abrindo o Dev Container
+
+1. Instale a extensão **Dev Containers** no VS Code.
+2. Abra a pasta do repositório e escolha **"Reopen in Container"** (ou `Ctrl+Shift+P` → `Dev Containers: Reopen in Container`).
+3. O container já vem com Java 21, Node 20, Maven wrapper e as extensões do VS Code (Java Pack, Expo Tools, ESLint). O `postCreateCommand` roda `npm install` automaticamente na raiz — isso serve só para uso *dentro* do container; **não** prepara o Supabase CLI usado no passo abaixo (ver aviso a seguir).
+
+> Não quer usar Dev Containers? Basta ter Docker Desktop, JDK 21, Maven e Node.js instalados localmente e seguir a seção [Instalação](#instalação) abaixo — nesse caso `localhost` funciona normalmente em todo lugar, sem a ressalva do `host.docker.internal`.
+
+### Subindo o ambiente com `start-dev.sh`
+
+O backend **depende do Supabase local estar no ar** (Postgres na porta `54322`, Auth e Storage) para funcionar. Num **Git Bash nativo do Windows** (não o terminal do Dev Container, nem PowerShell/cmd — ver aviso acima), na raiz do repositório:
+
+```bash
+./start-dev.sh
+```
+
+O script roda `npm install` automaticamente antes de subir o Supabase, garantindo o binário do CLI para **Windows** — o `npm install` do `postCreateCommand` (dentro do container) baixa o binário para Linux, que não roda nativamente no Windows, então os dois `npm install` (container e nativo) são necessários e independentes.
+
+Ele executa `npx supabase start` (sobe os containers do Postgres/Auth/Storage e exibe a API URL e as chaves) e, em seguida, imprime instruções para abrir o Dev Container e, dentro dele, **duas abas de terminal**:
+
+Antes de rodar o backend, copie `.env.example` para **`backend/.env`** (não para a raiz — o `mvnw` roda com `backend/` como diretório de trabalho, e é de lá que o `spring.config.import` resolve o `.env`; veja a seção [Configuração](#configuração) abaixo para o passo a passo de onde pegar cada valor). Dentro do Dev Container, use as variáveis `DB_URL`/`DB_USER`/`DB_PASS`/`SUPABASE_URL` apontando para `host.docker.internal`. Para encerrar o Supabase local depois, no mesmo Git Bash: `npx supabase stop`.
+
+```bash
+# aba 2 (dentro do Dev Container) — backend
+cd backend
+./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+
+# aba 3 (dentro do Dev Container) — mobile
+cd mobile
+npm run tunnel   # = expo start --tunnel
+```
+
+> Use `npm run tunnel` como comando **padrão** para o mobile (não `npm start`/`npx expo start` puro). Dentro do Dev Container, o Metro roda num container Docker — o celular físico com Expo Go não alcança o IP interno dele numa rede local comum, então o modo túnel (relé da Expo pela internet) é o que funciona de forma confiável independente da rede. Veja mais detalhes na seção abaixo.
+
+### Testando no celular com Expo Go
+
+O VS Code, por padrão, só encaminha portas do Dev Container para `127.0.0.1` no Windows — não acessível por um celular na mesma rede Wi-Fi. Por isso, o `.devcontainer/devcontainer.json` usa `runArgs` para o **Docker** publicar as portas 8080 (backend) e 8081 (Metro) diretamente em todas as interfaces do host (igual já acontece com os containers do Supabase), em vez de depender do encaminhamento do VS Code.
+
+- **Metro (Expo)**: `npm run tunnel` (= `expo start --tunnel`) dentro do Dev Container — funciona em qualquer rede via relé da Expo, sem depender do IP local. É o comando padrão do projeto para rodar o mobile (ver acima).
+- **Backend**: `mobile/.env` (`EXPO_PUBLIC_API_URL`) deve apontar para o IP da sua máquina na rede local (ex.: `http://192.168.15.5:8080`, não `localhost`) — é assim que o app no celular alcança a API.
+
+Se você alterou `devcontainer.json` (`runArgs`/`forwardPorts`), é preciso **"Dev Containers: Rebuild Container"** para aplicar — só um "Reload Window" não é suficiente, pois `runArgs` só é lido na criação do container.
+
 ## Instalação
 
 ### Backend
@@ -131,14 +192,15 @@ npm install
 # substitua [SEU-IP] pelo IP da sua máquina na rede local
 echo "EXPO_PUBLIC_API_URL=http://[SEU-IP]:8080" >> .env
 
-# inicie o Metro bundler (modo offline por padrão)
-npm start
+# inicie o Metro bundler (modo túnel — padrão do projeto, funciona em
+# qualquer rede independente de IP local/firewall)
+npm run tunnel
 ```
 
-Escaneie o QR Code exibido no terminal com o app **Expo Go** (Android: opção "Scan QR Code" dentro do app; iOS: câmera nativa). Se o celular não alcançar o computador na mesma rede, use o modo túnel:
+Escaneie o QR Code exibido no terminal com o app **Expo Go** (Android: opção "Scan QR Code" dentro do app; iOS: câmera nativa). Se preferir modo LAN (mais rápido, mas exige celular e PC na mesma rede e sem bloqueios de firewall):
 
 ```bash
-npm run tunnel
+npm start   # = expo start --offline
 ```
 
 Atalhos de plataforma (emulador/simulador local):
@@ -184,32 +246,52 @@ curl http://localhost:8080/artist \
 ```bash
 cd mobile
 npm install
-npm start
+npm run tunnel
 # abra o Expo Go no celular e escaneie o QR Code para navegar
 # pelos fluxos de login, busca de tatuadores, chat e agendamento
 ```
 
 ## Configuração
 
-### Backend (`backend/`)
+### Backend (`backend/.env`)
 
-Variáveis de ambiente (ver `backend/env-example.md`):
+Copie `.env.example` (raiz do repo) para **`backend/.env`** (não para a raiz — ver aviso na seção [Ambiente de Desenvolvimento](#ambiente-de-desenvolvimento)). Depois de rodar `./start-dev.sh` (ou `supabase start` manualmente), o terminal imprime um painel assim — é dali que vêm quase todos os valores:
 
-| Variável | Descrição | Obrigatória |
+```
+⛁ Database
+URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+
+🌐 APIs
+Project URL: http://127.0.0.1:54321
+
+🔑 Authentication Keys
+Publishable: sb_publishable_...
+Secret:      sb_secret_...
+
+📦 Storage (S3)
+Access Key: ...
+Secret Key: ...
+```
+
+| Variável | Onde pegar | Obrigatória |
 |---|---|---|
-| `JWT_SECRET` | Chave usada para assinar/validar os tokens JWT (HMAC256) | Recomendada (fallback inseguro `my-secret-key` se ausente) |
-| `SUPABASE_DB_PASSWORD` | Senha de conexão com o banco PostgreSQL (Supabase) | Sim |
+| `DB_URL`, `DB_USER`, `DB_PASS` | Seção **"⛁ Database"**: sempre `postgres`/`postgres` em dev local. Pode deixar em branco fora do Dev Container (o `application-local.yml` já assume `localhost:54322`); **dentro** do Dev Container, preencha com `jdbc:postgresql://host.docker.internal:54322/postgres` | Só dentro do Dev Container |
+| `JWT_SECRET` | Não vem de lugar nenhum — invente uma string longa e aleatória (ex.: `openssl rand -hex 32` no Git Bash) | Recomendada (fallback inseguro `my-secret-key` se ausente) |
+| `SUPABASE_URL` | Seção **"🌐 APIs" → "Project URL"**. Fora do Dev Container use `http://127.0.0.1:54321`; dentro dele, `http://host.docker.internal:54321` | Sim (upload de imagens) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Seção **"🔑 Authentication Keys" → "Secret"** (`sb_secret_...`). ⚠️ **Não** é a "Access Key"/"Secret Key" da seção "📦 Storage (S3)" — aquela é para outro protocolo e não funciona aqui | Sim (upload de imagens) |
 
-A URL JDBC do banco está configurada em `backend/src/main/resources/application.properties`. Detalhes do schema/migrations em `backend/database.md` e `supabase/`.
+Detalhes do schema/migrations em `backend/database.md` e `supabase/`.
 
-### Mobile (`mobile/`)
+### Mobile (`mobile/.env`)
 
-Variáveis de ambiente (ver `mobile/env-example.md`) — **todas devem começar com `EXPO_PUBLIC_`**, conforme exigido pelo Expo para variáveis expostas ao bundle do app:
+Crie `mobile/.env` com base em `mobile/env-example.md` — **todas as variáveis devem começar com `EXPO_PUBLIC_`**, conforme exigido pelo Expo para variáveis expostas ao bundle do app:
 
-| Variável | Descrição |
+| Variável | Onde pegar |
 |---|---|
-| `EXPO_PUBLIC_API_URL` | URL base da API do backend |
+| `EXPO_PUBLIC_API_URL` | **IP local da sua máquina na rede Wi-Fi** (não `localhost`/`127.0.0.1` — o celular físico com Expo Go precisa de um endereço que ele consiga alcançar na rede). Descubra com `ipconfig` no PowerShell/Git Bash → veja "Endereço IPv4" do adaptador ativo (Wi-Fi ou Ethernet), ex.: `192.168.15.5`. Formato final: `http://192.168.15.5:8080` (porta 8080 = backend) |
 
+> Esse IP muda se você trocar de rede (ex.: outro Wi-Fi) — se o app parar de conectar no backend, confira primeiro se o IP em `mobile/.env` ainda bate com o `ipconfig` atual.
+>
 > Nota: no momento, o cliente HTTP em `src/services/api/index.ts` ainda usa uma `baseURL` placeholder — a integração final com o backend depende de conectar essa configuração a `EXPO_PUBLIC_API_URL`.
 
 ## Estrutura de pastas
