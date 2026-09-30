@@ -18,6 +18,7 @@ import com.rabisko.mvp.estilo.domain.Estilo;
 import com.rabisko.mvp.estilo.repository.EstiloRepository;
 import com.rabisko.mvp.shared.storage.StorageService;
 import com.rabisko.mvp.studio.domain.ConviteDTO;
+import com.rabisko.mvp.studio.domain.ConviteDetalheDTO;
 import com.rabisko.mvp.studio.domain.ConviteEstudio;
 import com.rabisko.mvp.studio.repository.ConviteEstudioRepository;
 import com.rabisko.mvp.user.domain.User;
@@ -338,13 +339,9 @@ public class ArtistService {
             return new ArtistDashboardDTO(chatsAbertos, valorTotalMes, totalAgendamentosMes);
     }
 
-    public List<ConviteDTO> encontrarConvitesPendentes(User logado){
+    public List<ConviteDetalheDTO> encontrarConvitesPendentes(User logado) {
         Artist artist = exigirArtistDoUser(logado);
-
-        UUID tatuadorId = artist.getTatuadorId();
-
-        return conviteEstudioRepository.findByTatuadorIdAndStatus(tatuadorId, pendente)
-                .stream().map(ConviteDTO::from).toList();
+        return conviteEstudioRepository.listarDetalhesDoTatuador(artist.getTatuadorId(), pendente);
     }
 
     @Transactional
@@ -367,8 +364,11 @@ public class ArtistService {
         artist.setEstudioId(convite.getEstudioId());
         artist.setVinculadoEstudio(true);
 
+        LocalDateTime agora = LocalDateTime.now();
         convite.setStatus(aceito);
-        convite.setDataResposta(LocalDateTime.now());
+        convite.setDataResposta(agora);
+
+        conviteEstudioRepository.cancelarOutrosPendentes(tatuadorId, conviteId, agora);
 
         return ConviteDTO.from(convite);
     }
@@ -390,5 +390,17 @@ public class ArtistService {
         convite.setDataResposta(LocalDateTime.now());
 
         return ConviteDTO.from(convite);
+    }
+
+    @Transactional
+    public void sairEstudio(User logado) {
+        Artist artist = exigirArtistDoUser(logado);
+
+        if(artist.getEstudioId() == null){
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Artista não pertence a nenhum estúdio");
+        }
+
+        artist.setEstudioId(null);
+        artist.setVinculadoEstudio(false);
     }
 }

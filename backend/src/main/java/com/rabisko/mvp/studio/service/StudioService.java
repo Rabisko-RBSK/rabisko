@@ -1,13 +1,8 @@
 package com.rabisko.mvp.studio.service;
 
 import com.rabisko.mvp.artist.domain.Artist;
-import com.rabisko.mvp.artist.domain.ArtistDTO;
 import com.rabisko.mvp.artist.repository.ArtistRepository;
-import com.rabisko.mvp.studio.domain.ConviteDTO;
-import com.rabisko.mvp.studio.domain.ConviteEstudio;
-import com.rabisko.mvp.studio.domain.ConviteStatus;
-import com.rabisko.mvp.studio.domain.RegisterEstudioDTO;
-import com.rabisko.mvp.studio.domain.Studio;
+import com.rabisko.mvp.studio.domain.*;
 import com.rabisko.mvp.studio.repository.ConviteEstudioRepository;
 import com.rabisko.mvp.studio.repository.StudioRepository;
 import com.rabisko.mvp.user.domain.User;
@@ -92,23 +87,14 @@ public class StudioService {
         return ConviteDTO.from(convite);
     }
 
-    public List<ConviteDTO> listarConvitesPendentes(User logado) {
+    public List<ConviteDetalheDTO> listarConvitesPendentes(User logado) {
         Studio estudio = exigirEstudioDoUser(logado);
-
-        return conviteEstudioRepository
-                .findByEstudioIdAndStatus(estudio.getEstudioId(), ConviteStatus.pendente)
-                .stream()
-                .map(ConviteDTO::from)
-                .toList();
+        return conviteEstudioRepository.listarDetalhesDoEstudio(estudio.getEstudioId(), ConviteStatus.pendente);
     }
 
-    public List<ArtistDTO> listarColaboradores(User logado) {
+    public List<ColaboradorDTO> listarColaboradores(User logado) {
         Studio estudio = exigirEstudioDoUser(logado);
-
-        return artistRepository.findByEstudioId(estudio.getEstudioId())
-                .stream()
-                .map(ArtistDTO::from)
-                .toList();
+        return artistRepository.listarColaboradores(estudio.getEstudioId());
     }
 
     @Transactional

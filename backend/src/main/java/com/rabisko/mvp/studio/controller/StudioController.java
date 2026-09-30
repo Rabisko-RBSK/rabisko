@@ -1,7 +1,8 @@
 package com.rabisko.mvp.studio.controller;
 
-import com.rabisko.mvp.artist.domain.ArtistDTO;
+import com.rabisko.mvp.studio.domain.ColaboradorDTO;
 import com.rabisko.mvp.studio.domain.ConviteDTO;
+import com.rabisko.mvp.studio.domain.ConviteDetalheDTO;
 import com.rabisko.mvp.studio.domain.CriarConviteDTO;
 import com.rabisko.mvp.studio.service.StudioService;
 import com.rabisko.mvp.user.domain.User;
@@ -23,7 +24,7 @@ public class StudioController {
     private StudioService studioService;
 
     @GetMapping("/me/convites")
-    public ResponseEntity<List<ConviteDTO>> listarConvites(
+    public ResponseEntity<List<ConviteDetalheDTO>> listarConvites(
             @AuthenticationPrincipal User logado
     ) {
         return ResponseEntity.ok(studioService.listarConvitesPendentes(logado));
@@ -47,7 +48,7 @@ public class StudioController {
     }
 
     @GetMapping("/me/colaboradores")
-    public ResponseEntity<List<ArtistDTO>> listarColaboradores(
+    public ResponseEntity<List<ColaboradorDTO>> listarColaboradores(
             @AuthenticationPrincipal User logado
     ) {
         return ResponseEntity.ok(studioService.listarColaboradores(logado));

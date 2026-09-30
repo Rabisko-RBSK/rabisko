@@ -8,6 +8,7 @@ import com.rabisko.mvp.artist.domain.PortfolioImagemDTO;
 import com.rabisko.mvp.artist.domain.UploadResponseDTO;
 import com.rabisko.mvp.artist.service.ArtistService;
 import com.rabisko.mvp.studio.domain.ConviteDTO;
+import com.rabisko.mvp.studio.domain.ConviteDetalheDTO;
 import com.rabisko.mvp.user.domain.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -132,7 +133,7 @@ public class ArtistController {
     }
 
     @GetMapping("/me/convites")
-    public ResponseEntity<List<ConviteDTO>> listarConvitesPendentes(@AuthenticationPrincipal User user) {
+    public ResponseEntity<List<ConviteDetalheDTO>> listarConvitesPendentes(@AuthenticationPrincipal User user) {
         return ResponseEntity.ok(artistService.encontrarConvitesPendentes(user));
     }
 
@@ -150,5 +151,13 @@ public class ArtistController {
             @PathVariable UUID conviteId
     ) {
         return ResponseEntity.ok(artistService.recusarConvite(user, conviteId));
+    }
+
+    @DeleteMapping("/me/estudio")
+    public ResponseEntity<Void> sairEstudio(
+            @AuthenticationPrincipal User user
+    ) {
+        artistService.sairEstudio(user);
+        return ResponseEntity.noContent().build();
     }
 }

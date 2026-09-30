@@ -2,6 +2,7 @@ package com.rabisko.mvp.artist.repository;
 
 import com.rabisko.mvp.artist.domain.Artist;
 import com.rabisko.mvp.artist.domain.ArtistSearchProjection;
+import com.rabisko.mvp.studio.domain.ColaboradorDTO;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -86,5 +87,14 @@ public interface ArtistRepository extends JpaRepository<Artist, UUID> {
             @Param("raioKm") Double raioKm
     );
 
-    List<Artist> findByEstudioId(UUID estudioId);
+    @Query("""
+        SELECT new com.rabisko.mvp.studio.domain.ColaboradorDTO(
+            t.tatuadorId, u.nome, t.fotoPerfilUrl, t.instagram)
+        FROM Artist t
+        JOIN User u ON u.userId = t.userId
+        WHERE t.estudioId = :estudioId
+        ORDER BY u.nome
+        """)
+    List<ColaboradorDTO> listarColaboradores(@Param("estudioId") UUID estudioId);
+
 }

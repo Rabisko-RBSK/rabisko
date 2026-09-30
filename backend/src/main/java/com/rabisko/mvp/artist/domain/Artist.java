@@ -71,7 +71,6 @@ public class Artist {
     /**
      * Atalho booleano que espelha "estudioId != null". Existe pra permitir
      * filtros do tipo "so tatuadores de estudio" sem ter que fazer JOIN.
-     * Quem atualiza esse flag e o ArtistService quando muda o vinculo.
      */
     @Column(name = "vinculado_estudio", nullable = false)
     private boolean vinculadoEstudio;
