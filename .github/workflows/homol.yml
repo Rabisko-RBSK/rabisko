@@ -75,8 +75,8 @@ jobs:
 
   build-mobile:
     name: Gerar APK (Mobile)
-    # if: github.event_name == 'push' -- Descomentar e comentar a linha abaixo para buildar o apk
-    if: false
+    if: github.event_name == 'push'
+#    if: false
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: ./mobile } }
     steps:

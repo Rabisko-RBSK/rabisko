@@ -39,3 +39,6 @@ supabase/.temp/
 ### env ###
 **/.env
 node_modules
+
+### Modelos de IA (baixados em runtime) ###
+**/models/*.onnx

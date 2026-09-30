@@ -36,15 +36,6 @@ public class Client {
     @Column(name = "user_id", nullable = false, unique = true)
     private UUID userId;
 
-    /**
-     * Token retornado pelo gateway de pagamento (Mercado Pago / Stripe / etc.)
-     * quando o cliente cadastra um cartao. Fica null no cadastro inicial
-     * e e preenchido na tela de configuracoes quando o usuario adicionar
-     * forma de pagamento.
-     */
-    @Column(name = "dados_pagamento_token")
-    private String dadosPagamentoToken;
-
     @CreationTimestamp
     @Column(name = "data_criacao", updatable = false, nullable = false)
     private LocalDateTime dataCriacao;

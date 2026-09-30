@@ -1,0 +1,13 @@
+{
+  "name": "rabisko",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Ferramentas de desenvolvimento local do Rabisko (Supabase CLI). Backend em backend/ (Maven) e app mobile em mobile/ (Expo) têm seus próprios package.json/pom.xml.",
+  "scripts": {
+    "supabase": "supabase",
+    "dev": "./start-dev.sh"
+  },
+  "devDependencies": {
+    "supabase": "^2.45.5"
+  }
+}

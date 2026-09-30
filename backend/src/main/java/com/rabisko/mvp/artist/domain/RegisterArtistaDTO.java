@@ -37,8 +37,6 @@ public class RegisterArtistaDTO {
 
     private String instagram;
 
-    private String endereco;
-
     /**
      * Lista de NOMES de estilos que o tatuador faz (ex.: ["Realismo", "Blackwork"]).
      * O ArtistService resolve cada nome pra um id consultando a tabela `estilos`

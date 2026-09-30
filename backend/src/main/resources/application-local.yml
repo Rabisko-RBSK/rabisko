@@ -1,10 +1,13 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:54322/postgres
-    username: postgres
-    password: postgres
+    # Override via SPRING_DATASOURCE_URL/USERNAME/PASSWORD (ex.: .env) quando
+    # o backend roda dentro do Dev Container e precisa de host.docker.internal
+    # no lugar de localhost para alcançar o Supabase local.
+    url: ${DB_URL:jdbc:postgresql://localhost:54322/postgres}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASS:postgres}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: none
     show-sql: true

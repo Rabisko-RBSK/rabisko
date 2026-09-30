@@ -28,14 +28,24 @@ public class SimulationController {
      *
      * `consumes = MULTIPART_FORM_DATA` aceita upload de arquivo.
      * @RequestParam("image") pega o campo de arquivo chamado "image".
+     * @RequestParam("mode") escolhe o algoritmo: "auto" (padrão, decide pela imagem),
+     * "u2net" (IA para fundos complexos) ou "lineart" (por brilho, para desenhos em papel branco).
      */
     @PostMapping(value = "/removebg", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> removeBg(@RequestParam("image") MultipartFile image) {
+    public ResponseEntity<?> removeBg(@RequestParam("image") MultipartFile image,
+                                      @RequestParam(value = "mode", defaultValue = "auto") String mode) {
+        SimulationService.RemovalMode removalMode;
         try {
-            System.out.println("===> [SIMULADOR] Recebendo imagem de tamanho: " + (image.getSize() / 1024) + " KB");
+            removalMode = SimulationService.RemovalMode.from(mode);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+
+        try {
+            System.out.println("===> [SIMULADOR] Recebendo imagem de tamanho: " + (image.getSize() / 1024) + " KB (modo " + removalMode + ")");
             long startTime = System.currentTimeMillis();
 
-            byte[] processedImage = simulationService.removeBackground(image);
+            byte[] processedImage = simulationService.removeBackground(image, removalMode);
 
             long endTime = System.currentTimeMillis();
             System.out.println("===> [SIMULADOR] Imagem processada com sucesso em " + (endTime - startTime) + "ms");
@@ -44,6 +54,8 @@ public class SimulationController {
             headers.setContentType(MediaType.IMAGE_PNG);
 
             return new ResponseEntity<>(processedImage, headers, HttpStatus.OK);
+        } catch (SimulationService.UnsupportedImageFormatException e) {
+            return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).body(e.getMessage());
         } catch (Exception e) {
             System.err.println("===> [SIMULADOR] Erro ao processar: " + e.getMessage());
             e.printStackTrace();
