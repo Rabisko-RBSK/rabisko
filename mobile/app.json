@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Rabisko",
-    "slug": "Rabisko",
+    "slug": "rabisko",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -60,14 +60,19 @@
             }
           }
         }
-      ]
+      ],
+      "expo-font",
+      "expo-image",
+      "expo-sharing",
+      "expo-status-bar",
+      "expo-web-browser"
     ],
     "experiments": {
       "reactCompiler": true
     },
     "extra": {
       "eas": {
-        "projectId": "78f4c5d1-7a67-48dc-9bb9-840a542a3ee0"
+        "projectId": "d4014f2c-09af-400e-b726-5d358034bef7"
       }
     }
   }

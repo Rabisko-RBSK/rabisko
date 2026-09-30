@@ -100,6 +100,8 @@ public class User implements UserDetails {
             return List.of(new SimpleGrantedAuthority("ROLE_CLIENT"));
         else if (this.role == UserRole.tatuador)
             return List.of(new SimpleGrantedAuthority("ROLE_TATUADOR"));
+        else if (this.role == UserRole.estudio)
+            return List.of(new SimpleGrantedAuthority("ROLE_ESTUDIO"));
         else
             return List.of(new SimpleGrantedAuthority("ROLE_USER"));
     }

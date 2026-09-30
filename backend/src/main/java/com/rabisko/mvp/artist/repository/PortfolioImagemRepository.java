@@ -14,10 +14,7 @@ public interface PortfolioImagemRepository extends JpaRepository<PortfolioImagem
     @Query("""
             SELECT p FROM PortfolioImagem p
             WHERE p.tatuadorId = :tatuadorId
-            ORDER BY
-                CASE WHEN p.ordem IS NULL THEN 1 ELSE 0 END,
-                p.ordem ASC,
-                p.imagemId ASC
+            ORDER BY p.dataUpload DESC, p.imagemId ASC
             """)
     List<PortfolioImagem> listarPorTatuador(@Param("tatuadorId") UUID tatuadorId);
 

@@ -7,6 +7,8 @@ import com.rabisko.mvp.artist.domain.AvaliacaoDTO;
 import com.rabisko.mvp.artist.domain.PortfolioImagemDTO;
 import com.rabisko.mvp.artist.domain.UploadResponseDTO;
 import com.rabisko.mvp.artist.service.ArtistService;
+import com.rabisko.mvp.studio.domain.ConviteDTO;
+import com.rabisko.mvp.studio.domain.ConviteDetalheDTO;
 import com.rabisko.mvp.user.domain.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -25,7 +27,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-
 
 @RestController
 @RequestMapping("/artist")
@@ -99,16 +100,15 @@ public class ArtistController {
     }
 
     /**
-     * Upload de uma imagem para o portfolio. Multipart com campo `file` e
-     * opcional `descricao`. Devolve a imagem ja persistida (com imagemId).
+     * Upload de uma imagem para o portfolio. Multipart com campo `file`.
+     * Devolve a imagem ja persistida (com imagemId).
      */
     @PostMapping("/me/portfolio")
     public ResponseEntity<PortfolioImagemDTO> adicionarImagemPortfolio(
             @AuthenticationPrincipal User user,
-            @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "descricao", required = false) String descricao
+            @RequestParam("file") MultipartFile file
     ) {
-        return ResponseEntity.ok(artistService.adicionarImagemPortfolio(user, file, descricao));
+        return ResponseEntity.ok(artistService.adicionarImagemPortfolio(user, file));
     }
 
     /** Remove imagem do portfolio (apaga linha + tenta apagar do Storage). */
@@ -130,5 +130,34 @@ public class ArtistController {
     @GetMapping("/{tatuadorId}/avaliacoes")
     public ResponseEntity<List<AvaliacaoDTO>> listarAvaliacoes(@PathVariable UUID tatuadorId) {
         return ResponseEntity.ok(artistService.listarAvaliacoes(tatuadorId));
+    }
+
+    @GetMapping("/me/convites")
+    public ResponseEntity<List<ConviteDetalheDTO>> listarConvitesPendentes(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(artistService.encontrarConvitesPendentes(user));
+    }
+
+    @PostMapping("/me/convites/{conviteId}/aceitar")
+    public ResponseEntity<ConviteDTO> aceitarConvite(
+            @AuthenticationPrincipal User user,
+            @PathVariable UUID conviteId
+    ) {
+        return ResponseEntity.ok(artistService.aceitarConvite(user, conviteId));
+    }
+
+    @PostMapping("/me/convites/{conviteId}/recusar")
+    public ResponseEntity<ConviteDTO> recusarConvite(
+            @AuthenticationPrincipal User user,
+            @PathVariable UUID conviteId
+    ) {
+        return ResponseEntity.ok(artistService.recusarConvite(user, conviteId));
+    }
+
+    @DeleteMapping("/me/estudio")
+    public ResponseEntity<Void> sairEstudio(
+            @AuthenticationPrincipal User user
+    ) {
+        artistService.sairEstudio(user);
+        return ResponseEntity.noContent().build();
     }
 }

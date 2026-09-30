@@ -11,5 +11,4 @@ public class ClientDTO {
 
     private UUID clientId;
     private UUID userId;
-    private String dadosPagamentoToken;
 }

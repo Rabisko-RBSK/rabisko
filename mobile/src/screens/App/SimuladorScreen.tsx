@@ -2,12 +2,13 @@ import React, { useState, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert, Image, StyleSheet, ActivityIndicator } from 'react-native';
 import { ImagePlus, Sparkles, Camera, Wand2, Trash2, Save, Send } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
-import * as MediaLibrary from 'expo-media-library';
+import * as MediaLibrary from 'expo-media-library/legacy';
 import * as Sharing from 'expo-sharing';
 import ViewShot from 'react-native-view-shot';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle } from 'react-native-reanimated';
 import { Header } from '../../components/common/Header';
+import api from '../../services/api';
 
 /**
  * Simulador (DESIGN.md §10 #07 — BiskoAI.jsx). Pre-visualiza a tatuagem no corpo do cliente
@@ -44,18 +45,15 @@ export function SimuladorScreen() {
         type: 'image/jpeg',
       } as any);
 
-      const API_URL = `${process.env.EXPO_PUBLIC_API_URL}/simulation/removebg`;
-
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        body: formData,
+      // Usa o axios (XMLHttpRequest do RN) em vez do `fetch`: o fetch do Expo não aceita
+      // partes `{ uri, name, type }` no FormData ("Unsupported FormDataPart implementation").
+      // Timeout maior que o padrão da `api` porque a remoção com U2Net pode levar alguns segundos.
+      const { data: blob } = await api.post<Blob>('/simulation/removebg', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        responseType: 'blob',
+        timeout: 60000,
       });
 
-      if (!response.ok) {
-        throw new Error(`Erro na API: ${response.status}`);
-      }
-
-      const blob = await response.blob();
       const reader = new FileReader();
       reader.readAsDataURL(blob);
       reader.onloadend = () => {
@@ -246,7 +244,7 @@ export function SimuladorScreen() {
               style={{ width: '100%', aspectRatio: images.length > 0 ? images[0].width / images[0].height : 4 / 3, position: 'relative' }}
             >
             {isProcessing && (
-              <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 10, justifyContent: 'center', alignItems: 'center' }]}>
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 10, justifyContent: 'center', alignItems: 'center' }]}>
                 <ActivityIndicator size="large" color="#FFFFFF" />
                 <Text className="font-body-bold text-[14px] text-surface mt-3">Processando imagem...</Text>
               </View>
@@ -269,7 +267,7 @@ export function SimuladorScreen() {
               <>
                 <Image
                   source={{ uri: images[0].uri }}
-                  style={[StyleSheet.absoluteFillObject, { width: '100%', height: '100%', resizeMode: 'cover' }]}
+                  style={[StyleSheet.absoluteFill, { width: '100%', height: '100%', resizeMode: 'cover' }]}
                 />
 
                 {images.length > 1 && (

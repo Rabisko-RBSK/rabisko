@@ -22,16 +22,15 @@ jobs:
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Instalar dependências
         run: npm install
 
-      # Comandos desativados temporariamente para não travar a esteira hoje
-      # - name: Verificar tipagem (TypeScript)
-      #   run: npx tsc --noEmit
-      # - name: Verificar padrões (ESLint)
-      #   run: npm run lint
+      - name: Verificar tipagem (TypeScript)
+        run: npx tsc --noEmit
+      - name: Verificar padrões (ESLint)
+        run: npm run lint
 
   backend-checks:
     name: Compilação (Backend)

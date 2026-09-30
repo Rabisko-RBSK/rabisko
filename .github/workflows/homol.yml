@@ -28,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: '20' }
+        with: { node-version: '22' }
       - run: npm install
 
   backend-checks:
@@ -75,8 +75,8 @@ jobs:
 
   build-mobile:
     name: Gerar APK (Mobile)
-    # if: github.event_name == 'push' -- Descomentar e comentar a linha abaixo para buildar o apk
-    if: false
+    if: github.event_name == 'push'
+#    if: false
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: ./mobile } }
     steps:
@@ -85,7 +85,7 @@ jobs:
 
       - name: Configurar Node
         uses: actions/setup-node@v4
-        with: { node-version: '20' }
+        with: { node-version: '22' }
 
       - name: Instalar Dependências
         run: npm install
