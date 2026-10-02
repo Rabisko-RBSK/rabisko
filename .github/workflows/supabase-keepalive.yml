@@ -1,12 +1,8 @@
 name: Manter Supabase Ativo (Dev e Homol)
 
-# Projetos do plano gratuito do Supabase são pausados após 7 dias sem atividade.
-# Este workflow roda uma consulta em cada banco diariamente para evitar a pausa.
-# Obs.: o agendamento só dispara a partir da branch padrão (main).
-
 on:
   schedule:
-    - cron: '0 9 * * *' # todo dia às 09:00 UTC (06:00 em Brasília)
+    - cron: '0 9 * * *'
   workflow_dispatch:
 
 permissions:
