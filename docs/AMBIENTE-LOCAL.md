@@ -296,6 +296,14 @@ git checkout -- backend/run-dev.sh start-dev.sh .devcontainer/scripts/
 
 Um `git checkout` sem apagar antes **não** converte o arquivo.
 
+### `git status` no container mostra centenas de arquivos modificados
+
+Isso acontece num clone feito no Windows, onde os arquivos ficam com CRLF no disco. O `post-create.sh` já configura `core.autocrlf input` no git do container. Em um container criado antes disso, rode no terminal do container:
+
+```bash
+git config --global core.autocrlf input
+```
+
 ### Download de imagens falhando (`x509: certificate is valid for ...`)
 
 A rede está interceptando HTTPS. É comum em Wi-Fi com portal de login (hotel, faculdade, café). Faça login no portal ou troque de rede, e rode `npm run db:start` de novo. As imagens que já foram baixadas não são baixadas outra vez.
