@@ -5,7 +5,12 @@
   "description": "Ferramentas de desenvolvimento local do Rabisko (Supabase CLI). Backend em backend/ (Maven) e app mobile em mobile/ (Expo) têm seus próprios package.json/pom.xml.",
   "scripts": {
     "supabase": "supabase",
-    "dev": "./start-dev.sh"
+    "dev": "./start-dev.sh",
+    "db:start": "bash .devcontainer/scripts/supabase-up.sh",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:status": "supabase status",
+    "env:backend": "bash .devcontainer/scripts/gen-backend-env.sh"
   },
   "devDependencies": {
     "supabase": "^2.45.5"
