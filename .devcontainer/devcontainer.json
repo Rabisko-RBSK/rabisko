@@ -7,6 +7,13 @@
     "ghcr.io/devcontainers/features/node:1": { "version": "20", "installYarnUsingApt": false },
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
   },
+  "containerEnv": {
+    // Rede Docker compartilhada entre este container e os do Supabase.
+    // O Supabase CLI lê esta variável como a flag --network-id em todos os
+    // comandos (start, db reset, ...). Ver .devcontainer/scripts/supabase-up.sh.
+    "SUPABASE_NETWORK_ID": "rabisko_dev",
+    "SPRING_PROFILES_ACTIVE": "local"
+  },
   "customizations": {
     "vscode": {
       "extensions": [
@@ -16,10 +23,18 @@
       ]
     }
   },
-  "postCreateCommand": "npm install",
+  "postCreateCommand": "bash .devcontainer/scripts/post-create.sh",
+  "postStartCommand": "bash .devcontainer/scripts/supabase-up.sh",
+  // Publica backend (8080) e Metro (8081) em todas as interfaces do host,
+  // para o celular na rede local alcançá-los (o port forwarding do VS Code
+  // escuta só em 127.0.0.1).
   "runArgs": ["-p", "8080:8080", "-p", "8081:8081"],
   "forwardPorts": [19000, 19001, 19002],
   "portsAttributes": {
-    "19000": { "label": "Expo Dev Tools" }
+    "19000": { "label": "Expo Dev Tools" },
+    // Encaminhamentos internos (socat) para o Supabase; no host essas portas
+    // já são publicadas pelos próprios containers do Supabase.
+    "54321": { "label": "Supabase API (interno)", "onAutoForward": "ignore" },
+    "54322": { "label": "Supabase Postgres (interno)", "onAutoForward": "ignore" }
   }
 }

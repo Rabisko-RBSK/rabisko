@@ -116,6 +116,16 @@ enabled = true
 # The maximum file size allowed (e.g. "5MB", "500KB").
 file_size_limit = "50MiB"
 
+# Buckets usados pelo backend (StorageService). Criados automaticamente no
+# `supabase start`/`db reset` local; o remoto só é afetado por um
+# `supabase config push` explícito. Precisam ser públicos: o backend devolve
+# URLs /storage/v1/object/public/...
+[storage.buckets.profile_images]
+public = true
+
+[storage.buckets.portfolio_images]
+public = true
+
 # Uncomment to configure local storage buckets
 # [storage.buckets.images]
 # public = false
