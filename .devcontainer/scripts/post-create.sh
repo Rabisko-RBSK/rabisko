@@ -7,6 +7,11 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT_DIR"
 
+# Clones no Windows (core.autocrlf=true) têm arquivos com CRLF no disco; sem
+# isto o git daqui de dentro mostra todos como modificados. --global vale só
+# para este container (o .git/config é compartilhado com o host).
+git config --global core.autocrlf input
+
 echo "==> Dependências da raiz (Supabase CLI fixado no package-lock.json)"
 npm ci
 
