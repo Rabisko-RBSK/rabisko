@@ -57,7 +57,7 @@ Todo o conteúdo voltado ao usuário (telas, mensagens de API, nomes de domínio
 ## Stack técnica
 
 **Backend** (`backend/`)
-- Java 21 + Spring Boot 4.0.6 (Web, Security, Validation, Data JPA, WebSocket)
+- Java 25 + Spring Boot 4.0.6 (Web, Security, Validation, Data JPA, WebSocket)
 - PostgreSQL gerenciado via Supabase
 - Autenticação JWT (`com.auth0:java-jwt`)
 - BoofCV (`boofcv-all`) para visão computacional
@@ -79,7 +79,7 @@ Todo o conteúdo voltado ao usuário (telas, mensagens de API, nomes de domínio
 ## Pré-requisitos
 
 Backend:
-- [JDK 21](https://adoptium.net/)
+- [JDK 25](https://adoptium.net/)
 - Maven (ou use o wrapper incluído `./mvnw`)
 - Acesso a um banco PostgreSQL (recomendado: [Supabase](https://supabase.com))
 
@@ -93,7 +93,7 @@ Mobile:
 
 > 📘 **Guia atualizado:** [docs/AMBIENTE-LOCAL.md](docs/AMBIENTE-LOCAL.md) — Dev Container com Supabase local automático.
 
-O projeto usa **Dev Containers** para padronizar o ambiente local (Java 21, Node 20 e Supabase CLI já provisionados), com **Maven nativo** (sem Docker Compose) para rodar o backend e **Supabase CLI** para subir Postgres/Auth/Storage localmente em containers Docker.
+O projeto usa **Dev Containers** para padronizar o ambiente local (Java 25, Node 20 e Supabase CLI já provisionados), com **Maven nativo** (sem Docker Compose) para rodar o backend e **Supabase CLI** para subir Postgres/Auth/Storage localmente em containers Docker.
 
 ### Pré-requisito: Docker Desktop (Windows)
 
@@ -112,9 +112,9 @@ Por isso, o fluxo é dividido:
 
 1. Instale a extensão **Dev Containers** no VS Code.
 2. Abra a pasta do repositório e escolha **"Reopen in Container"** (ou `Ctrl+Shift+P` → `Dev Containers: Reopen in Container`).
-3. O container já vem com Java 21, Node 20, Maven wrapper e as extensões do VS Code (Java Pack, Expo Tools, ESLint). O `postCreateCommand` roda `npm install` automaticamente na raiz — isso serve só para uso *dentro* do container; **não** prepara o Supabase CLI usado no passo abaixo (ver aviso a seguir).
+3. O container já vem com Java 25, Node 20, Maven wrapper e as extensões do VS Code (Java Pack, Expo Tools, ESLint). O `postCreateCommand` roda `npm install` automaticamente na raiz — isso serve só para uso *dentro* do container; **não** prepara o Supabase CLI usado no passo abaixo (ver aviso a seguir).
 
-> Não quer usar Dev Containers? Basta ter Docker Desktop, JDK 21, Maven e Node.js instalados localmente e seguir a seção [Instalação](#instalação) abaixo — nesse caso `localhost` funciona normalmente em todo lugar, sem a ressalva do `host.docker.internal`.
+> Não quer usar Dev Containers? Basta ter Docker Desktop, JDK 25, Maven e Node.js instalados localmente e seguir a seção [Instalação](#instalação) abaixo — nesse caso `localhost` funciona normalmente em todo lugar, sem a ressalva do `host.docker.internal`.
 
 ### Subindo o ambiente com `start-dev.sh`
 
@@ -304,7 +304,7 @@ Crie `mobile/.env` com base em `mobile/env-example.md` — **todas as variáveis
 
 ```
 rabisko/
-├── backend/                       # API REST (Spring Boot / Java 21)
+├── backend/                       # API REST (Spring Boot / Java 25)
 │   └── src/main/java/com/rabisko/mvp/
 │       ├── user/                  # Usuários, autenticação, JWT
 │       ├── artist/                # Perfil de tatuador, portfólio, avaliações

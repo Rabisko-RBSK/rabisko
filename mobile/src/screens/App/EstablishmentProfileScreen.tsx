@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, Image, TouchableOpacity, Alert } from 'react-native';
-import { Heart, Star } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, ScrollView, Image, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { Heart, Star, UserRound } from 'lucide-react-native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Header } from '../../components/common/Header';
@@ -9,91 +9,101 @@ import { Button } from '../../components/common/Button';
 import { StatusPill } from '../../components/common/Chip';
 import { HomeStackParamList } from '../../routes/home.stack';
 import { chatService } from '../../services/api';
+import { artistService, ArtistProfile } from '../../services/api/artistService';
+import { avaliacaoService, Avaliacao } from '../../services/api/avaliacaoService';
+import { useFavoriteStore } from '../../store/favoriteStore';
+import { tempoRelativo } from '../../utils/datas';
 
+type ProfileRoute = RouteProp<HomeStackParamList, 'EstablishmentProfile'>;
 
-const ARTIST = {
-  id: 'cacc1353-c691-49b4-9a66-ce4a73891f3c',
-  name: 'João Santos',
-  rating: '4,9',
-  tags: ['Realismo', 'Minimalista'],
-  handle: '@joão.santos',
-  photo: 'https://images.unsplash.com/photo-1682406593404-99578759c260?q=80&w=400&auto=format&fit=crop',
-  about: 'Tatuador profissional, com trabalhos que transitam entre o minimalismo e o traço mais pesado.',
-  portfolio: [
-    'https://images.unsplash.com/photo-1611501275019-9b5cda994e8d?q=80&w=400&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1542856391-010fb87dcfed?q=80&w=400&auto=format&fit=crop',
-  ],
-};
+function ReviewCard({ avaliacao }: { avaliacao: Avaliacao }) {
+  const iniciais = avaliacao.remetenteNome
+    ? avaliacao.remetenteNome.trim().slice(0, 2).toUpperCase()
+    : 'CL';
 
-const REVIEWS = [
-  {
-    id: 'r1',
-    initials: 'AC',
-    name: 'Ana Costa',
-    timeAgo: 'Há 2 horas',
-    stars: 5,
-    text: 'Trabalho impecável, super atencioso e ambiente muito limpo. Recomendo demais.',
-  },
-  {
-    id: 'r2',
-    initials: 'RS',
-    name: 'Rafa Silva',
-    timeAgo: 'Há 3 dias',
-    stars: 5,
-    text: 'Profissional fora de série. Captou a ideia logo na primeira conversa.',
-  },
-];
-
-
-function ReviewCard({
-  initials,
-  name,
-  timeAgo,
-  stars,
-  text,
-}: {
-  initials: string;
-  name: string;
-  timeAgo: string;
-  stars: number;
-  text: string;
-}) {
   return (
     <View className="bg-surface-2 rounded-rd-lg p-4 mb-3">
       <View className="flex-row items-center mb-2">
         <View className="w-9 h-9 rounded-rd-pill bg-ink items-center justify-center mr-3">
-          <Text className="font-body-bold text-[12px] text-on-ink">{initials}</Text>
+          <Text className="font-body-bold text-[12px] text-on-ink">{iniciais}</Text>
         </View>
         <View className="flex-1">
-          <Text className="font-body-semibold text-[14px] text-ink">{name}</Text>
-          <Text className="font-body text-[11px] text-fg-3">{timeAgo}</Text>
+          <Text className="font-body-semibold text-[14px] text-ink">{avaliacao.remetenteNome}</Text>
+          <Text className="font-body text-[11px] text-fg-3">{tempoRelativo(avaliacao.dataCriacao)}</Text>
         </View>
         <View className="flex-row" style={{ gap: 2 }}>
-          {Array.from({ length: stars }).map((_, i) => (
+          {Array.from({ length: avaliacao.nota }).map((_, i) => (
             <Star key={i} size={12} color="#000000" fill="#000000" />
           ))}
         </View>
       </View>
-      <Text className="font-body text-[13px] text-fg-2 leading-[18px]">{text}</Text>
+      {avaliacao.comentario ? (
+        <Text className="font-body text-[13px] text-fg-2 leading-[18px]">{avaliacao.comentario}</Text>
+      ) : null}
     </View>
   );
 }
 
-
 export function EstablishmentProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
-  const [favorited, setFavorited] = useState(false);
+  const route = useRoute<ProfileRoute>();
+  const artistId = route.params?.id;
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [artist, setArtist] = useState<Partial<ArtistProfile> | null>(null);
+  const [avaliacoes, setAvaliacoes] = useState<Avaliacao[]>([]);
   const [iniciandoConversa, setIniciandoConversa] = useState(false);
 
+  const isFavorited = useFavoriteStore((s) => (artistId ? s.isFavorite(artistId) : false));
+  const toggleFavorite = useFavoriteStore((s) => s.toggleFavorite);
+
+  const carregarPerfil = useCallback(async () => {
+    if (!artistId) {
+      setError('Artista não encontrado.');
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const [perfilRes, avaliacoesRes] = await Promise.all([
+        artistService.obterPerfilPublico(artistId),
+        avaliacaoService.listarPorTatuador(artistId).catch(() => []),
+      ]);
+      setArtist(perfilRes);
+      setAvaliacoes(avaliacoesRes);
+    } catch (e: any) {
+      console.warn('[EstablishmentProfile] erro ao carregar:', e);
+      setError('Não foi possível carregar os dados deste artista.');
+    } finally {
+      setLoading(false);
+    }
+  }, [artistId]);
+
+  useEffect(() => {
+    carregarPerfil();
+  }, [carregarPerfil]);
+
+  const handleToggleFavorite = () => {
+    if (!artistId) return;
+    toggleFavorite({
+      id: artistId,
+      name: artist?.nome || 'Artista',
+      photo: artist?.fotoUrl,
+      rating: avaliacoes.length > 0 ? (avaliacoes.reduce((acc, a) => acc + a.nota, 0) / avaliacoes.length).toFixed(1) : undefined,
+    });
+  };
+
   async function iniciarConversa() {
-    if (iniciandoConversa) return;
+    if (iniciandoConversa || !artistId) return;
     setIniciandoConversa(true);
     try {
-      const chat = await chatService.abrirChat(ARTIST.id);
+      const chat = await chatService.abrirChat(artistId);
       navigation.navigate('ChatThread', {
         chatId: chat.chatId,
-        outroNome: chat.outroUsuarioNome,
-        outroUsuarioId: chat.outroUsuarioId,
+        outroNome: chat.outroUsuarioNome || artist?.nome || 'Artista',
+        outroUsuarioId: chat.outroUsuarioId || artistId,
       });
     } catch (e) {
       console.error('Erro ao abrir chat', e);
@@ -103,21 +113,50 @@ export function EstablishmentProfileScreen() {
     }
   }
 
+  if (loading) {
+    return (
+      <View className="flex-1 bg-background">
+        <Header onBack={() => navigation.goBack()} />
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color="#602C66" />
+        </View>
+      </View>
+    );
+  }
+
+  if (error || !artist) {
+    return (
+      <View className="flex-1 bg-background">
+        <Header onBack={() => navigation.goBack()} />
+        <View className="flex-1 items-center justify-center px-8">
+          <Text className="font-body text-[14px] text-fg-2 text-center mb-4">{error || 'Artista indisponível'}</Text>
+          <Button title="Tentar de novo" onPress={carregarPerfil} />
+        </View>
+      </View>
+    );
+  }
+
+  const nomeArtista = artist.nome || 'Artista';
+  const handleInstagram = artist.instagram ? `@${artist.instagram.replace(/^@+/, '')}` : null;
+  const notaMedia = avaliacoes.length > 0
+    ? (avaliacoes.reduce((acc, a) => acc + a.nota, 0) / avaliacoes.length).toFixed(1).replace('.', ',')
+    : null;
+
   return (
     <View className="flex-1 bg-background">
       <Header
         onBack={() => navigation.goBack()}
         right={
           <TouchableOpacity
-            onPress={() => setFavorited((v) => !v)}
+            onPress={handleToggleFavorite}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel={favorited ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+            accessibilityLabel={isFavorited ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
           >
             <Heart
               size={24}
-              color={favorited ? '#602C66' : '#000000'}
-              fill={favorited ? '#602C66' : 'transparent'}
+              color={isFavorited ? '#602C66' : '#000000'}
+              fill={isFavorited ? '#602C66' : 'transparent'}
             />
           </TouchableOpacity>
         }
@@ -129,48 +168,71 @@ export function EstablishmentProfileScreen() {
       >
         <View className="items-center mt-2 mb-6">
           <View
-            className="rounded-rd-pill overflow-hidden bg-surface mb-3"
+            className="rounded-rd-pill overflow-hidden bg-surface mb-3 items-center justify-center"
             style={{ width: 120, height: 120 }}
           >
-            <Image source={{ uri: ARTIST.photo }} className="w-full h-full" />
+            {artist.fotoUrl ? (
+              <Image source={{ uri: artist.fotoUrl }} className="w-full h-full" />
+            ) : (
+              <UserRound size={60} color="#6B6B6B" strokeWidth={1.5} />
+            )}
           </View>
 
-          {ARTIST.tags[0] && <StatusPill label={ARTIST.tags[0]} tone="ink" />}
+          {artist.nomeEstudio ? (
+            <StatusPill label={artist.nomeEstudio} tone="plum" />
+          ) : (
+            <StatusPill label="TATUADOR" tone="ink" />
+          )}
 
-          <View className="flex-row items-center mt-2">
-            <Text className="font-body-semibold text-[14px] text-ink mr-1">{ARTIST.rating}</Text>
-            <Star size={14} color="#000000" fill="#000000" />
-          </View>
+          {notaMedia ? (
+            <View className="flex-row items-center mt-2">
+              <Text className="font-body-semibold text-[14px] text-ink mr-1">{notaMedia}</Text>
+              <Star size={14} color="#000000" fill="#000000" />
+            </View>
+          ) : (
+            <Text className="font-body text-[12px] text-fg-3 mt-1.5">Novo no Rabisko</Text>
+          )}
 
           <Text className="font-aux-bold text-[32px] leading-[36px] text-ink mt-2 text-center">
-            {ARTIST.name}
+            {nomeArtista}
           </Text>
         </View>
 
         <View className="bg-surface rounded-rd-lg p-5 mb-8">
           <Text className="font-aux-bold text-[16px] text-ink mb-2">Sobre</Text>
-          <Text className="font-body text-[14px] text-fg-2 leading-[20px] mb-3">{ARTIST.about}</Text>
-          <Text className="font-body text-[13px] text-fg-3">{ARTIST.handle}</Text>
+          <Text className="font-body text-[14px] text-fg-2 leading-[20px] mb-3">
+            {artist.bio || 'Tatuador profissional disponível no Rabisko para orçamentos e agendamentos.'}
+          </Text>
+          {handleInstagram && (
+            <Text className="font-body text-[13px] text-plum">{handleInstagram}</Text>
+          )}
         </View>
 
         <View className="flex-row items-end justify-between mb-3">
           <Text className="font-aux-bold text-[20px] text-ink">Portfólio</Text>
-          <TouchableOpacity hitSlop={8}>
-            <Text className="font-body-semibold text-[12px] text-fg-2">Ver Todos</Text>
-          </TouchableOpacity>
         </View>
-        <View className="flex-row mb-8" style={{ gap: 12 }}>
-          {ARTIST.portfolio.slice(0, 2).map((src, i) => (
-            <View key={i} className="flex-1 rounded-rd-xl overflow-hidden bg-surface" style={{ aspectRatio: 1 }}>
-              <Image source={{ uri: src }} className="w-full h-full" />
-            </View>
-          ))}
-        </View>
+        {artist.portfolio && artist.portfolio.length > 0 ? (
+          <View className="flex-row flex-wrap mb-8" style={{ gap: 12 }}>
+            {artist.portfolio.map((img) => (
+              <View key={img.imagemId} className="rounded-rd-xl overflow-hidden bg-surface" style={{ width: '47%', aspectRatio: 1 }}>
+                <Image source={{ uri: img.url }} className="w-full h-full" />
+              </View>
+            ))}
+          </View>
+        ) : (
+          <View className="bg-surface rounded-rd-lg p-5 items-center mb-8">
+            <Text className="font-body text-[13px] text-fg-3 text-center">Nenhum trabalho no portfólio ainda.</Text>
+          </View>
+        )}
 
         <Text className="font-aux-bold text-[20px] text-ink mb-3">Avaliações</Text>
-        {REVIEWS.map((r) => (
-          <ReviewCard key={r.id} {...r} />
-        ))}
+        {avaliacoes.length === 0 ? (
+          <View className="bg-surface rounded-rd-lg p-5 items-center mb-6">
+            <Text className="font-body text-[13px] text-fg-3 text-center">Sem avaliações ainda.</Text>
+          </View>
+        ) : (
+          avaliacoes.map((r) => <ReviewCard key={r.avaliacaoId} avaliacao={r} />)
+        )}
       </ScrollView>
 
       <View
@@ -181,7 +243,7 @@ export function EstablishmentProfileScreen() {
           title="Reservar"
           variant="outline"
           className="flex-1 px-5"
-          onPress={() => navigation.navigate('BookingFlow', { id: ARTIST.id })}
+          onPress={() => navigation.navigate('BookingFlow', { id: artistId! })}
         />
         <Button
           title={iniciandoConversa ? 'Abrindo…' : 'Chat'}

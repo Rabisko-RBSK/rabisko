@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # --- Stage 1: build ---
-FROM maven:3.9.6-eclipse-temurin-21 AS build
+FROM maven:3.10.0-eclipse-temurin-25 AS build
 WORKDIR /app
 
 # Cache de dependências: copia só o pom.xml primeiro
@@ -13,7 +13,7 @@ COPY backend/src ./src
 RUN mvn -B clean package -DskipTests
 
 # --- Stage 2: runtime ---
-FROM eclipse-temurin:21-jre-jammy AS runtime
+FROM eclipse-temurin:25-jre AS runtime
 WORKDIR /app
 
 RUN useradd --create-home --shell /bin/bash rabisko

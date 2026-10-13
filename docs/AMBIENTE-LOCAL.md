@@ -41,7 +41,7 @@ docker info --format '{{.MemTotal}}'   # em bytes
    ```
 2. Com o Docker Desktop rodando, aceite o aviso **"Reopen in Container"** (ou `Ctrl+Shift+P` → `Dev Containers: Reopen in Container`).
 3. Aguarde. O VS Code faz automaticamente:
-   - **build da imagem** do Dev Container (Java 21, Node 20, Docker CLI);
+   - **build da imagem** do Dev Container (Java 25, Node 20, Docker CLI);
    - **`postCreateCommand`** (`.devcontainer/scripts/post-create.sh`), só na criação: `npm ci` na raiz (instala o Supabase CLI na versão do `package-lock.json`), `npm ci` em `mobile/` e download das dependências Maven do backend;
    - **`postStartCommand`** (`.devcontainer/scripts/supabase-up.sh`), a cada vez que o container inicia:
      - cria a rede Docker `rabisko_dev` e conecta o Dev Container a ela;

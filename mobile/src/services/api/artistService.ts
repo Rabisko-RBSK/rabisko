@@ -90,7 +90,35 @@ function multipartImage(uri: string, fieldName: string, descricao?: string): For
 
 export const artistService = {
   /**
+   * Perfil público do tatuador por ID.
+   * Contrato proposto: GET /artist/{tatuadorId} -> ArtistProfile
+   */
+  async obterPerfilPublico(tatuadorId: string): Promise<Partial<ArtistProfile>> {
+    try {
+      const { data } = await api.get<ArtistProfile>(`/artist/${tatuadorId}`);
+      return data;
+    } catch {
+      try {
+        const { data: lista } = await api.get<any[]>('/artist/search');
+        const item = lista.find((a: any) => a.tatuadorId === tatuadorId);
+        if (item) {
+          return {
+            tatuadorId: item.tatuadorId,
+            nome: item.nome,
+            bio: null,
+            instagram: null,
+            fotoUrl: null,
+            portfolio: [],
+          };
+        }
+      } catch {}
+      return { tatuadorId };
+    }
+  },
+
+  /**
    * Perfil do tatuador autenticado (identificado pelo JWT).
+
    *
    * NOTA: o endpoint ainda não existe no backend. Quando o ArtistController
    * expuser `GET /artist/me`, esta camada já está pronta — a tela de perfil

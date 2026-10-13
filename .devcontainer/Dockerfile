@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/devcontainers/java:1-21-bullseye
+FROM mcr.microsoft.com/devcontainers/java:25-bookworm
 
 # A imagem base traz um repositório apt legado do Yarn (dl.yarnpkg.com) cuja
 # chave GPG expirou/foi removida (NO_PUBKEY 62D54FD4003F6525), o que quebra
