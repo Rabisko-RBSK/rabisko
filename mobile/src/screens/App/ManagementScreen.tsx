@@ -10,6 +10,9 @@ import {
 import { CalendarCheck, MessageSquare, RotateCw, Wallet } from 'lucide-react-native';
 
 import { Header } from '../../components/common/Header';
+import { Button } from '../../components/common/Button';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { ManagementStackParamList } from '../../routes/management.stack';
 import { useArtistDashboard } from '../../hooks/useArtistDashboard';
 import { formatarBRL } from '../../services/api/dashboardService';
 
@@ -24,7 +27,7 @@ import { formatarBRL } from '../../services/api/dashboardService';
  * O hook `useArtistDashboard` cuida do fetch, loading e erro — esta tela só
  * decide o layout.
  */
-export function ManagementScreen() {
+export function ManagementScreen({ navigation }: NativeStackScreenProps<ManagementStackParamList, 'ManagementHome'>) {
   const { dashboard, loading, error, reload } = useArtistDashboard();
 
   return (
@@ -37,6 +40,10 @@ export function ManagementScreen() {
           <RefreshControl refreshing={loading} onRefresh={reload} tintColor="#602C66" />
         }
       >
+        <View className="mb-6 gap-2">
+          <Button title="Ficha de anamnese" variant="secondary" onPress={() => navigation.navigate('Anamnese')} />
+          <Text className="font-body text-[12px] text-fg-2">Preencha e revise a ficha do cliente. Salvamento em breve.</Text>
+        </View>
         {loading && !dashboard ? (
           <View className="items-center justify-center py-20">
             <ActivityIndicator size="large" color="#602C66" />
