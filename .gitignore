@@ -42,3 +42,4 @@ node_modules
 
 ### Modelos de IA (baixados em runtime) ###
 **/models/*.onnx
+supabase/snippets/
