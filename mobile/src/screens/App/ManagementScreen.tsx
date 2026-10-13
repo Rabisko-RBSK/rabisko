@@ -10,7 +10,7 @@ import {
 import { CalendarCheck, MessageSquare, RotateCw, Wallet } from 'lucide-react-native';
 
 import { Header } from '../../components/common/Header';
-import { Button } from '../../components/common/Button';
+import { AnamneseButton as Button } from '../../components/anamnese/AnamneseButton';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ManagementStackParamList } from '../../routes/management.stack';
 import { useArtistDashboard } from '../../hooks/useArtistDashboard';

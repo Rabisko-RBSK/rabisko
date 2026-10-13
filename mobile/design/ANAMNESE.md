@@ -5,7 +5,25 @@ disponibilidade dos indicadores do dashboard. Cliente preenche seus dados no
 formulário acompanhado do profissional; não há envio remoto nesta etapa.
 
 O usuário confirmou que não existe uma tela correspondente no Figma. A tela
-reutiliza Header, Input, Button, tipografia, cores e espaçamentos do DESIGN.md.
+reutiliza Input, tipografia, cores e espaçamentos do DESIGN.md. O cabeçalho e os
+botões da ficha permitem quebra de linha, inclusive com fonte ampliada.
+
+## Responsividade
+
+- Conteúdo centralizado, com largura máxima de 560px.
+- Margens de 16px abaixo de 360px e de 24px nas demais larguras.
+- Botões exclusivos da anamnese: área mínima de 48px, rótulo em Inter 16/24,
+  padding 12px vertical e 16px horizontal; altura cresce com o texto. Sem
+  `numberOfLines`, reticências ou redução automática da fonte.
+- Título flexível em Bebas 32/40; ação de voltar com área de 48px.
+- Confirmação de descarte rolável, respeitando as áreas seguras superior e inferior.
+- Valores revisados, erros e nomes de anexos não têm limite de linhas.
+
+Verificação visual exigida antes de declarar esta etapa concluída: larguras de
+320, 360, 390, 430, 768 e 1024px; fonte padrão e ampliada a 200%; orientação
+horizontal; nomes, endereços e nomes de arquivos longos; teclado aberto; revisão
+e confirmação de descarte. Checagem de tipos e testes de regras não substituem
+essa conferência visual nem o teste no dispositivo.
 
 ## Documento de referência
 

@@ -1,12 +1,13 @@
 import React, { useRef, useState } from 'react';
-import { Image, KeyboardAvoidingView, Modal, Platform, ScrollView, Text, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ChevronLeft } from 'lucide-react-native';
 import { usePreventRemove } from '@react-navigation/native';
 import type { NavigationAction } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
 
-import { Button } from '../../components/common/Button';
-import { Header } from '../../components/common/Header';
+import { AnamneseButton as Button } from '../../components/anamnese/AnamneseButton';
 import { Input } from '../../components/common/Input';
 import { useAuthStore } from '../../store/authStore';
 import { theme } from '../../theme';
@@ -18,6 +19,8 @@ import {
 import type { ErrosAnamnese, FichaAnamnese } from '../../services/anamnese';
 
 type Props = NativeStackScreenProps<ManagementStackParamList, 'Anamnese'>;
+
+const MAX_CONTENT_WIDTH = 560;
 
 function Secao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return <View className="mb-6 gap-3">
@@ -32,7 +35,7 @@ function Campo({ label, value, onChange, error, date, multiline, review }: {
 }) {
   if (review) return <View className="mb-3">
     <Text className="font-body text-[12px] text-fg-2">{label}</Text>
-    <Text selectable className="font-body text-[16px] text-ink">{value}</Text>
+    <Text selectable className="font-body text-[16px] leading-6 text-ink">{value}</Text>
   </View>;
   return <Input label={`${label} *`} accessibilityLabel={label} value={value}
     onChangeText={onChange} error={error} multiline={multiline}
@@ -55,6 +58,9 @@ function Confirmacao({ label, value, onChange, error, review }: {
 
 /** Dados ficam apenas em memória até a integração da issue #188. */
 export function AnamneseScreen({ navigation }: Props) {
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const gutter = width < 360 ? theme.spacing[4] : theme.spacing[6];
   const nome = useAuthStore((state) => state.user?.name ?? '');
   const [ficha, setFicha] = useState(() => novaFicha(nome));
   const [erros, setErros] = useState<ErrosAnamnese>({});
@@ -115,9 +121,19 @@ export function AnamneseScreen({ navigation }: Props) {
   }
 
   return <KeyboardAvoidingView className="flex-1 bg-background" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-    <Header title={revisao ? 'REVISAR FICHA' : 'ANAMNESE'} onBack={revisao ? editar : navigation.goBack} />
+    <View className="flex-row items-center gap-2" style={{ paddingTop: insets.top + theme.spacing[2],
+      paddingHorizontal: gutter, paddingBottom: theme.spacing[2], width: '100%', maxWidth: MAX_CONTENT_WIDTH, alignSelf: 'center' }}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Voltar" onPress={revisao ? editar : navigation.goBack}
+        style={{ minWidth: theme.spacing[12], minHeight: theme.spacing[12], justifyContent: 'center', alignItems: 'center' }}>
+        <ChevronLeft size={theme.spacing[6]} color={theme.colors.ink} />
+      </Pressable>
+      <Text accessibilityRole="header" className="flex-1 font-display text-[32px] leading-10 text-ink tracking-wide">
+        {revisao ? 'REVISAR FICHA' : 'ANAMNESE'}
+      </Text>
+    </View>
     <ScrollView ref={scroll} keyboardShouldPersistTaps="handled"
-      contentContainerStyle={{ padding: theme.spacing[6], paddingBottom: theme.spacing[10] }}>
+      contentContainerStyle={{ padding: gutter, paddingBottom: theme.spacing[10] + insets.bottom,
+        width: '100%', maxWidth: MAX_CONTENT_WIDTH, alignSelf: 'center' }}>
       <View className="bg-surface rounded-rd-lg p-4 mb-6 gap-2">
         <Text className="font-body-bold text-[16px] text-ink">Ficha cadastral do cliente</Text>
         <Text className="font-body text-[14px] text-fg-2">
@@ -193,8 +209,10 @@ export function AnamneseScreen({ navigation }: Props) {
     </ScrollView>
 
     <Modal visible={!!saida} transparent animationType="fade" onRequestClose={() => setSaida(null)}>
-      <View className="flex-1 bg-ink/60 justify-center p-6">
-        <View accessibilityViewIsModal className="bg-paper rounded-rd-lg p-6 gap-4">
+      <View className="flex-1 bg-ink/60 justify-center" style={{ paddingHorizontal: gutter,
+        paddingTop: insets.top + theme.spacing[4], paddingBottom: insets.bottom + theme.spacing[4] }}>
+        <ScrollView style={{ flexGrow: 0, maxHeight: '100%', width: '100%', maxWidth: MAX_CONTENT_WIDTH, alignSelf: 'center' }}>
+        <View accessibilityViewIsModal className="bg-paper rounded-rd-lg p-4 gap-4">
           <Text accessibilityRole="header" className="font-display text-[24px] text-ink">DESCARTAR FICHA?</Text>
           <Text className="font-body text-[16px] text-fg-2">Os dados e anexos não foram salvos. Ao sair, será necessário preencher a ficha novamente.</Text>
           <Button title="Continuar preenchendo" onPress={() => setSaida(null)} />
@@ -203,6 +221,7 @@ export function AnamneseScreen({ navigation }: Props) {
             setSaida(null);
           }} />
         </View>
+        </ScrollView>
       </View>
     </Modal>
   </KeyboardAvoidingView>;
