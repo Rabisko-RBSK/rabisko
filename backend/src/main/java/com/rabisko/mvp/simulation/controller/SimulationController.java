@@ -63,4 +63,37 @@ public class SimulationController {
                     .body("Erro ao processar imagem: " + e.getMessage());
         }
     }
+
+    /**
+     * POST /simulation/depthmap
+     *
+     * Recebe a foto base (corpo do cliente) no campo "image" e devolve o mapa de profundidade
+     * gerado pelo Depth Anything V2 Small: PNG em tons de cinza de 16 bits, branco = mais perto
+     * da câmera. O mapa cobre o mesmo enquadramento da foto em resolução menor (~518 px no lado
+     * menor), então deve ser amostrado pelas mesmas coordenadas UV da foto.
+     */
+    @PostMapping(value = "/depthmap", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> depthMap(@RequestParam("image") MultipartFile image) {
+        try {
+            System.out.println("===> [SIMULADOR] Gerando mapa de profundidade para imagem de " + (image.getSize() / 1024) + " KB");
+            long startTime = System.currentTimeMillis();
+
+            byte[] depthMap = simulationService.generateDepthMap(image);
+
+            long endTime = System.currentTimeMillis();
+            System.out.println("===> [SIMULADOR] Mapa de profundidade gerado em " + (endTime - startTime) + "ms");
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.IMAGE_PNG);
+
+            return new ResponseEntity<>(depthMap, headers, HttpStatus.OK);
+        } catch (SimulationService.UnsupportedImageFormatException e) {
+            return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).body(e.getMessage());
+        } catch (Exception e) {
+            System.err.println("===> [SIMULADOR] Erro ao gerar mapa de profundidade: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Erro ao gerar mapa de profundidade: " + e.getMessage());
+        }
+    }
 }
