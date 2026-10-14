@@ -1,4 +1,28 @@
+import type {
+  StudioAgendaItem, StudioArtistResumo, StudioDailyRevenue, StudioDashboardPeriodo,
+} from './api/studioDashboardService';
+
 export type StudioPeriod = 'current' | 'previous';
+
+export interface StudioStyleResumo {
+  name: string;
+  count: number;
+  percent: number;
+}
+
+/** Dados que a tela do dashboard consome. Só `styles` ainda vem do mock. */
+export interface StudioDashboard {
+  revenue: number;
+  appointments: number;
+  newAppointments: number;
+  recurringAppointments: number;
+  daily: StudioDailyRevenue[];
+  peak: StudioDailyRevenue;
+  average: number;
+  artists: StudioArtistResumo[];
+  styles: StudioStyleResumo[];
+  bookings: StudioAgendaItem[];
+}
 
 export interface StudioArtist {
   id: string;
@@ -34,8 +58,29 @@ export function periodDate(period: StudioPeriod, now: Date): Date {
   return new Date(now.getFullYear(), now.getMonth() - (period === 'previous' ? 1 : 0), 1);
 }
 
-// Nomes e IDs vêm do seed.sql. Valores, sessões e estilos por reserva são fictícios.
-// Não há endpoint de dashboard do estúdio ou relação reserva/estilo no backend atual.
+/** Dias considerados no período: até hoje no mês atual, o mês inteiro no anterior. */
+export function periodDays(period: StudioPeriod, now: Date): number {
+  const month = periodDate(period, now);
+  return period === 'current' ? now.getDate() : new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+}
+
+/** Do dia 1 até o dia `days` do mês (inclusivo, padrão: último dia), no formato das rotas. */
+export function monthRange(month: Date, days?: number): StudioDashboardPeriodo {
+  const lastDay = days ?? new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+  return { startDate: `${monthKey(month)}-01`, endDate: `${monthKey(month)}-${String(lastDay).padStart(2, '0')}` };
+}
+
+export function emptyStudioDashboard(days: number): StudioDashboard {
+  const daily = Array.from({ length: days }, (_, index) => ({ day: index + 1, value: 0 }));
+  return {
+    revenue: 0, appointments: 0, newAppointments: 0, recurringAppointments: 0,
+    daily, peak: daily[0], average: 0, artists: [], styles: [], bookings: [],
+  };
+}
+
+// Mock usado APENAS em "Estilos mais procurados": o banco não guarda estilo por
+// serviço/reserva, então não há rota para esse gráfico. O resto do dashboard
+// vem de /studio/me/dashboard/** (ver useStudioDashboard).
 export function createStudioDemoBookings(now: Date): StudioBooking[] {
   return (['previous', 'current'] as const).flatMap((period) => {
     const month = periodDate(period, now);
@@ -94,8 +139,6 @@ export function summarizeStudioBookings(bookings: StudioBooking[], month: Date, 
     bookings: selected.slice().sort((a, b) => b.date.localeCompare(a.date) || a.time.localeCompare(b.time)),
   };
 }
-
-export type StudioDashboard = ReturnType<typeof summarizeStudioBookings>;
 
 export function percentageChange(current: number, previous: number): number | null {
   return previous > 0 ? Math.round((current - previous) / previous * 100) : null;

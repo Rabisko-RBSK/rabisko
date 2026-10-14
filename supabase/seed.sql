@@ -241,4 +241,114 @@ INSERT INTO "public"."convites_estudio"
 
 ON CONFLICT ("convite_id") DO NOTHING;
 
+-- ----------------------------------------------------------------------------
+-- Dashboard do estúdio: histórico de serviços/sessões da Tinta Negra Studio
+-- ----------------------------------------------------------------------------
+-- Alimenta as rotas /studio/me/dashboard/** (login: e@e.com). As datas são
+-- relativas ao mês corrente (horário de Brasília), para que "Este mês" e
+-- "Mês anterior" tenham dados e comparação em qualquer data em que o seed rodar:
+--   M-2: 14 serviços | M-1: 18 + 3 de clientes novos | M atual: 12 + 2 de
+--   clientes novos, entre os dias 1 e 10 (limitado ao dia de hoje).
+-- Um a cada 9 serviços é cancelado (fica fora do dashboard). Cada serviço tem
+-- uma sessão em reservas, 3 a 17 dias depois (10 dias para os clientes novos).
+-- IDs: usuários 11111111-...-0000000001NN, clientes 22222222-...-0000000001NN,
+-- serviços aaaaaaaa-...-00000000KNNN e reservas bbbbbbbb-...-00000000KNNN.
+
+INSERT INTO "public"."users" ("user_id", "nome", "email", "senha_hash", "role", "status_ativo", "termos_aceitos")
+SELECT ('11111111-1111-1111-1111-0000000001' || lpad(c.i::text, 2, '0'))::uuid, c.nome, c.email,
+       '$2a$10$ulN5jQ9YJacE3Ym9i4hmsO31TaVkdrvbrQgIaAXAU9j4gn29sBHLS', 'cliente', true, true
+FROM (VALUES
+    (1, 'Camila Mendes',   'camila.mendes@example.com'),
+    (2, 'Rafael Lima',     'rafael.lima@example.com'),
+    (3, 'Juliana Rocha',   'juliana.rocha@example.com'),
+    (4, 'Marcos Teixeira', 'marcos.teixeira@example.com'),
+    (5, 'Patricia Alves',  'patricia.alves@example.com'),
+    (6, 'Lucas Martins',   'lucas.martins@example.com'),
+    (7, 'Fernanda Costa',  'fernanda.costa@example.com'),
+    (8, 'Gabriel Nunes',   'gabriel.nunes@example.com'),
+    (9, 'Beatriz Ramos',   'beatriz.ramos@example.com')
+) AS c(i, nome, email)
+ON CONFLICT ("user_id") DO NOTHING;
+
+INSERT INTO "public"."clientes" ("cliente_id", "user_id")
+SELECT ('22222222-2222-2222-2222-0000000001' || lpad(i::text, 2, '0'))::uuid,
+       ('11111111-1111-1111-1111-0000000001' || lpad(i::text, 2, '0'))::uuid
+FROM generate_series(1, 9) AS i
+ON CONFLICT ("cliente_id") DO NOTHING;
+
+WITH hoje AS (
+    SELECT (now() AT TIME ZONE 'America/Sao_Paulo')::date AS dia
+),
+meses AS (
+    -- k = 1 (M-2), 2 (M-1), 3 (mês atual); m mantém a mesma distribuição para qualquer mês
+    SELECT k, 7 + k AS m, qtd,
+           (date_trunc('month', h.dia) - make_interval(months => 3 - k))::date AS inicio,
+           CASE WHEN k = 3 THEN LEAST(10, extract(day FROM h.dia)::int)
+                ELSE extract(day FROM date_trunc('month', h.dia) - make_interval(months => 2 - k) - interval '1 day')::int
+           END AS dias
+    FROM hoje h, (VALUES (1, 14), (2, 18), (3, 12)) AS v(k, qtd)
+),
+recorrentes AS (
+    -- clientes: Ana, Bruno, Teste (t@t.com) e Camila..Marcos
+    SELECT ms.k, n,
+           (array['44444444-4444-4444-4444-444444444402',
+                  '44444444-4444-4444-4444-444444444403',
+                  'cacc1353-c691-49b4-9a66-ce4a73891f3c'])[1 + (n * 7 + ms.m) % 3] AS tatuador_id,
+           (array['22222222-2222-2222-2222-222222222201',
+                  '22222222-2222-2222-2222-222222222202',
+                  '22222222-2222-2222-2222-222222222203',
+                  '22222222-2222-2222-2222-000000000101',
+                  '22222222-2222-2222-2222-000000000102',
+                  '22222222-2222-2222-2222-000000000103',
+                  '22222222-2222-2222-2222-000000000104'])[1 + (n * 3 + ms.m) % 7] AS cliente_id,
+           300 + ((n * 37 + ms.m * 11) % 23) * 100 AS valor,
+           CASE WHEN n % 9 = 0 THEN 'cancelada' ELSE 'confirmada' END AS status,
+           ms.inicio + (n - 1) * ms.dias / ms.qtd AS dia,
+           10 + n % 8 AS hora
+    FROM meses ms, generate_series(1, 18) AS n
+    WHERE n <= ms.qtd
+),
+novos AS (
+    -- primeiro serviço de Patricia..Beatriz no estúdio (contam como "Novos")
+    SELECT ms.k, 50 + v.i AS n, v.tatuador_id,
+           '22222222-2222-2222-2222-0000000001' || lpad(v.i::text, 2, '0') AS cliente_id,
+           v.valor, 'confirmada' AS status,
+           ms.inicio + LEAST(v.dia, ms.dias) - 1 AS dia,
+           15 AS hora
+    FROM meses ms
+    JOIN (VALUES
+        (2, 5,  4, '44444444-4444-4444-4444-444444444402', 1800),
+        (2, 6, 12, '44444444-4444-4444-4444-444444444403', 2200),
+        (2, 7, 23, 'cacc1353-c691-49b4-9a66-ce4a73891f3c',  900),
+        (3, 8,  3, '44444444-4444-4444-4444-444444444403', 1600),
+        (3, 9,  7, 'cacc1353-c691-49b4-9a66-ce4a73891f3c', 1100)
+    ) AS v(k, i, dia, tatuador_id, valor) ON v.k = ms.k
+)
+INSERT INTO "public"."servicos"
+    ("servico_id", "tatuador_id", "cliente_id", "descricao", "valor_total", "status", "data_criacao")
+SELECT ('aaaaaaaa-aaaa-aaaa-aaaa-' || lpad((s.k * 1000 + s.n)::text, 12, '0'))::uuid,
+       s.tatuador_id::uuid, s.cliente_id::uuid, 'Serviço do histórico do dashboard',
+       s.valor, s.status, (s.dia + make_interval(hours => s.hora)) AT TIME ZONE 'America/Sao_Paulo'
+FROM (SELECT * FROM recorrentes UNION ALL SELECT * FROM novos) AS s
+ON CONFLICT ("servico_id") DO NOTHING;
+
+INSERT INTO "public"."reservas"
+    ("reserva_id", "orcamento_id", "tatuador_id", "cliente_id", "data_criacao", "data_sessao", "duracao_min", "status")
+SELECT ('bbbbbbbb-bbbb-bbbb-bbbb-' || right(s.servico_id::text, 12))::uuid,
+       s.servico_id, s.tatuador_id, s.cliente_id, s.data_criacao, x.data_sessao,
+       120 + (x.n % 3) * 60,
+       (CASE WHEN s.status = 'cancelada' THEN 'cancelada'
+             WHEN x.data_sessao < now() THEN 'concluida'
+             ELSE 'confirmada' END)::"public"."reserva_status"
+FROM "public"."servicos" s
+CROSS JOIN LATERAL (
+    SELECT right(s.servico_id::text, 3)::int AS n,
+           s.data_criacao + CASE WHEN right(s.servico_id::text, 3)::int > 50
+                                 THEN interval '10 days'
+                                 ELSE make_interval(days => 3 + right(s.servico_id::text, 3)::int % 15, hours => 2)
+                            END AS data_sessao
+) AS x
+WHERE s.servico_id::text LIKE 'aaaaaaaa-aaaa-aaaa-aaaa-0000%'
+ON CONFLICT ("reserva_id") DO NOTHING;
+
 COMMIT;

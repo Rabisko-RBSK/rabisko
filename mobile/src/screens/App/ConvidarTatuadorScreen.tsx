@@ -14,10 +14,12 @@ import { useNavigation } from '@react-navigation/native';
 import { Check, Search, UserRound } from 'lucide-react-native';
 
 import { Header } from '../../components/common/Header';
+import { ContratoInput } from '../../services/api/artistService';
 import {
   TatuadorBuscaDTO,
   studioService,
 } from '../../services/api/studioService';
+import { ContratoModal } from './ContratoModal';
 
 /**
  * Busca de tatuadores para convidar à equipe (empilhada no StudioEquipeStack).
@@ -107,6 +109,8 @@ export function ConvidarTatuadorScreen() {
   const [buscou, setBuscou] = useState(false);
   const [convidandoId, setConvidandoId] = useState<string | null>(null);
   const [convidados, setConvidados] = useState<Set<string>>(new Set());
+  // Tatuador cujo modal de condições está aberto.
+  const [selecionado, setSelecionado] = useState<TatuadorBuscaDTO | null>(null);
 
   // Descarta respostas de buscas antigas que chegarem depois da mais recente.
   const ultimaBusca = useRef(0);
@@ -152,11 +156,12 @@ export function ConvidarTatuadorScreen() {
     return () => clearTimeout(timer);
   }, [termoLimpo, termoValido]);
 
-  const convidar = async (tatuador: TatuadorBuscaDTO) => {
+  const convidar = async (tatuador: TatuadorBuscaDTO, contrato: ContratoInput) => {
     setConvidandoId(tatuador.tatuadorId);
     try {
-      await studioService.convidarTatuador(tatuador.tatuadorId);
+      await studioService.convidarTatuador(tatuador.tatuadorId, contrato);
       setConvidados((prev) => new Set(prev).add(tatuador.tatuadorId));
+      setSelecionado(null);
     } catch (err: any) {
       console.warn(
         '[ConvidarTatuador] erro ao convidar',
@@ -167,10 +172,14 @@ export function ConvidarTatuadorScreen() {
       if (status === 409) {
         // Já há convite pendente, ou o tatuador entrou em outro estúdio.
         setConvidados((prev) => new Set(prev).add(tatuador.tatuadorId));
+        setSelecionado(null);
         Alert.alert(
           'Convite não enviado',
           `${tatuador.nome} já tem um convite pendente do seu estúdio ou entrou em outro estúdio.`,
         );
+      } else if (status === 400) {
+        // Modal continua aberto pra corrigir sem redigitar.
+        Alert.alert('Condições inválidas', 'Confira as condições do contrato.');
       } else {
         Alert.alert(
           'Erro ao convidar',
@@ -239,11 +248,19 @@ export function ConvidarTatuadorScreen() {
               convidado={convidados.has(t.tatuadorId)}
               convidando={convidandoId === t.tatuadorId}
               bloqueado={convidandoId !== null}
-              onConvidar={() => convidar(t)}
+              onConvidar={() => setSelecionado(t)}
             />
           ))
         )}
       </ScrollView>
+
+      <ContratoModal
+        visible={selecionado !== null}
+        titulo={selecionado ? `CONDIÇÕES · ${selecionado.nome.split(' ')[0].toUpperCase()}` : ''}
+        enviando={selecionado !== null && convidandoId === selecionado.tatuadorId}
+        onClose={() => setSelecionado(null)}
+        onConfirmar={(contrato) => selecionado && convidar(selecionado, contrato)}
+      />
     </View>
   );
 }

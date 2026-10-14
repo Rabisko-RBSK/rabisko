@@ -37,9 +37,18 @@ export function SearchResultsScreen() {
   const navigation = useNavigation<SearchResultsNav>();
   const insets = useSafeAreaInsets();
 
-  const estilo = route.params?.estilo?.trim() || undefined;
+  const estiloParam = route.params?.estilo?.trim() || undefined;
+  const termoParam = route.params?.termo?.trim() || undefined;
 
   const { estilos: catalogo } = useEstilos();
+
+  const matchingEstilo = useMemo(() => {
+    if (!termoParam || catalogo.length === 0) return null;
+    return catalogo.find((e) => normalize(e.nome) === normalize(termoParam)) ?? null;
+  }, [termoParam, catalogo]);
+
+  const estilo = estiloParam ?? (matchingEstilo ? matchingEstilo.nome : undefined);
+  const termo = matchingEstilo ? undefined : termoParam;
 
   const [results, setResults] = useState<ArtistSearchResult[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,16 +64,17 @@ export function SearchResultsScreen() {
    * retornar null, nao mostramos chip (evita sugestao com baixa confianca).
    */
   const didYouMean = useMemo(() => {
-    if (!estilo || catalogo.length === 0) return null;
-    const q = normalize(estilo);
+    const alvo = estilo ?? termo;
+    if (!alvo || catalogo.length === 0) return null;
+    const q = normalize(alvo);
     const jaExato = catalogo.some((e) => normalize(e.nome) === q);
     if (jaExato) return null;
-    return closestMatch(estilo, catalogo, (e) => e.nome);
-  }, [estilo, catalogo]);
+    return closestMatch(alvo, catalogo, (e) => e.nome);
+  }, [estilo, termo, catalogo]);
 
   const handleDidYouMean = useCallback(() => {
     if (!didYouMean) return;
-    navigation.setParams({ estilo: didYouMean.item.nome });
+    navigation.setParams({ estilo: didYouMean.item.nome, termo: undefined });
   }, [didYouMean, navigation]);
 
   const [usarDistancia, setUsarDistancia] = useState(false);
@@ -76,12 +86,23 @@ export function SearchResultsScreen() {
       setLoading(true);
       setError(null);
       try {
-        const data = await searchService.buscarArtistas({
+        let data = await searchService.buscarArtistas({
           estilo: estilo ? [estilo] : undefined,
           lat: opts.lat,
           lng: opts.lng,
           raioKm: opts.lat != null ? RAIO_KM_DEFAULT : undefined,
         });
+
+        if (termo) {
+          const norm = normalize(termo);
+          data = data.filter(
+            (a) =>
+              normalize(a.nome).includes(norm) ||
+              normalize(a.email).includes(norm) ||
+              (a.endereco && normalize(a.endereco).includes(norm))
+          );
+        }
+
         setResults(data);
       } catch (err: any) {
         console.warn('[SearchResults] erro na busca', err?.response?.status, err?.message);
@@ -91,7 +112,7 @@ export function SearchResultsScreen() {
         setLoading(false);
       }
     },
-    [estilo],
+    [estilo, termo],
   );
 
   useEffect(() => {
@@ -195,6 +216,8 @@ export function SearchResultsScreen() {
 
   const headerSubtitle = estilo
     ? `Estilo: ${estilo}`
+    : termo
+    ? `Busca: "${termo}"`
     : 'Todos os tatuadores';
 
   return (
