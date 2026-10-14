@@ -5,27 +5,15 @@ import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.FloatBuffer;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
-import java.time.Duration;
 import java.util.Collections;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import ai.onnxruntime.OnnxTensor;
-import ai.onnxruntime.OrtEnvironment;
 import ai.onnxruntime.OrtException;
 import ai.onnxruntime.OrtSession;
 import jakarta.annotation.PreDestroy;
@@ -38,30 +26,23 @@ import jakarta.annotation.PreDestroy;
  * e a primeira saída da rede (d0) vira a máscara de alpha da imagem original.
  *
  * O modelo (~176 MB) não fica no repositório: é baixado na primeira execução para
- * {@code simulation.u2net.model-path} e reaproveitado nas próximas.
+ * {@code simulation.u2net.model-path} e reaproveitado nas próximas (ver {@link OnnxModel}).
  */
 @Component
 public class U2NetBackgroundRemover {
-
-    private static final Logger log = LoggerFactory.getLogger(U2NetBackgroundRemover.class);
 
     private static final int INPUT_SIZE = 320;
     private static final float[] MEAN = {0.485f, 0.456f, 0.406f};
     private static final float[] STD = {0.229f, 0.224f, 0.225f};
 
-    private final Path modelPath;
-    private final String modelUrl;
+    private final OnnxModel model;
     private final boolean preload;
-
-    private final OrtEnvironment env = OrtEnvironment.getEnvironment();
-    private volatile OrtSession session;
 
     public U2NetBackgroundRemover(
             @Value("${simulation.u2net.model-path:models/u2net.onnx}") String modelPath,
             @Value("${simulation.u2net.model-url:https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2net.onnx}") String modelUrl,
             @Value("${simulation.u2net.preload:true}") boolean preload) {
-        this.modelPath = Path.of(modelPath);
-        this.modelUrl = modelUrl;
+        this.model = new OnnxModel("U2Net", modelPath, modelUrl);
         this.preload = preload;
     }
 
@@ -71,16 +52,9 @@ public class U2NetBackgroundRemover {
      */
     @EventListener(ApplicationReadyEvent.class)
     public void preloadModel() {
-        if (!preload) {
-            return;
+        if (preload) {
+            model.preloadInBackground();
         }
-        Thread.ofVirtual().name("u2net-preload").start(() -> {
-            try {
-                getSession();
-            } catch (Exception e) {
-                log.error("===> [SIMULADOR] Falha ao pré-carregar o modelo U2Net: {}", e.getMessage(), e);
-            }
-        });
     }
 
     /**
@@ -109,7 +83,7 @@ public class U2NetBackgroundRemover {
 
     /** Executa a U2Net e devolve a máscara 320x320 normalizada para [0, 1]. */
     private float[] predictMask(BufferedImage original) throws IOException, OrtException {
-        OrtSession ortSession = getSession();
+        OrtSession ortSession = model.session();
         BufferedImage resized = resize(original, INPUT_SIZE, INPUT_SIZE, BufferedImage.TYPE_INT_RGB);
         int[] rgb = resized.getRGB(0, 0, INPUT_SIZE, INPUT_SIZE, null, 0, INPUT_SIZE);
 
@@ -130,7 +104,7 @@ public class U2NetBackgroundRemover {
         }
 
         String inputName = ortSession.getInputNames().iterator().next();
-        try (OnnxTensor tensor = OnnxTensor.createTensor(env, input, new long[]{1, 3, INPUT_SIZE, INPUT_SIZE});
+        try (OnnxTensor tensor = OnnxTensor.createTensor(model.environment(), input, new long[]{1, 3, INPUT_SIZE, INPUT_SIZE});
              OrtSession.Result result = ortSession.run(Collections.singletonMap(inputName, tensor))) {
 
             FloatBuffer output = ((OnnxTensor) result.get(0)).getFloatBuffer();
@@ -148,59 +122,6 @@ public class U2NetBackgroundRemover {
                 prediction[i] = range > 0 ? (prediction[i] - min) / range : 0f;
             }
             return prediction;
-        }
-    }
-
-    private OrtSession getSession() throws IOException, OrtException {
-        OrtSession current = session;
-        if (current != null) {
-            return current;
-        }
-        synchronized (this) {
-            if (session == null) {
-                ensureModelDownloaded();
-                long start = System.currentTimeMillis();
-                OrtSession.SessionOptions options = new OrtSession.SessionOptions();
-                options.setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT);
-                session = env.createSession(modelPath.toString(), options);
-                log.info("===> [SIMULADOR] Modelo U2Net carregado em {}ms", System.currentTimeMillis() - start);
-            }
-            return session;
-        }
-    }
-
-    private void ensureModelDownloaded() throws IOException {
-        if (Files.exists(modelPath)) {
-            return;
-        }
-        log.info("===> [SIMULADOR] Modelo U2Net não encontrado em {}. Baixando de {}", modelPath.toAbsolutePath(), modelUrl);
-
-        Path parent = modelPath.toAbsolutePath().getParent();
-        Files.createDirectories(parent);
-        Path tempFile = Files.createTempFile(parent, "u2net-", ".download");
-
-        HttpClient client = HttpClient.newBuilder()
-                .followRedirects(HttpClient.Redirect.NORMAL)
-                .connectTimeout(Duration.ofSeconds(30))
-                .build();
-        HttpRequest request = HttpRequest.newBuilder(URI.create(modelUrl)).GET().build();
-
-        try {
-            HttpResponse<InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
-            if (response.statusCode() != 200) {
-                throw new IOException("Download do modelo U2Net falhou com status " + response.statusCode());
-            }
-            try (InputStream body = response.body()) {
-                Files.copy(body, tempFile, StandardCopyOption.REPLACE_EXISTING);
-            }
-            // Move atômico evita que um download interrompido deixe um modelo corrompido no caminho final
-            Files.move(tempFile, modelPath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-            log.info("===> [SIMULADOR] Modelo U2Net salvo em {} ({} MB)", modelPath.toAbsolutePath(), Files.size(modelPath) / (1024 * 1024));
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IOException("Download do modelo U2Net interrompido", e);
-        } finally {
-            Files.deleteIfExists(tempFile);
         }
     }
 
@@ -225,8 +146,6 @@ public class U2NetBackgroundRemover {
 
     @PreDestroy
     public void close() throws OrtException {
-        if (session != null) {
-            session.close();
-        }
+        model.close();
     }
 }

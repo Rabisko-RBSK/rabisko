@@ -15,6 +15,7 @@ import { Store } from 'lucide-react-native';
 import { Header } from '../../components/common/Header';
 import { useConvites } from '../../hooks/useConvites';
 import { ConviteDetalheDTO } from '../../services/api/artistService';
+import { formatarContrato } from '../../utils/contrato';
 import { tempoRelativo } from '../../utils/datas';
 
 /**
@@ -65,6 +66,20 @@ function ConviteCard({
         </View>
       </View>
 
+      {convite.contrato ? (
+        <View className="bg-background rounded-rd-md p-3 mb-4">
+          <Text className="font-body text-[12px] text-fg-3 mb-0.5">Condições propostas</Text>
+          <Text className="font-body-semibold text-[14px] text-ink">
+            {formatarContrato(convite.contrato)}
+          </Text>
+          {convite.contrato.observacoes ? (
+            <Text className="font-body text-[12px] text-fg-2 mt-1">
+              {convite.contrato.observacoes}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+
       {respondendo ? (
         <View className="py-2.5 items-center">
           <ActivityIndicator color="#602C66" />
@@ -114,15 +129,19 @@ export function ConvitesScreen() {
 
   const confirmarAceite = (convite: ConviteDetalheDTO) => {
     const outros = convites.length - 1;
+    // Aceitar o convite é aceitar os termos: as condições aparecem na confirmação.
+    const condicoes = convite.contrato
+      ? `\n\nCondições: ${formatarContrato(convite.contrato)}.`
+      : '';
     Alert.alert(
       `Entrar no ${convite.nomeEstudio}?`,
-      outros > 0
+      (outros > 0
         ? `Você passará a fazer parte da equipe do estúdio. ${
             outros === 1
               ? 'O outro convite pendente será cancelado.'
               : `Os outros ${outros} convites pendentes serão cancelados.`
           }`
-        : 'Você passará a fazer parte da equipe do estúdio.',
+        : 'Você passará a fazer parte da equipe do estúdio.') + condicoes,
       [
         { text: 'Cancelar', style: 'cancel' },
         {

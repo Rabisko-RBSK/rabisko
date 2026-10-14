@@ -3,8 +3,12 @@ import './src/styles/global.css';
 
 import React, { useEffect, useState } from 'react';
 
-import { View } from 'react-native';
+import { View, LogBox } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+
+LogBox.ignoreLogs([
+  'Due to changes in Androids permission requirements, Expo Go can no longer provide full access to the media library',
+]);
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';

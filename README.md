@@ -91,6 +91,8 @@ Mobile:
 
 ## Ambiente de Desenvolvimento
 
+> 📘 **Guia atualizado:** [docs/AMBIENTE-LOCAL.md](docs/AMBIENTE-LOCAL.md) — Dev Container com Supabase local automático.
+
 O projeto usa **Dev Containers** para padronizar o ambiente local (Java 21, Node 20 e Supabase CLI já provisionados), com **Maven nativo** (sem Docker Compose) para rodar o backend e **Supabase CLI** para subir Postgres/Auth/Storage localmente em containers Docker.
 
 ### Pré-requisito: Docker Desktop (Windows)

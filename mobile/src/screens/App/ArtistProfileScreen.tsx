@@ -34,8 +34,10 @@ import { useAuthStore } from '../../store/authStore';
 import { useArtistProfile } from '../../hooks/useArtistProfile';
 import { useAvaliacoes } from '../../hooks/useAvaliacoes';
 import { useConvites } from '../../hooks/useConvites';
+import { useMeusContratos } from '../../hooks/useMeusContratos';
 import { Avaliacao } from '../../services/api/avaliacaoService';
 import { artistService } from '../../services/api/artistService';
+import { formatarContrato } from '../../utils/contrato';
 import { tempoRelativo } from '../../utils/datas';
 import { escolherImagemDaGaleria } from '../../utils/imagePicker';
 
@@ -139,17 +141,27 @@ function LoadError({
   );
 }
 
-/** Estúdio ao qual o tatuador pertence, com a ação de sair da equipe. */
+/**
+ * Estúdio ao qual o tatuador pertence, com a ação de sair da equipe e o
+ * atalho pro contrato (avisa quando há uma proposta de novas condições).
+ */
 function EstudioVinculadoCard({
   nome,
   fotoUrl,
   saindo,
   onSair,
+  contrato,
+  propostaPendente,
+  onVerContrato,
 }: {
   nome: string;
   fotoUrl: string | null;
   saindo: boolean;
   onSair: () => void;
+  /** Resumo do contrato vigente; null = sem contrato registrado. */
+  contrato: string | null;
+  propostaPendente: boolean;
+  onVerContrato: () => void;
 }) {
   return (
     <View className="bg-surface rounded-rd-lg p-5">
@@ -186,6 +198,27 @@ function EstudioVinculadoCard({
           </TouchableOpacity>
         )}
       </View>
+
+      <TouchableOpacity
+        onPress={onVerContrato}
+        activeOpacity={0.7}
+        className="flex-row items-center mt-4 pt-4 border-t border-hairline"
+        accessibilityRole="button"
+        accessibilityLabel={propostaPendente ? 'Ver contrato: nova proposta pendente' : 'Ver contrato'}
+      >
+        <View className="flex-1">
+          <Text className="font-body text-[12px] text-fg-3 mb-0.5">Contrato</Text>
+          <Text className="font-body-semibold text-[13px] text-ink" numberOfLines={1}>
+            {contrato ?? 'Sem contrato registrado'}
+          </Text>
+        </View>
+        {propostaPendente ? (
+          <View className="rounded-rd-pill bg-plum px-2.5 py-1 mr-2">
+            <Text className="font-body-bold text-[11px] text-white">Nova proposta</Text>
+          </View>
+        ) : null}
+        <ChevronRight size={20} color="#6B6B6B" />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -353,7 +386,14 @@ export function ArtistProfileScreen() {
     reload: reloadConvites,
   } = useConvites();
 
-  // Ao voltar da tela de Convites (aceite/recusa), perfil e contagem mudam.
+  const {
+    ativo: contratoAtivo,
+    proposta: propostaContrato,
+    reload: reloadContratos,
+  } = useMeusContratos(profile?.estudioId ?? null);
+
+  // Ao voltar da tela de Convites (aceite/recusa) ou do contrato, perfil,
+  // contagem e contrato mudam.
   const primeiroFoco = useRef(true);
   useFocusEffect(
     useCallback(() => {
@@ -363,7 +403,8 @@ export function ArtistProfileScreen() {
       }
       reloadProfile();
       reloadConvites();
-    }, [reloadProfile, reloadConvites]),
+      reloadContratos();
+    }, [reloadProfile, reloadConvites, reloadContratos]),
   );
 
   const [saindoEstudio, setSaindoEstudio] = useState(false);
@@ -665,6 +706,14 @@ export function ArtistProfileScreen() {
                 fotoUrl={profile.fotoEstudioUrl}
                 saindo={saindoEstudio}
                 onSair={confirmarSaidaEstudio}
+                contrato={contratoAtivo ? formatarContrato(contratoAtivo) : null}
+                propostaPendente={propostaContrato !== null}
+                onVerContrato={() =>
+                  navigation.navigate('MeuContrato', {
+                    estudioId: profile.estudioId!,
+                    nomeEstudio: profile.nomeEstudio ?? 'Estúdio',
+                  })
+                }
               />
             ) : (
               <ConvitesCard

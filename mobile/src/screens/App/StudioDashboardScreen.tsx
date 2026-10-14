@@ -17,6 +17,11 @@ import type { StudioRoutesParamList } from '../../routes/studio.routes';
 const c = theme.colors;
 const f = theme.fonts;
 
+const sessionStatusLabels: Record<string, string> = {
+  agendada: 'Agendada', confirmada: 'Confirmada', em_andamento: 'Em andamento',
+  concluida: 'Concluída', no_show: 'Não compareceu',
+};
+
 function Sheet({ title, visible, onClose, children }: {
   title: string; visible: boolean; onClose: () => void; children: React.ReactNode;
 }) {
@@ -64,11 +69,11 @@ function PeriodPicker() {
 function StudioPage({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<BottomTabNavigationProp<StudioRoutesParamList>>();
-  const { refresh, monthLabel } = useStudioDashboard();
+  const { refresh, monthLabel, loading, error } = useStudioDashboard();
   return (
     <View style={s.page}>
       <ScrollView contentContainerStyle={[s.content, { paddingTop: insets.top + 12 }]}
-        refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} tintColor={c.purple} />}>
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={c.purple} />}>
         <View style={s.topBar}>
           {navigation.canGoBack() ? (
             <Pressable style={s.iconButton} onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Voltar">
@@ -80,7 +85,8 @@ function StudioPage({ title, subtitle, children }: { title: string; subtitle: st
         <View style={s.greeting}>
           <Text style={s.title} accessibilityRole="header">{title}</Text>
           <Text style={s.subtitle}>{subtitle}</Text>
-          <Text style={s.demoLabel}>Demonstração · {monthLabel}</Text>
+          <Text style={s.demoLabel}>{monthLabel}</Text>
+          {error && <Text style={s.error} accessibilityRole="alert">{error} Puxe para tentar novamente.</Text>}
         </View>
         {children}
       </ScrollView>
@@ -188,6 +194,7 @@ export function StudioDashboardScreen() {
         </Pressable>
       </View>
       <StylesList styles={data.styles.slice(0, 4)} />
+      <Text style={s.note}>Dados de demonstração.</Text>
     </View>
     <Sheet title="Estilos mais procurados" visible={showStyles} onClose={() => setShowStyles(false)}>
       <StylesList styles={data.styles} />
@@ -208,7 +215,7 @@ export function StudioAgendaScreen() {
   const dates = [...new Set(dashboard.bookings.map((booking) => booking.date))].sort();
   const date = selectedDay && dates.includes(selectedDay) ? selectedDay : dates[dates.length - 1];
   const bookings = dashboard.bookings.filter((booking) => booking.date === date);
-  return <StudioPage title="Agenda do estúdio" subtitle="Consulte os agendamentos de demonstração por dia.">
+  return <StudioPage title="Agenda do estúdio" subtitle="Consulte as sessões agendadas por dia.">
     <View style={s.card}>
       <ScrollView horizontal contentContainerStyle={s.days}>
         {dates.map((day) => <Pressable key={day} style={[s.day, day === date && s.optionSelected]}
@@ -222,7 +229,7 @@ export function StudioAgendaScreen() {
         <View style={s.flex}>
           <Text style={s.artistName}>{booking.time} · {booking.clientName}</Text>
           <Text style={s.small}>{dashboard.artists.find((artist) => artist.id === booking.artistId)?.name}</Text>
-          <Text style={s.small}>{booking.style} · Confirmada</Text>
+          <Text style={s.small}>{sessionStatusLabels[booking.status] ?? booking.status}</Text>
         </View>
       </View>)}</View>
     </View>
@@ -243,6 +250,7 @@ const s = StyleSheet.create({
   title: { fontFamily: f.bold, fontSize: 25, lineHeight: 32, color: c.text },
   subtitle: { fontFamily: f.regular, fontSize: 13, lineHeight: 19, color: c.muted },
   demoLabel: { fontFamily: f.medium, fontSize: 11, color: c.purple, lineHeight: 17 },
+  error: { fontFamily: f.medium, fontSize: 12, lineHeight: 18, color: '#B42318' },
   metrics: { flexDirection: 'row', gap: 12, alignItems: 'stretch' },
   stacked: { flexDirection: 'column' },
   card: { padding: 20, backgroundColor: c.card, borderRadius: theme.radius.card, gap: 12, boxShadow: '0 4px 20px -2px rgba(28,25,23,0.05)' },

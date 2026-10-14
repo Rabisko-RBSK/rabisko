@@ -1,2 +1,6 @@
 /mvnw text eol=lf
 *.cmd text eol=crlf
+
+# Scripts shell precisam de LF mesmo em clones no Windows (core.autocrlf=true),
+# senão falham dentro do Dev Container com "bash\r: No such file or directory".
+*.sh text eol=lf
