@@ -71,6 +71,37 @@ export interface ConviteDetalheDTO {
   tatuadorId: string;
   nomeTatuador: string;
   fotoTatuadorUrl: string | null;
+  contrato: ContratoDTO | null;
+}
+
+export type ContratoModelo = 'comissao' | 'aluguel' | 'salario';
+
+export type ContratoPeriodicidade = 'diaria' | 'semanal' | 'mensal';
+
+export type ContratoStatus = 'proposto' | 'ativo' | 'recusado' | 'cancelado' | 'encerrado';
+
+export interface ContratoInput {
+  modelo: ContratoModelo;
+  percentualEstudio?: number;
+  valorFixo?: number;
+  periodicidade?: ContratoPeriodicidade;
+  observacoes?: string;
+}
+
+export interface ContratoDTO {
+  contratoId: string;
+  estudioId: string;
+  tatuadorId: string;
+  conviteId: string | null;
+  modelo: ContratoModelo;
+  percentualEstudio: number | null;
+  valorFixo: number | null;
+  periodicidade: ContratoPeriodicidade | null;
+  observacoes: string | null;
+  status: ContratoStatus;
+  dataCriacao: string;
+  dataResposta: string | null;
+  dataEncerramento: string | null;
 }
 
 /**
@@ -171,6 +202,23 @@ export const artistService = {
 
   async listarConvites(): Promise<ConviteDetalheDTO[]> {
     const { data } = await api.get<ConviteDetalheDTO[]>(`/artist/me/convites`);
+    return data;
+  },
+
+  /** Todos os contratos do tatuador (qualquer estúdio/status), do mais recente ao mais antigo. */
+  async listarContratos(): Promise<ContratoDTO[]> {
+    const { data } = await api.get<ContratoDTO[]>(`/artist/me/contratos`);
+    return data;
+  },
+
+  /** Aceita a renegociação: o contrato atual é encerrado e o proposto vira ativo. */
+  async aceitarPropostaContrato(): Promise<ContratoDTO> {
+    const { data } = await api.post<ContratoDTO>(`/artist/me/contratos/proposta/aceitar`);
+    return data;
+  },
+
+  async recusarPropostaContrato(): Promise<ContratoDTO> {
+    const { data } = await api.post<ContratoDTO>(`/artist/me/contratos/proposta/recusar`);
     return data;
   },
 };

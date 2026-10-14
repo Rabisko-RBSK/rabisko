@@ -7,6 +7,7 @@ import com.rabisko.mvp.artist.domain.AvaliacaoDTO;
 import com.rabisko.mvp.artist.domain.PortfolioImagemDTO;
 import com.rabisko.mvp.artist.domain.UploadResponseDTO;
 import com.rabisko.mvp.artist.service.ArtistService;
+import com.rabisko.mvp.studio.domain.ContratoDTO;
 import com.rabisko.mvp.studio.domain.ConviteDTO;
 import com.rabisko.mvp.studio.domain.ConviteDetalheDTO;
 import com.rabisko.mvp.user.domain.User;
@@ -159,5 +160,20 @@ public class ArtistController {
     ) {
         artistService.sairEstudio(user);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/me/contratos")
+    public ResponseEntity<List<ContratoDTO>> meusContratos(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(artistService.meusContratos(user));
+    }
+
+    @PostMapping("/me/contratos/proposta/aceitar")
+    public ResponseEntity<ContratoDTO> aceitarPropostaContrato(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(artistService.aceitarPropostaContrato(user));
+    }
+
+    @PostMapping("/me/contratos/proposta/recusar")
+    public ResponseEntity<ContratoDTO> recusarPropostaContrato(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(artistService.recusarPropostaContrato(user));
     }
 }
