@@ -56,4 +56,21 @@ export const studioService = {
   async removerColaborador(tatuadorId: string): Promise<void> {
     await api.delete(`/studio/me/colaboradores/${tatuadorId}`);
   },
+
+  /** Todos os contratos com o colaborador, do mais recente ao mais antigo. */
+  async historicoContratos(tatuadorId: string): Promise<ContratoDTO[]> {
+    const { data } = await api.get<ContratoDTO[]>(`/studio/me/colaboradores/${tatuadorId}/contratos`);
+    return data;
+  },
+
+  /** Renegociação: o contrato atual continua valendo até o tatuador aceitar. */
+  async proporContrato(tatuadorId: string, contrato: ContratoInput): Promise<ContratoDTO> {
+    const { data } = await api.post<ContratoDTO>(`/studio/me/colaboradores/${tatuadorId}/contratos`, contrato);
+    return data;
+  },
+
+  async cancelarPropostaContrato(tatuadorId: string): Promise<ContratoDTO> {
+    const { data } = await api.delete<ContratoDTO>(`/studio/me/colaboradores/${tatuadorId}/contratos/proposta`);
+    return data;
+  },
 };

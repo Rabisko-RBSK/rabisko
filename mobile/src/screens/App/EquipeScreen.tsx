@@ -99,6 +99,7 @@ function PessoaRow({
   busy,
   disabled,
   onAction,
+  onPress,
 }: {
   fotoUrl: string | null;
   nome: string;
@@ -110,25 +111,36 @@ function PessoaRow({
   busy: boolean;
   disabled: boolean;
   onAction: () => void;
+  /** Toque na pessoa (avatar/nome); a ação à direita continua separada. */
+  onPress?: () => void;
 }) {
   return (
     <View className="bg-surface-2 rounded-rd-lg p-4 mb-3 flex-row items-center">
-      <Avatar uri={fotoUrl} />
-      <View className="flex-1">
-        <Text className="font-body-semibold text-[15px] text-ink" numberOfLines={1}>
-          {nome}
-        </Text>
-        {subtitulo ? (
-          <Text className="font-body text-[12px] text-fg-3" numberOfLines={1}>
-            {subtitulo}
+      <TouchableOpacity
+        onPress={onPress}
+        disabled={!onPress}
+        activeOpacity={0.7}
+        className="flex-1 flex-row items-center"
+        accessibilityRole={onPress ? 'button' : undefined}
+        accessibilityLabel={onPress ? `Ver contratos de ${nome}` : undefined}
+      >
+        <Avatar uri={fotoUrl} />
+        <View className="flex-1">
+          <Text className="font-body-semibold text-[15px] text-ink" numberOfLines={1}>
+            {nome}
           </Text>
-        ) : null}
-        {detalhes.map((d) => (
-          <Text key={d} className="font-body text-[12px] text-plum mt-0.5" numberOfLines={1}>
-            {d}
-          </Text>
-        ))}
-      </View>
+          {subtitulo ? (
+            <Text className="font-body text-[12px] text-fg-3" numberOfLines={1}>
+              {subtitulo}
+            </Text>
+          ) : null}
+          {detalhes.map((d) => (
+            <Text key={d} className="font-body text-[12px] text-plum mt-0.5" numberOfLines={1}>
+              {d}
+            </Text>
+          ))}
+        </View>
+      </TouchableOpacity>
       {busy ? (
         <ActivityIndicator color="#602C66" />
       ) : (
@@ -325,6 +337,9 @@ export function EquipeScreen() {
               busy={removendoId === c.tatuadorId}
               disabled={removendoId !== null}
               onAction={() => confirmarRemocao(c)}
+              onPress={() =>
+                navigation.navigate('ColaboradorContratos', { tatuadorId: c.tatuadorId, nome: c.nome })
+              }
             />
           ))
         )}

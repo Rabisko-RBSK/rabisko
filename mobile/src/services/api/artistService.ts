@@ -204,4 +204,21 @@ export const artistService = {
     const { data } = await api.get<ConviteDetalheDTO[]>(`/artist/me/convites`);
     return data;
   },
+
+  /** Todos os contratos do tatuador (qualquer estúdio/status), do mais recente ao mais antigo. */
+  async listarContratos(): Promise<ContratoDTO[]> {
+    const { data } = await api.get<ContratoDTO[]>(`/artist/me/contratos`);
+    return data;
+  },
+
+  /** Aceita a renegociação: o contrato atual é encerrado e o proposto vira ativo. */
+  async aceitarPropostaContrato(): Promise<ContratoDTO> {
+    const { data } = await api.post<ContratoDTO>(`/artist/me/contratos/proposta/aceitar`);
+    return data;
+  },
+
+  async recusarPropostaContrato(): Promise<ContratoDTO> {
+    const { data } = await api.post<ContratoDTO>(`/artist/me/contratos/proposta/recusar`);
+    return data;
+  },
 };
