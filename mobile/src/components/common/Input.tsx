@@ -74,6 +74,9 @@ export function Input({
           className="flex-1 font-body text-[16px] text-ink"
           placeholderTextColor="#6B6B6B"
           secureTextEntry={secure && !showPassword}
+          // Senha nunca deve ser auto-capitalizada (inclusive quando o "olho" deixa ela visível).
+          autoCapitalize={secure ? 'none' : undefined}
+          autoCorrect={secure ? false : undefined}
           multiline={multiline}
           onFocus={(e) => {
             focused.value = 1;
