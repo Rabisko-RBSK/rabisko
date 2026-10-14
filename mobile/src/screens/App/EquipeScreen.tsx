@@ -19,6 +19,7 @@ import { useConvitesEstudio } from '../../hooks/useConvitesEstudio';
 import { StudioEquipeStackParamList } from '../../routes/studio-equipe.stack';
 import { ConviteDetalheDTO } from '../../services/api/artistService';
 import { ColaboradorDTO } from '../../services/api/studioService';
+import { formatarContrato } from '../../utils/contrato';
 import { tempoRelativo } from '../../utils/datas';
 
 /**
@@ -87,11 +88,12 @@ function EmptyCard({ title, text }: { title: string; text: string }) {
   );
 }
 
-/** Linha com avatar, nome, subtítulo e uma ação em texto à direita. */
+/** Linha com avatar, nome, subtítulo, detalhes opcionais e uma ação em texto à direita. */
 function PessoaRow({
   fotoUrl,
   nome,
   subtitulo,
+  detalhes = [],
   actionLabel,
   accessibilityLabel,
   busy,
@@ -101,6 +103,8 @@ function PessoaRow({
   fotoUrl: string | null;
   nome: string;
   subtitulo: string | null;
+  /** Linhas extras abaixo do subtítulo (ex.: condições do contrato). */
+  detalhes?: string[];
   actionLabel: string;
   accessibilityLabel: string;
   busy: boolean;
@@ -119,6 +123,11 @@ function PessoaRow({
             {subtitulo}
           </Text>
         ) : null}
+        {detalhes.map((d) => (
+          <Text key={d} className="font-body text-[12px] text-plum mt-0.5" numberOfLines={1}>
+            {d}
+          </Text>
+        ))}
       </View>
       {busy ? (
         <ActivityIndicator color="#602C66" />
@@ -138,6 +147,18 @@ function PessoaRow({
       )}
     </View>
   );
+}
+
+/**
+ * Contrato vigente e, se houver, a renegociação aguardando o aceite do tatuador.
+ * Quem entrou na equipe antes da feature de contratos aparece como "Sem contrato".
+ */
+function detalhesDoColaborador(c: ColaboradorDTO): string[] {
+  const linhas = [c.contratoAtivo ? formatarContrato(c.contratoAtivo) : 'Sem contrato'];
+  if (c.contratoProposto) {
+    linhas.push(`Proposta pendente: ${formatarContrato(c.contratoProposto)}`);
+  }
+  return linhas;
 }
 
 type EquipeNav = NativeStackNavigationProp<StudioEquipeStackParamList, 'Equipe'>;
@@ -298,6 +319,7 @@ export function EquipeScreen() {
               fotoUrl={c.fotoPerfilUrl}
               nome={c.nome}
               subtitulo={c.instagram ? formatHandle(c.instagram) : null}
+              detalhes={detalhesDoColaborador(c)}
               actionLabel="Remover"
               accessibilityLabel={`Remover ${c.nome} da equipe`}
               busy={removendoId === c.tatuadorId}
@@ -326,6 +348,7 @@ export function EquipeScreen() {
               fotoUrl={c.fotoTatuadorUrl}
               nome={c.nomeTatuador}
               subtitulo={`Enviado · ${tempoRelativo(c.dataCriacao)}`}
+              detalhes={c.contrato ? [formatarContrato(c.contrato)] : []}
               actionLabel="Cancelar"
               accessibilityLabel={`Cancelar convite de ${c.nomeTatuador}`}
               busy={cancelandoId === c.conviteId}

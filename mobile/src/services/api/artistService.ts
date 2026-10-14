@@ -71,6 +71,37 @@ export interface ConviteDetalheDTO {
   tatuadorId: string;
   nomeTatuador: string;
   fotoTatuadorUrl: string | null;
+  contrato: ContratoDTO | null;
+}
+
+export type ContratoModelo = 'comissao' | 'aluguel' | 'salario';
+
+export type ContratoPeriodicidade = 'diaria' | 'semanal' | 'mensal';
+
+export type ContratoStatus = 'proposto' | 'ativo' | 'recusado' | 'cancelado' | 'encerrado';
+
+export interface ContratoInput {
+  modelo: ContratoModelo;
+  percentualEstudio?: number;
+  valorFixo?: number;
+  periodicidade?: ContratoPeriodicidade;
+  observacoes?: string;
+}
+
+export interface ContratoDTO {
+  contratoId: string;
+  estudioId: string;
+  tatuadorId: string;
+  conviteId: string | null;
+  modelo: ContratoModelo;
+  percentualEstudio: number | null;
+  valorFixo: number | null;
+  periodicidade: ContratoPeriodicidade | null;
+  observacoes: string | null;
+  status: ContratoStatus;
+  dataCriacao: string;
+  dataResposta: string | null;
+  dataEncerramento: string | null;
 }
 
 /**

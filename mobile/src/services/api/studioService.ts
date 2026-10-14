@@ -1,5 +1,5 @@
 import api from './index';
-import { ConviteDTO, ConviteDetalheDTO } from './artistService';
+import { ConviteDTO, ConviteDetalheDTO, ContratoDTO, ContratoInput } from './artistService';
 
 /** Tatuador da equipe do estúdio (GET /studio/me/colaboradores). */
 export interface ColaboradorDTO {
@@ -7,6 +7,8 @@ export interface ColaboradorDTO {
   nome: string;
   fotoPerfilUrl: string | null;
   instagram: string | null;
+  contratoAtivo: ContratoDTO | null;
+  contratoProposto: ContratoDTO | null;
 }
 
 /**
@@ -30,8 +32,8 @@ export const studioService = {
     return data;
   },
 
-  async convidarTatuador(tatuadorId: string): Promise<ConviteDTO> {
-    const { data } = await api.post<ConviteDTO>('/studio/me/convites', { tatuadorId });
+  async convidarTatuador(tatuadorId: string, contrato: ContratoInput): Promise<ConviteDTO> {
+    const { data } = await api.post<ConviteDTO>('/studio/me/convites', { tatuadorId, contrato });
     return data;
   },
 
