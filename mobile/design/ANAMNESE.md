@@ -4,8 +4,9 @@ Entrada: perfil Tatuador → Gestão → Ficha de anamnese. O acesso independe d
 disponibilidade dos indicadores do dashboard. Cliente preenche seus dados no
 formulário acompanhado do profissional; não há envio remoto nesta etapa.
 
-O usuário confirmou que não existe uma tela correspondente no Figma. A tela
-reutiliza Input, tipografia, cores e espaçamentos do DESIGN.md. O cabeçalho e os
+O usuário confirmou que não existe uma tela correspondente no Figma e pediu
+o padrão visual do dashboard do estúdio. A tela reutiliza seus tokens de cores
+e tipografia, com campos próprios para a ficha. O cabeçalho e os
 botões da ficha permitem quebra de linha, inclusive com fonte ampliada.
 
 ## Responsividade
@@ -15,7 +16,10 @@ botões da ficha permitem quebra de linha, inclusive com fonte ampliada.
 - Botões exclusivos da anamnese: área mínima de 48px, rótulo em Inter 16/24,
   padding 12px vertical e 16px horizontal; altura cresce com o texto. Sem
   `numberOfLines`, reticências ou redução automática da fonte.
-- Título flexível em Bebas 32/40; ação de voltar com área de 48px.
+- Título flexível em Inter 20/28; ação de voltar com área de 48px.
+- Seções: número em Inter 14/20 e título em Inter 16/24, sem altura fixa.
+- Confirmações com caixa de seleção, marca de seleção, borda roxa e estado
+  escrito; toda a linha é clicável, com descrição e sem limite de linhas.
 - Confirmação de descarte rolável, respeitando as áreas seguras superior e inferior.
 - Valores revisados, erros e nomes de anexos não têm limite de linhas.
 
@@ -61,6 +65,13 @@ profissional autenticados; restringir acesso às fichas/anexos; adicionar envio,
 falhas recuperáveis, histórico e confirmação real somente após persistência.
 
 ## Verificação
+
+O visual segue os tokens já usados no dashboard do estúdio: fundo bege,
+cartões brancos, fonte Inter e ações roxas. A ficha usa estilos explícitos,
+campos com estado de foco e erro e títulos que podem quebrar linha. Não houve
+acesso ao conteúdo do link do Figma fornecido; a referência verificada foi o
+dashboard existente no repositório. A conferência visual no navegador e em
+dispositivo continua necessária.
 
 - `npm run test:anamnese`: datas, maioridade, produtos, consentimento e ausência de mutação.
 - `npx tsc --noEmit`; `npm run lint`.
