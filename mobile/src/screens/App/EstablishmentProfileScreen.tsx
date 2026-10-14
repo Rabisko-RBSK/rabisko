@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, Image, TouchableOpacity, Alert } from 'react-native';
-import { Heart, Star } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { Heart, Star, MapPin, Mail } from 'lucide-react-native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Header } from '../../components/common/Header';
@@ -9,87 +9,64 @@ import { Button } from '../../components/common/Button';
 import { StatusPill } from '../../components/common/Chip';
 import { HomeStackParamList } from '../../routes/home.stack';
 import { chatService } from '../../services/api';
+import { searchService, ArtistSearchResult } from '../../services/api/searchService';
+import { useFavoritesStore } from '../../store/favoritesStore';
 
-
-const ARTIST = {
-  id: 'cacc1353-c691-49b4-9a66-ce4a73891f3c',
-  name: 'João Santos',
-  rating: '4,9',
-  tags: ['Realismo', 'Minimalista'],
-  handle: '@joão.santos',
-  photo: 'https://images.unsplash.com/photo-1682406593404-99578759c260?q=80&w=400&auto=format&fit=crop',
-  about: 'Tatuador profissional, com trabalhos que transitam entre o minimalismo e o traço mais pesado.',
-  portfolio: [
-    'https://images.unsplash.com/photo-1611501275019-9b5cda994e8d?q=80&w=400&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1542856391-010fb87dcfed?q=80&w=400&auto=format&fit=crop',
-  ],
-};
-
-const REVIEWS = [
-  {
-    id: 'r1',
-    initials: 'AC',
-    name: 'Ana Costa',
-    timeAgo: 'Há 2 horas',
-    stars: 5,
-    text: 'Trabalho impecável, super atencioso e ambiente muito limpo. Recomendo demais.',
-  },
-  {
-    id: 'r2',
-    initials: 'RS',
-    name: 'Rafa Silva',
-    timeAgo: 'Há 3 dias',
-    stars: 5,
-    text: 'Profissional fora de série. Captou a ideia logo na primeira conversa.',
-  },
-];
-
-
-function ReviewCard({
-  initials,
-  name,
-  timeAgo,
-  stars,
-  text,
-}: {
-  initials: string;
-  name: string;
-  timeAgo: string;
-  stars: number;
-  text: string;
-}) {
-  return (
-    <View className="bg-surface-2 rounded-rd-lg p-4 mb-3">
-      <View className="flex-row items-center mb-2">
-        <View className="w-9 h-9 rounded-rd-pill bg-ink items-center justify-center mr-3">
-          <Text className="font-body-bold text-[12px] text-on-ink">{initials}</Text>
-        </View>
-        <View className="flex-1">
-          <Text className="font-body-semibold text-[14px] text-ink">{name}</Text>
-          <Text className="font-body text-[11px] text-fg-3">{timeAgo}</Text>
-        </View>
-        <View className="flex-row" style={{ gap: 2 }}>
-          {Array.from({ length: stars }).map((_, i) => (
-            <Star key={i} size={12} color="#000000" fill="#000000" />
-          ))}
-        </View>
-      </View>
-      <Text className="font-body text-[13px] text-fg-2 leading-[18px]">{text}</Text>
-    </View>
-  );
-}
-
+type ProfileRoute = RouteProp<HomeStackParamList, 'EstablishmentProfile'>;
 
 export function EstablishmentProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
-  const [favorited, setFavorited] = useState(false);
+  const route = useRoute<ProfileRoute>();
+  const artistId = route.params?.id;
+
+  const [artistData, setArtistData] = useState<ArtistSearchResult | null>(null);
+  const [loading, setLoading] = useState(true);
   const [iniciandoConversa, setIniciandoConversa] = useState(false);
 
+  const { isFavorite, toggleFavorite } = useFavoritesStore();
+  const favorited = artistId ? isFavorite(artistId) : false;
+
+  useEffect(() => {
+    let active = true;
+    async function carregar() {
+      if (!artistId) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const list = await searchService.buscarArtistas({});
+        if (!active) return;
+        const found = list.find((a) => a.tatuadorId === artistId);
+        if (found) {
+          setArtistData(found);
+        } else {
+          // Se não encontrou na lista padrão, monta o dado com o id recebido
+          setArtistData({
+            tatuadorId: artistId,
+            nome: 'Tatuador',
+            email: '',
+            endereco: null,
+          });
+        }
+      } catch (err) {
+        console.warn('[EstablishmentProfile] erro ao carregar artista', err);
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+    carregar();
+    return () => {
+      active = false;
+    };
+  }, [artistId]);
+
+  const displayName = artistData?.nome ?? 'Tatuador';
+
   async function iniciarConversa() {
-    if (iniciandoConversa) return;
+    if (!artistId || iniciandoConversa) return;
     setIniciandoConversa(true);
     try {
-      const chat = await chatService.abrirChat(ARTIST.id);
+      const chat = await chatService.abrirChat(artistId);
       navigation.navigate('ChatThread', {
         chatId: chat.chatId,
         outroNome: chat.outroUsuarioNome,
@@ -103,13 +80,31 @@ export function EstablishmentProfileScreen() {
     }
   }
 
+  const handleToggleFavorite = () => {
+    if (!artistId) return;
+    toggleFavorite({
+      id: artistId,
+      name: displayName,
+      rating: '5,0',
+      endereco: artistData?.endereco,
+    });
+  };
+
+  if (loading) {
+    return (
+      <View className="flex-1 bg-background items-center justify-center">
+        <ActivityIndicator size="large" color="#602C66" />
+      </View>
+    );
+  }
+
   return (
     <View className="flex-1 bg-background">
       <Header
         onBack={() => navigation.goBack()}
         right={
           <TouchableOpacity
-            onPress={() => setFavorited((v) => !v)}
+            onPress={handleToggleFavorite}
             hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel={favorited ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
@@ -129,48 +124,45 @@ export function EstablishmentProfileScreen() {
       >
         <View className="items-center mt-2 mb-6">
           <View
-            className="rounded-rd-pill overflow-hidden bg-surface mb-3"
-            style={{ width: 120, height: 120 }}
+            className="rounded-rd-pill bg-ink items-center justify-center mb-3"
+            style={{ width: 110, height: 110 }}
           >
-            <Image source={{ uri: ARTIST.photo }} className="w-full h-full" />
+            <Text className="font-display text-[44px] text-white">
+              {displayName.charAt(0).toUpperCase()}
+            </Text>
           </View>
 
-          {ARTIST.tags[0] && <StatusPill label={ARTIST.tags[0]} tone="ink" />}
+          <StatusPill label="TATUADOR" tone="ink" />
 
           <View className="flex-row items-center mt-2">
-            <Text className="font-body-semibold text-[14px] text-ink mr-1">{ARTIST.rating}</Text>
+            <Text className="font-body-semibold text-[14px] text-ink mr-1">5,0</Text>
             <Star size={14} color="#000000" fill="#000000" />
           </View>
 
           <Text className="font-aux-bold text-[32px] leading-[36px] text-ink mt-2 text-center">
-            {ARTIST.name}
+            {displayName}
           </Text>
         </View>
 
         <View className="bg-surface rounded-rd-lg p-5 mb-8">
-          <Text className="font-aux-bold text-[16px] text-ink mb-2">Sobre</Text>
-          <Text className="font-body text-[14px] text-fg-2 leading-[20px] mb-3">{ARTIST.about}</Text>
-          <Text className="font-body text-[13px] text-fg-3">{ARTIST.handle}</Text>
-        </View>
+          <Text className="font-aux-bold text-[16px] text-ink mb-2">Informações</Text>
 
-        <View className="flex-row items-end justify-between mb-3">
-          <Text className="font-aux-bold text-[20px] text-ink">Portfólio</Text>
-          <TouchableOpacity hitSlop={8}>
-            <Text className="font-body-semibold text-[12px] text-fg-2">Ver Todos</Text>
-          </TouchableOpacity>
-        </View>
-        <View className="flex-row mb-8" style={{ gap: 12 }}>
-          {ARTIST.portfolio.slice(0, 2).map((src, i) => (
-            <View key={i} className="flex-1 rounded-rd-xl overflow-hidden bg-surface" style={{ aspectRatio: 1 }}>
-              <Image source={{ uri: src }} className="w-full h-full" />
+          {artistData?.email ? (
+            <View className="flex-row items-center mb-2">
+              <Mail size={16} color="#404040" style={{ marginRight: 8 }} />
+              <Text className="font-body text-[14px] text-fg-2">{artistData.email}</Text>
             </View>
-          ))}
-        </View>
+          ) : null}
 
-        <Text className="font-aux-bold text-[20px] text-ink mb-3">Avaliações</Text>
-        {REVIEWS.map((r) => (
-          <ReviewCard key={r.id} {...r} />
-        ))}
+          {artistData?.endereco ? (
+            <View className="flex-row items-start">
+              <MapPin size={16} color="#6B6B6B" style={{ marginRight: 8, marginTop: 2 }} />
+              <Text className="font-body text-[14px] text-fg-3 flex-1">{artistData.endereco}</Text>
+            </View>
+          ) : (
+            <Text className="font-body text-[13px] text-fg-3">Atendimento na região de São Paulo/SP</Text>
+          )}
+        </View>
       </ScrollView>
 
       <View
@@ -181,7 +173,7 @@ export function EstablishmentProfileScreen() {
           title="Reservar"
           variant="outline"
           className="flex-1 px-5"
-          onPress={() => navigation.navigate('BookingFlow', { id: ARTIST.id })}
+          onPress={() => artistId && navigation.navigate('BookingFlow', { id: artistId })}
         />
         <Button
           title={iniciandoConversa ? 'Abrindo…' : 'Chat'}
