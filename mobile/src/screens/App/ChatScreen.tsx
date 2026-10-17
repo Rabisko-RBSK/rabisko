@@ -3,7 +3,6 @@ import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'rea
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { MessageSquarePlus } from 'lucide-react-native';
 
 import { chatService, ChatDTO } from '../../services/api';
 import { stompClient } from '../../services/ws/stompClient';
@@ -109,16 +108,6 @@ export function ChatScreen() {
           ))}
         </View>
       </ScrollView>
-
-      <TouchableOpacity
-        activeOpacity={0.85}
-        accessibilityRole="button"
-        accessibilityLabel="Nova conversa"
-        className="absolute self-center bg-surface items-center justify-center rounded-rd-pill"
-        style={{ bottom: 24, width: 48, height: 48 }}
-      >
-        <MessageSquarePlus size={22} color="#000000" />
-      </TouchableOpacity>
     </View>
   );
 }

@@ -20,6 +20,8 @@ import { Button } from '../../components/common/Button';
 import { Checkbox } from '../../components/common/Checkbox';
 import { RoleSwitch } from '../../components/common/RoleSwitch';
 import { PrefChip } from '../../components/common/Chip';
+import { DatePickerModal } from '../../components/common/DatePickerModal';
+import { isValidCNPJ } from '../../utils/validators';
 import { authService } from '../../services/api';
 
 /** Subtitle copy per role (P1 Cadastro — DESIGN.md §3 / IMPLEMENTATION-CHECKLIST F9). */
@@ -70,12 +72,6 @@ function toIsoDate(dmY: string): string | undefined {
  * em `onChangeText={(s) => setX(maskX(s))}` sem preocupação. Apagar (Backspace)
  * funciona naturalmente porque a função sempre re-deriva da string crua.
  */
-function maskDate(s: string): string {
-  const d = s.replace(/\D/g, '').slice(0, 8);
-  if (d.length <= 2) return d;
-  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
-  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
-}
 
 function maskCPF(s: string): string {
   const d = s.replace(/\D/g, '').slice(0, 11);
@@ -153,6 +149,7 @@ export function RegisterScreen() {
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [confirmarSenha, setConfirmarSenha] = useState('');
   const [telefone, setTelefone] = useState('');
 
   const [dataNasc, setDataNasc] = useState('');
@@ -164,6 +161,10 @@ export function RegisterScreen() {
   const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
 
   const [cnpj, setCnpj] = useState('');
+
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
+  const [confirmarSenhaError, setConfirmarSenhaError] = useState<string | null>(null);
+  const [cnpjError, setCnpjError] = useState<string | null>(null);
 
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -177,6 +178,8 @@ export function RegisterScreen() {
 
   const handleRegister = useCallback(async () => {
     setErro(null);
+    setConfirmarSenhaError(null);
+    setCnpjError(null);
 
     if (!nome.trim() || !email.trim() || senha.length < 8) {
       setErro('Preencha nome, e-mail e senha (mínimo 8 caracteres).');
@@ -186,12 +189,36 @@ export function RegisterScreen() {
       setErro('E-mail inválido. Confira se digitou corretamente.');
       return;
     }
-    if (!termsAccepted) {
-      setErro('Você precisa aceitar os termos para continuar.');
+    if (senha !== confirmarSenha) {
+      setConfirmarSenhaError('As senhas não coincidem.');
+      setErro('As senhas não coincidem.');
       return;
     }
-    if (role === 'artista' && selectedStyles.length === 0) {
-      setErro('Selecione pelo menos um estilo de tatuagem.');
+    if (role === 'artista') {
+      if (!cnpj.trim()) {
+        setCnpjError('Informe o CNPJ do artista.');
+        setErro('Informe o CNPJ do artista.');
+        return;
+      }
+      if (!isValidCNPJ(cnpj)) {
+        setCnpjError('CNPJ inválido (dígitos incorretos ou repetidos).');
+        setErro('CNPJ inválido. Confira os números.');
+        return;
+      }
+      if (selectedStyles.length === 0) {
+        setErro('Selecione pelo menos um estilo de tatuagem.');
+        return;
+      }
+    }
+    if (role === 'estudio' && cnpj.trim()) {
+      if (!isValidCNPJ(cnpj)) {
+        setCnpjError('CNPJ inválido (dígitos incorretos ou repetidos).');
+        setErro('CNPJ inválido. Confira os números.');
+        return;
+      }
+    }
+    if (!termsAccepted) {
+      setErro('Você precisa aceitar os termos para continuar.');
       return;
     }
 
@@ -215,7 +242,7 @@ export function RegisterScreen() {
           senha,
           telefone: telefone || undefined,
           dataNasc: toIsoDate(dataNasc),
-          cpf: cpf || undefined,
+          cnpj: cnpj || undefined,
           bio: bio || undefined,
           instagram: instagram || undefined,
           endereco: endereco || undefined,
@@ -245,7 +272,7 @@ export function RegisterScreen() {
       setLoading(false);
     }
   }, [
-    role, nome, email, senha, telefone, dataNasc, cpf,
+    role, nome, email, senha, confirmarSenha, telefone, dataNasc, cpf,
     bio, instagram, endereco, cnpj, selectedStyles, termsAccepted,
     setToken, setUser, setRole,
   ]);
@@ -273,7 +300,16 @@ export function RegisterScreen() {
           </Text>
         </View>
 
-        <RoleSwitch value={role} onChange={setRole} className="mb-8" />
+        <RoleSwitch
+          value={role}
+          onChange={(r) => {
+            setRole(r);
+            setErro(null);
+            setConfirmarSenhaError(null);
+            setCnpjError(null);
+          }}
+          className="mb-8"
+        />
 
         <Input
           label={role === 'estudio' ? 'Nome do estúdio' : 'Nome completo'}
@@ -304,28 +340,32 @@ export function RegisterScreen() {
           editable={!loading}
         />
         {(role === 'cliente' || role === 'artista') && (
-          <>
-            <Input
-              label="Data de nascimento"
-              placeholder="dd/mm/aaaa"
-              icon={CalendarDays}
-              keyboardType="numeric"
-              maxLength={10}
-              value={dataNasc}
-              onChangeText={(s) => setDataNasc(maskDate(s))}
-              editable={!loading}
-            />
-            <Input
-              label="CPF"
-              placeholder="000.000.000-00"
-              icon={IdCard}
-              keyboardType="numeric"
-              maxLength={14}
-              value={cpf}
-              onChangeText={(s) => setCpf(maskCPF(s))}
-              editable={!loading}
-            />
-          </>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => !loading && setDatePickerVisible(true)}
+          >
+            <View pointerEvents="none">
+              <Input
+                label="Data de nascimento"
+                placeholder="Selecione a data"
+                icon={CalendarDays}
+                value={dataNasc}
+                editable={false}
+              />
+            </View>
+          </TouchableOpacity>
+        )}
+        {role === 'cliente' && (
+          <Input
+            label="CPF"
+            placeholder="000.000.000-00"
+            icon={IdCard}
+            keyboardType="numeric"
+            maxLength={14}
+            value={cpf}
+            onChangeText={(s) => setCpf(maskCPF(s))}
+            editable={!loading}
+          />
         )}
         <Input
           label="Senha"
@@ -336,9 +376,36 @@ export function RegisterScreen() {
           onChangeText={setSenha}
           editable={!loading}
         />
+        <Input
+          label="Confirmar Senha"
+          placeholder="••••••••"
+          icon={Lock}
+          secure
+          value={confirmarSenha}
+          onChangeText={(s) => {
+            setConfirmarSenha(s);
+            setConfirmarSenhaError(null);
+          }}
+          error={confirmarSenhaError ?? undefined}
+          editable={!loading}
+        />
 
         {role === 'artista' && (
           <>
+            <Input
+              label="CNPJ"
+              placeholder="00.000.000/0000-00"
+              icon={Building2}
+              keyboardType="numeric"
+              maxLength={18}
+              value={cnpj}
+              onChangeText={(s) => {
+                setCnpj(maskCNPJ(s));
+                setCnpjError(null);
+              }}
+              error={cnpjError ?? undefined}
+              editable={!loading}
+            />
             <Input
               label="Bio"
               placeholder="Conte um pouco sobre você e seu trabalho..."
@@ -353,8 +420,8 @@ export function RegisterScreen() {
               editable={!loading}
             />
             <Input
-              label="Endereço de atendimento"
-              placeholder="Rua, número, bairro, cidade — UF"
+              label="Endereço completo"
+              placeholder="Rua, nº, bairro, cidade - UF"
               icon={MapPin}
               value={endereco}
               onChangeText={setEndereco}
@@ -405,12 +472,16 @@ export function RegisterScreen() {
               keyboardType="numeric"
               maxLength={18}
               value={cnpj}
-              onChangeText={(s) => setCnpj(maskCNPJ(s))}
+              onChangeText={(s) => {
+                setCnpj(maskCNPJ(s));
+                setCnpjError(null);
+              }}
+              error={cnpjError ?? undefined}
               editable={!loading}
             />
             <Input
               label="Endereço completo"
-              placeholder="Rua, número, bairro, cidade — UF"
+              placeholder="Rua, nº, bairro, cidade - UF"
               icon={MapPin}
               value={endereco}
               onChangeText={setEndereco}
@@ -451,6 +522,13 @@ export function RegisterScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <DatePickerModal
+        visible={datePickerVisible}
+        onClose={() => setDatePickerVisible(false)}
+        onSelectDate={(d) => setDataNasc(d)}
+        currentValue={dataNasc}
+      />
     </KeyboardAvoidingView>
   );
 }
