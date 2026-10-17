@@ -166,18 +166,11 @@ export function EstablishmentProfileScreen() {
       </ScrollView>
 
       <View
-        className="absolute left-0 right-0 bottom-0 bg-background pt-3 px-6 flex-row"
-        style={{ paddingBottom: 24, gap: 10 }}
+        className="absolute left-0 right-0 bottom-0 bg-background pt-3 px-6"
+        style={{ paddingBottom: 24 }}
       >
         <Button
-          title="Reservar"
-          variant="outline"
-          className="flex-1 px-5"
-          onPress={() => artistId && navigation.navigate('BookingFlow', { id: artistId })}
-        />
-        <Button
-          title={iniciandoConversa ? 'Abrindo…' : 'Chat'}
-          className="flex-1 px-5"
+          title={iniciandoConversa ? 'Abrindo…' : 'Iniciar Conversa'}
           onPress={iniciarConversa}
         />
       </View>
