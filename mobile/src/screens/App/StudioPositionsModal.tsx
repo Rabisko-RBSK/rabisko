@@ -84,6 +84,8 @@ export function StudioPositionsModal({
   const [agenda, setAgenda] = useState<AgendaEstudioDTO | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(false);
+  /** Altura do rodapé fixo (resumo + botão), medida no layout. */
+  const [alturaRodape, setAlturaRodape] = useState(120);
   // O pai remonta esta tela (via `key`) a cada abertura, então a seleção
   // inicial vem direto das props.
   const [candidato, setCandidato] = useState<Candidato | null>(() =>
@@ -161,7 +163,7 @@ export function StudioPositionsModal({
           <View className="w-8" />
         </View>
 
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 120 }}>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: alturaRodape + 16 }}>
           <View className="self-center bg-surface rounded-rd-pill px-[18px] py-2 mb-3">
             <Text className="font-body-semibold text-[14px] text-ink">{dataBR}</Text>
           </View>
@@ -312,44 +314,55 @@ export function StudioPositionsModal({
                   Esses horários também ficam bloqueados.
                 </Text>
               )}
-
-              <View className="bg-surface-2 rounded-rd-lg p-4 mt-4">
-                <Text className="font-body-semibold text-[11px] text-plum mb-1">SESSÃO SELECIONADA</Text>
-                {candidato ? (
-                  <>
-                    <Text className="font-aux-bold text-[20px] text-ink mb-2">
-                      Posição {candidato.posicao} · {paraHorario(candidato.inicioMin)} – {paraHorario(candidato.inicioMin + candidato.duracaoMin)}
-                    </Text>
-                    <View className="flex-row justify-between items-start" style={{ gap: 12 }}>
-                      <Text className="font-body text-[14px] text-fg-2">Conflitos com outras reservas</Text>
-                      <Text
-                        className="font-body-semibold text-[14px] flex-shrink text-right"
-                        style={{ color: conflito ? C.error : C.success }}
-                      >
-                        {conflito ?? 'Nenhum'}
-                      </Text>
-                    </View>
-                    <View className="flex-row justify-between mt-1">
-                      <Text className="font-body text-[14px] text-fg-2">Duração</Text>
-                      <Text className="font-body-semibold text-[14px] text-ink">
-                        {duracaoMinutos / 60} {duracaoMinutos === 60 ? 'hora' : 'horas'}
-                      </Text>
-                    </View>
-                  </>
-                ) : (
-                  <Text className="font-body text-[14px] text-fg-2">
-                    Nenhum horário selecionado. Toque em uma posição no gráfico.
-                  </Text>
-                )}
-              </View>
             </>
           )}
         </ScrollView>
 
+        {/* Rodapé fixo: resumo da seleção + confirmar. Sobrepõe o gráfico; o
+            paddingBottom do ScrollView (altura medida) deixa rolar o conteúdo
+            até acima dele. */}
         <View
           className="absolute bottom-0 left-0 right-0 px-6 bg-background"
-          style={{ paddingBottom: insets.bottom + 16, paddingTop: 12 }}
+          style={{
+            paddingBottom: insets.bottom + 16,
+            paddingTop: 12,
+            borderTopWidth: 1,
+            borderTopColor: C.hairline,
+          }}
+          onLayout={(e) => setAlturaRodape(e.nativeEvent.layout.height)}
         >
+          {!!agenda && (
+            <View className="bg-surface-2 rounded-rd-lg p-4 mb-3" accessibilityLiveRegion="polite">
+              <Text className="font-body-semibold text-[11px] text-plum mb-1">SESSÃO SELECIONADA</Text>
+              {candidato ? (
+                <>
+                  <Text className="font-aux-bold text-[20px] text-ink mb-2">
+                    Posição {candidato.posicao} · {paraHorario(candidato.inicioMin)} – {paraHorario(candidato.inicioMin + candidato.duracaoMin)}
+                  </Text>
+                  <View className="flex-row justify-between items-start" style={{ gap: 12 }}>
+                    <Text className="font-body text-[14px] text-fg-2">Conflitos com outras reservas</Text>
+                    <Text
+                      className="font-body-semibold text-[14px] flex-shrink text-right"
+                      style={{ color: conflito ? C.error : C.success }}
+                    >
+                      {conflito ?? 'Nenhum'}
+                    </Text>
+                  </View>
+                  <View className="flex-row justify-between mt-1">
+                    <Text className="font-body text-[14px] text-fg-2">Duração</Text>
+                    <Text className="font-body-semibold text-[14px] text-ink">
+                      {duracaoMinutos / 60} {duracaoMinutos === 60 ? 'hora' : 'horas'}
+                    </Text>
+                  </View>
+                </>
+              ) : (
+                <Text className="font-body text-[14px] text-fg-2">
+                  Nenhum horário selecionado. Toque em uma posição no gráfico.
+                </Text>
+              )}
+            </View>
+          )}
+
           <TouchableOpacity
             onPress={confirmar}
             disabled={!podeConfirmar}
