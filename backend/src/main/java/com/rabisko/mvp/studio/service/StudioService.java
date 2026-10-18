@@ -62,6 +62,11 @@ public class StudioService {
     public StudioDTO atualizarEstudio(User logado, AtualizarEstudioDTO body) {
         Studio estudio = exigirEstudioDoUser(logado);
 
+        // Mesma quantidade: nada muda (nem escrita no banco).
+        if (body.posicoes() == estudio.getPosicoes()) {
+            return StudioDTO.from(estudio);
+        }
+
         if (body.posicoes() < estudio.getPosicoes()
                 && sessionRepository.existeReservaFuturaAcimaDaPosicao(
                         estudio.getEstudioId(), body.posicoes(), LocalDateTime.now(), AppointmentStatus.cancelada)) {

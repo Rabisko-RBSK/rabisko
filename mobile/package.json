@@ -11,7 +11,7 @@
     "web": "expo start --web --offline",
     "lint": "expo lint",
     "test:studio": "node --experimental-strip-types tests/studioDashboard.test.mjs",
-    "test:agenda": "node --experimental-strip-types tests/agendaEstudio.test.mjs"
+    "test:agenda": "node --experimental-strip-types --test tests/agendaEstudio.test.mjs tests/posicoesEstudio.test.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/bebas-neue": "^0.4.1",
