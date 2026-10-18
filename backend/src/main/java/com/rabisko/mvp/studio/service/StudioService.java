@@ -3,6 +3,9 @@ package com.rabisko.mvp.studio.service;
 import com.rabisko.mvp.artist.domain.Artist;
 import com.rabisko.mvp.artist.domain.ArtistStudioSearchResultDTO;
 import com.rabisko.mvp.artist.repository.ArtistRepository;
+import com.rabisko.mvp.endereco.domain.Endereco;
+import com.rabisko.mvp.endereco.domain.EnderecoOwnerType;
+import com.rabisko.mvp.endereco.service.EnderecoService;
 import com.rabisko.mvp.studio.domain.*;
 import com.rabisko.mvp.studio.repository.ConviteEstudioRepository;
 import com.rabisko.mvp.studio.repository.StudioRepository;
@@ -36,6 +39,9 @@ public class StudioService {
     @Autowired
     private ContratoService contratoService;
 
+    @Autowired 
+    private EnderecoService enderecoService;
+
     public Studio cadastrarEstudio(User user, RegisterEstudioDTO body) {
         Studio novoStudio = Studio.builder()
                 .userId(user.getUserId())
@@ -45,7 +51,14 @@ public class StudioService {
                 .telefone(body.getTelefone())
                 .build();
 
-        return studioRepository.save(novoStudio);
+        Studio s = studioRepository.save(novoStudio);
+
+        if(body.getEndereco() != null){
+            Endereco e = enderecoService.salvar(s.getEstudioId(), EnderecoOwnerType.estudio, body.getEndereco(), null);
+            s.setEnderecoId(e.getEnderecoId());
+        }
+
+        return s;
     }
 
     @Transactional

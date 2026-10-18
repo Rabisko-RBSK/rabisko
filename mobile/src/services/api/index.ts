@@ -41,9 +41,21 @@ export interface RegisterArtistaData {
   cnpj?: string;
   bio?: string;
   instagram?: string;
-  endereco?: string;
+  endereco: EnderecoInput;
   estilos?: string[];
   termosAceitos: boolean;
+}
+
+export interface EnderecoInput {
+  cep: string;
+  logradouro: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade: string;
+  uf: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface RegisterEstudioData {
@@ -52,7 +64,7 @@ export interface RegisterEstudioData {
   senha: string;
   telefone?: string;
   cnpj?: string;
-  endereco?: string;
+  endereco: EnderecoInput;
   termosAceitos: boolean;
 }
 
