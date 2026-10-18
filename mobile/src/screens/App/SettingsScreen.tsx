@@ -1,10 +1,7 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import {
   User,
-  CalendarDays,
-  CreditCard,
-  Bell,
   HelpCircle,
   ChevronRight,
   LogOut,
@@ -15,13 +12,8 @@ import { useAuthStore } from '../../store/authStore';
 import { Header } from '../../components/common/Header';
 
 /**
- * Settings (DESIGN.md §10 #14 / Screens.jsx#SettingsScreen). Single cream-surface list — five
- * rows + chevron, hairline dividers, **no chip block around the icon**. Sign-out is rendered
- * as a separate, low-emphasis link below the list (the design's screen catalog says §14 has
- * sign-out, even though the prototype stub omits it — see IMPLEMENTATION-CHECKLIST.md).
- *
- * The previous version's toggles (Notificações Push, Modo Escuro) are gone — neither belongs
- * on this screen per the design. Notifications becomes a row → its own screen later.
+ * Settings (DESIGN.md §10 #14 / Screens.jsx#SettingsScreen). Single cream-surface list.
+ * Sign-out is rendered as a separate, low-emphasis link below the list.
  */
 
 interface SettingRow {
@@ -32,14 +24,20 @@ interface SettingRow {
 }
 
 export function SettingsScreen() {
-  const { logout } = useAuthStore();
+  const { role, logout } = useAuthStore();
 
   const rows: SettingRow[] = [
-    { id: 'profile',  label: 'Meu Perfil',           icon: User },
-    { id: 'orders',   label: 'Meus Pedidos',         icon: CalendarDays },
-    { id: 'payments', label: 'Métodos de Pagamento', icon: CreditCard },
-    { id: 'notifs',   label: 'Notificações',         icon: Bell },
-    { id: 'help',     label: 'Ajuda',                icon: HelpCircle },
+    ...(role !== 'artista' ? [{ id: 'profile', label: 'Meu Perfil', icon: User }] : []),
+    {
+      id: 'help',
+      label: 'Ajuda',
+      icon: HelpCircle,
+      onPress: () =>
+        Alert.alert(
+          'Ajuda e Suporte',
+          'Para suporte, dúvidas ou sugestões, fale conosco pelo e-mail suporte@rabisko.com.',
+        ),
+    },
   ];
 
   return (
@@ -52,7 +50,7 @@ export function SettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Text className="font-body text-[14px] text-fg-2 mt-1 mb-6">
-          Gerencie sua conta, pedidos, pagamentos e preferências
+          Gerencie sua conta e preferências
         </Text>
 
         <View className="bg-surface rounded-rd-lg overflow-hidden">

@@ -38,7 +38,7 @@ export interface RegisterArtistaData {
   senha: string;
   telefone?: string;
   dataNasc?: string;
-  cpf?: string;
+  cnpj?: string;
   bio?: string;
   instagram?: string;
   endereco: EnderecoInput;
