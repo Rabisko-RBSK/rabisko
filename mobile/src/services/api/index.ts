@@ -53,6 +53,8 @@ export interface RegisterEstudioData {
   telefone?: string;
   cnpj?: string;
   endereco?: string;
+  /** Quantidade de posições (macas/bancadas) de atendimento, de 1 a 50. */
+  posicoes: number;
   termosAceitos: boolean;
 }
 
@@ -147,6 +149,8 @@ export interface AppointmentSessionInput {
   data: string;
   horario: string;
   duracaoMinutos: number;
+  /** Obrigatória quando o tatuador é vinculado a um estúdio. */
+  posicao?: number;
 }
 
 export interface AppointmentSessionDTO {
@@ -154,6 +158,28 @@ export interface AppointmentSessionDTO {
   data: string;
   horario: string;
   duracaoMinutos: number;
+  posicao: number | null;
+}
+
+/** Sessão já reservada no estúdio (gráfico de posições). */
+export interface ReservaPosicaoDTO {
+  /** null em sessões antigas, sem posição. */
+  posicao: number | null;
+  data: string;
+  horario: string;
+  duracaoMinutos: number;
+  tatuadorNome: string;
+  /** true quando a sessão é do tatuador logado. */
+  propria: boolean;
+}
+
+export interface AgendaEstudioDTO {
+  vinculadoEstudio: boolean;
+  estudioId: string | null;
+  nomeEstudio: string | null;
+  posicoes: number;
+  data: string;
+  reservas: ReservaPosicaoDTO[];
 }
 
 export interface AppointmentDTO {
@@ -208,6 +234,14 @@ export const appointmentService = {
 
   async listarSessoes(params?: { de?: string; ate?: string }): Promise<SessaoListItemDTO[]> {
     const { data: res } = await api.get<SessaoListItemDTO[]>('/appointments/minhas-sessoes', { params });
+    return res;
+  },
+
+  /** Posições do estúdio do tatuador logado e as reservas do dia. */
+  async agendaEstudio(date: string): Promise<AgendaEstudioDTO> {
+    const { data: res } = await api.get<AgendaEstudioDTO>('/appointments/agenda-estudio', {
+      params: { date },
+    });
     return res;
   },
 };

@@ -9,15 +9,25 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X } from 'lucide-react-native';
+import { ChevronRight, X } from 'lucide-react-native';
 
 import { appointmentService, BusySlotDTO } from '../../services/api';
+import { BlocoAgenda, paraHorario, paraMinutos } from '../../utils/agendaEstudio';
+import { PosicaoSelecionada, StudioPositionsModal } from './StudioPositionsModal';
 
 
 interface Session {
   data: Date;
   horario: string | null;
   duracaoMinutos: number;
+  /** Posição do estúdio; só usada quando o tatuador é vinculado a um estúdio. */
+  posicao: number | null;
+}
+
+/** Estúdio do tatuador (null = tatuador independente, usa a grade de horários). */
+interface EstudioInfo {
+  nome: string | null;
+  posicoes: number;
 }
 
 interface Props {
@@ -86,6 +96,11 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
   const [valorTotal, setValorTotal] = useState<string>('');
   const [enviando, setEnviando] = useState(false);
   const [busySlots, setBusySlots] = useState<BusySlotDTO[]>([]);
+  const [estudio, setEstudio] = useState<EstudioInfo | null>(null);
+  const [selectedPosicao, setSelectedPosicao] = useState<number | null>(null);
+  const [posicoesVisible, setPosicoesVisible] = useState(false);
+  /** Incrementa a cada abertura: remonta a tela de posições com a seleção atual. */
+  const [aberturaPosicoes, setAberturaPosicoes] = useState(0);
 
   const [customTimeActive, setCustomTimeActive] = useState(false);
   const [customTimeInput, setCustomTimeInput] = useState('');
@@ -99,11 +114,21 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
       .catch(() => setBusySlots([]));
   }, [selectedDate, selectedDuration, visible]);
 
+  // Tatuador de estúdio escolhe horário + posição na tela de posições.
+  useEffect(() => {
+    if (!visible) return;
+    appointmentService
+      .agendaEstudio(formatDate(DAYS[0]))
+      .then((a) => setEstudio(a.vinculadoEstudio ? { nome: a.nomeEstudio, posicoes: a.posicoes } : null))
+      .catch(() => setEstudio(null));
+  }, [visible]);
+
   useEffect(() => {
     if (sessions.length === 0 || activeIdx >= sessions.length) return;
     const s = sessions[activeIdx];
     setSelectedDate(s.data);
     setSelectedTime(s.horario);
+    setSelectedPosicao(s.posicao);
     setSelectedDuration(s.duracaoMinutos / 60);
     if (s.horario && !FIXED_SLOTS.includes(s.horario)) {
       setCustomTimeActive(true);
@@ -127,8 +152,30 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
   function handleDateSelect(day: Date) {
     setSelectedDate(day);
     setSelectedTime(null);
-    updateActive({ data: day, horario: null });
+    setSelectedPosicao(null);
+    updateActive({ data: day, horario: null, posicao: null });
   }
+
+  function handlePosicaoConfirm(sel: PosicaoSelecionada) {
+    setSelectedTime(sel.horario);
+    setSelectedPosicao(sel.posicao);
+    updateActive({ horario: sel.horario, posicao: sel.posicao });
+    setPosicoesVisible(false);
+  }
+
+  /** Outras sessões desta proposta no mesmo dia — bloqueiam o horário na tela de posições. */
+  const pendentesNoDia: BlocoAgenda[] = sessions.flatMap((s, i) =>
+    i !== activeIdx && s.horario && s.posicao && sameDay(s.data, selectedDate)
+      ? [{
+          posicao: s.posicao,
+          inicioMin: paraMinutos(s.horario),
+          duracaoMin: s.duracaoMinutos,
+          propria: true,
+          pendente: true,
+          rotulo: `Sessão ${i + 1}`,
+        }]
+      : [],
+  );
 
   function handleTimeSelect(slot: string) {
     setSelectedTime(slot);
@@ -139,7 +186,14 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
 
   function handleDurationSelect(h: number) {
     setSelectedDuration(h);
-    updateActive({ duracaoMinutos: h * 60 });
+    if (estudio) {
+      // A nova duração pode colidir com outra reserva: escolhe o horário de novo.
+      setSelectedTime(null);
+      setSelectedPosicao(null);
+      updateActive({ duracaoMinutos: h * 60, horario: null, posicao: null });
+    } else {
+      updateActive({ duracaoMinutos: h * 60 });
+    }
   }
 
   function handleCustomTimeActivate() {
@@ -182,6 +236,7 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
       data: DAYS[0],
       horario: null,
       duracaoMinutos: 60,
+      posicao: null,
     };
     setSessions((prev) => {
       const next = [...prev, newSession];
@@ -190,6 +245,7 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
     });
     setSelectedDate(DAYS[0]);
     setSelectedTime(null);
+    setSelectedPosicao(null);
     setSelectedDuration(1);
   }
 
@@ -207,9 +263,14 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
       Alert.alert('Valor inválido', 'Informe o valor total da tatuagem.');
       return;
     }
-    const incomplete = sessions.some((s) => !s.horario);
+    const incomplete = sessions.some((s) => !s.horario || (estudio && !s.posicao));
     if (incomplete) {
-      Alert.alert('Sessão incompleta', 'Selecione data e horário para todas as sessões.');
+      Alert.alert(
+        'Sessão incompleta',
+        estudio
+          ? 'Escolha o horário e a posição do estúdio para todas as sessões.'
+          : 'Selecione data e horário para todas as sessões.',
+      );
       return;
     }
     setEnviando(true);
@@ -220,12 +281,18 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
           data: formatDate(s.data),
           horario: s.horario!,
           duracaoMinutos: s.duracaoMinutos,
+          ...(estudio && s.posicao ? { posicao: s.posicao } : {}),
         })),
         valorTotal: valorNum,
       });
       onSent();
-    } catch (e) {
-      Alert.alert('Erro', 'Não foi possível criar o agendamento. Tente novamente.');
+    } catch (e: any) {
+      // 409/400 trazem o motivo (ex.: posição ocupada por outro tatuador nesse meio tempo).
+      const mensagem: string | undefined = e?.response?.data?.mensagem;
+      Alert.alert(
+        mensagem ? 'Horário indisponível' : 'Erro',
+        mensagem ?? 'Não foi possível criar o agendamento. Tente novamente.',
+      );
       console.log(e);
     } finally {
       setEnviando(false);
@@ -241,6 +308,8 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
       setSelectedDuration(1);
       setValorTotal('');
       setBusySlots([]);
+      setSelectedPosicao(null);
+      setPosicoesVisible(false);
       setCustomTimeActive(false);
       setCustomTimeInput('');
     }
@@ -248,11 +317,70 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
 
   const canSend =
     sessions.length > 0 &&
-    sessions.every((s) => s.horario !== null) &&
+    sessions.every((s) => s.horario !== null && (!estudio || s.posicao !== null)) &&
     valorTotal.length > 0 &&
     !enviando;
 
   const totalNum = parseFloat(valorTotal.replace(/\./g, '').replace(',', '.')) || 0;
+
+  const secaoDuracao = (
+    <Section label="DURAÇÃO ESTIMADA">
+      <View className="flex-row flex-wrap gap-2">
+        {DURATIONS_H.map((h) => {
+          const active = selectedDuration === h;
+          return (
+            <TouchableOpacity
+              key={h}
+              onPress={() => handleDurationSelect(h)}
+              className={`px-4 py-2 rounded-rd-xs ${active ? 'bg-plum' : 'bg-surface'}`}
+            >
+              <Text className={`font-body text-[13px] ${active ? 'text-white' : 'text-ink'}`}>
+                {h}h
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </Section>
+  );
+
+  const fimSelecionado = selectedTime
+    ? paraHorario(paraMinutos(selectedTime) + selectedDuration * 60)
+    : null;
+
+  const secaoHorarioEstudio = (
+    <Section label="HORÁRIO E POSIÇÃO">
+      <TouchableOpacity
+        onPress={() => {
+          setAberturaPosicoes((n) => n + 1);
+          setPosicoesVisible(true);
+        }}
+        accessibilityRole="button"
+        accessibilityLabel="Escolher horário e posição no estúdio"
+        className="flex-row items-center bg-surface rounded-rd-md px-4 py-4"
+      >
+        <View className="flex-1">
+          {selectedTime && selectedPosicao ? (
+            <>
+              <Text className="font-aux-bold text-[18px] text-ink">
+                {selectedTime} – {fimSelecionado} · Posição {selectedPosicao}
+              </Text>
+              <Text className="font-body text-[12px] text-fg-2 mt-0.5">Toque para trocar</Text>
+            </>
+          ) : (
+            <>
+              <Text className="font-body-semibold text-[15px] text-ink">Escolher horário e posição</Text>
+              <Text className="font-body text-[12px] text-fg-2 mt-0.5">
+                Veja as reservas das {estudio?.posicoes ?? 0} posições
+                {estudio?.nome ? ` do ${estudio.nome}` : ' do estúdio'}
+              </Text>
+            </>
+          )}
+        </View>
+        <ChevronRight size={22} color="#602C66" />
+      </TouchableOpacity>
+    </Section>
+  );
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen">
@@ -290,7 +418,8 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
                   <Text className={`font-body text-[13px] ${i === activeIdx ? 'text-white' : 'text-ink'}`}>
                     {`${i + 1}. `}
                     {s.horario
-                      ? `${s.data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} · ${s.horario}`
+                      ? `${s.data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} · ${s.horario}${
+                          estudio && s.posicao ? ` · P${s.posicao}` : ''}`
                       : 'Pendente'}
                   </Text>
                   <TouchableOpacity
@@ -338,6 +467,12 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
                 </ScrollView>
               </Section>
 
+              {estudio ? (
+                <>
+                  {secaoDuracao}
+                  {secaoHorarioEstudio}
+                </>
+              ) : (
               <Section label="HORÁRIO">
                 <View className="flex-row flex-wrap gap-2">
                   {FIXED_SLOTS.map((slot) => {
@@ -396,25 +531,9 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
                   )}
                 </View>
               </Section>
+              )}
 
-              <Section label="DURAÇÃO ESTIMADA">
-                <View className="flex-row flex-wrap gap-2">
-                  {DURATIONS_H.map((h) => {
-                    const active = selectedDuration === h;
-                    return (
-                      <TouchableOpacity
-                        key={h}
-                        onPress={() => handleDurationSelect(h)}
-                        className={`px-4 py-2 rounded-rd-xs ${active ? 'bg-plum' : 'bg-surface'}`}
-                      >
-                        <Text className={`font-body text-[13px] ${active ? 'text-white' : 'text-ink'}`}>
-                          {h}h
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </Section>
+              {!estudio && secaoDuracao}
             </>
           )}
 
@@ -460,6 +579,18 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
           </TouchableOpacity>
         </View>
 
+        {estudio && (
+          <StudioPositionsModal
+            key={aberturaPosicoes}
+            visible={posicoesVisible}
+            onClose={() => setPosicoesVisible(false)}
+            onConfirm={handlePosicaoConfirm}
+            data={selectedDate}
+            duracaoMinutos={selectedDuration * 60}
+            inicial={selectedTime && selectedPosicao ? { horario: selectedTime, posicao: selectedPosicao } : null}
+            pendentes={pendentesNoDia}
+          />
+        )}
       </View>
     </Modal>
   );

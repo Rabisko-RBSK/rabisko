@@ -8,7 +8,7 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Mail, Lock, User, AtSign, Building2, MapPin, PenLine, Phone, CalendarDays, IdCard } from 'lucide-react-native';
+import { Mail, Lock, User, AtSign, Building2, MapPin, PenLine, Phone, CalendarDays, IdCard, Armchair } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -161,6 +161,8 @@ export function RegisterScreen() {
   const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
 
   const [cnpj, setCnpj] = useState('');
+  const [posicoes, setPosicoes] = useState('');
+  const [posicoesError, setPosicoesError] = useState<string | null>(null);
 
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [confirmarSenhaError, setConfirmarSenhaError] = useState<string | null>(null);
@@ -217,6 +219,14 @@ export function RegisterScreen() {
         return;
       }
     }
+    if (role === 'estudio') {
+      const n = Number(posicoes);
+      if (!Number.isInteger(n) || n < 1 || n > 50) {
+        setPosicoesError('Informe de 1 a 50 posições.');
+        setErro('Informe quantas posições de atendimento o estúdio tem (1 a 50).');
+        return;
+      }
+    }
     if (!termsAccepted) {
       setErro('Você precisa aceitar os termos para continuar.');
       return;
@@ -257,6 +267,7 @@ export function RegisterScreen() {
           telefone: telefone || undefined,
           cnpj: cnpj || undefined,
           endereco: endereco || undefined,
+          posicoes: Number(posicoes),
           termosAceitos: termsAccepted,
         }));
       }
@@ -273,7 +284,7 @@ export function RegisterScreen() {
     }
   }, [
     role, nome, email, senha, confirmarSenha, telefone, dataNasc, cpf,
-    bio, instagram, endereco, cnpj, selectedStyles, termsAccepted,
+    bio, instagram, endereco, cnpj, posicoes, selectedStyles, termsAccepted,
     setToken, setUser, setRole,
   ]);
 
@@ -485,6 +496,20 @@ export function RegisterScreen() {
               icon={MapPin}
               value={endereco}
               onChangeText={setEndereco}
+              editable={!loading}
+            />
+            <Input
+              label="Número de posições"
+              placeholder="Ex.: 3 (macas ou bancadas de atendimento)"
+              icon={Armchair}
+              keyboardType="number-pad"
+              maxLength={2}
+              value={posicoes}
+              onChangeText={(s) => {
+                setPosicoes(s.replace(/\D/g, ''));
+                setPosicoesError(null);
+              }}
+              error={posicoesError ?? undefined}
               editable={!loading}
             />
           </>
