@@ -7,10 +7,14 @@ import com.rabisko.mvp.artist.domain.AvaliacaoDTO;
 import com.rabisko.mvp.artist.domain.PortfolioImagemDTO;
 import com.rabisko.mvp.artist.domain.UploadResponseDTO;
 import com.rabisko.mvp.artist.service.ArtistService;
+import com.rabisko.mvp.endereco.domain.EnderecoDTO;
 import com.rabisko.mvp.studio.domain.ContratoDTO;
 import com.rabisko.mvp.studio.domain.ConviteDTO;
 import com.rabisko.mvp.studio.domain.ConviteDetalheDTO;
 import com.rabisko.mvp.user.domain.User;
+
+import jakarta.validation.Valid;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -19,6 +23,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -160,6 +165,14 @@ public class ArtistController {
     ) {
         artistService.sairEstudio(user);
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/me/endereco")
+    public ResponseEntity<EnderecoDTO> alterarEndereco(
+            @AuthenticationPrincipal User user,
+            @RequestBody @Valid EnderecoDTO body
+    ) {
+        return ResponseEntity.ok(artistService.atualizarEndereco(user, body));
     }
 
     @GetMapping("/me/contratos")

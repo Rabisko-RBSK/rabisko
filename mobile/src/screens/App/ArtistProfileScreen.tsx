@@ -223,6 +223,27 @@ function EstudioVinculadoCard({
   );
 }
 
+/** Atalho para a edição de nome, telefone, instagram e endereço. */
+function DadosCadastraisCard({ resumo, onPress }: { resumo: string; onPress: () => void }) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.85}
+      className="bg-surface rounded-rd-lg p-5 flex-row items-center"
+      accessibilityRole="button"
+      accessibilityLabel="Editar dados cadastrais"
+    >
+      <View className="flex-1">
+        <Text className="font-aux-bold text-[16px] text-ink mb-1">Dados cadastrais</Text>
+        <Text className="font-body text-[13px] text-fg-3" numberOfLines={1}>
+          {resumo}
+        </Text>
+      </View>
+      <ChevronRight size={20} color="#6B6B6B" />
+    </TouchableOpacity>
+  );
+}
+
 /** Atalho para a tela de convites, com a contagem de pendentes. */
 function ConvitesCard({
   total,
@@ -722,6 +743,16 @@ export function ArtistProfileScreen() {
                 onPress={() => navigation.navigate('Convites')}
               />
             )}
+            <View className="mt-3">
+              <DadosCadastraisCard
+                resumo={
+                  profile?.endereco
+                    ? `${profile.endereco.cidade} - ${profile.endereco.uf}`
+                    : 'Endereço e contato não informados'
+                }
+                onPress={() => navigation.navigate('EditarPerfil')}
+              />
+            </View>
           </View>
         ) : null}
 
