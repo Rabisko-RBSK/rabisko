@@ -8,7 +8,7 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Mail, Lock, User, AtSign, Building2, PenLine, Phone, CalendarDays, IdCard } from 'lucide-react-native';
+import { Mail, Lock, User, AtSign, Building2, PenLine, Phone, CalendarDays, IdCard, Armchair } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
