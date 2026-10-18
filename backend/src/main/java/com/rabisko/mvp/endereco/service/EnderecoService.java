@@ -35,4 +35,12 @@ public class EnderecoService {
 
     }
 
+    public EnderecoDTO buscar(UUID enderecoId){
+        if(enderecoId == null){
+            return null;
+        }else{
+            return EnderecoDTO.from(enderecoRepository.findById(enderecoId).orElse(null));
+        }
+    }
+
 }

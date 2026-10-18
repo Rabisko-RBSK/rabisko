@@ -7,6 +7,7 @@ import com.rabisko.mvp.artist.repository.PortfolioImagemRepository;
 import com.rabisko.mvp.appointment.repository.AppointmentRepository;
 import com.rabisko.mvp.chat.repository.ChatRepository;
 import com.rabisko.mvp.endereco.domain.Endereco;
+import com.rabisko.mvp.endereco.domain.EnderecoDTO;
 import com.rabisko.mvp.endereco.domain.EnderecoOwnerType;
 import com.rabisko.mvp.endereco.service.EnderecoService;
 import com.rabisko.mvp.estilo.domain.Estilo;
@@ -22,6 +23,7 @@ import com.rabisko.mvp.studio.repository.StudioRepository;
 import com.rabisko.mvp.studio.service.ContratoService;
 import com.rabisko.mvp.user.domain.User;
 import com.rabisko.mvp.user.domain.UserRole;
+import com.rabisko.mvp.user.repository.UserRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 
@@ -72,6 +74,7 @@ public class ArtistService {
     @Autowired private StudioRepository studioRepository;
     @Autowired private ContratoService contratoService;
     @Autowired private EnderecoService enderecoService;
+    @Autowired private UserRepository userRepository;
 
     /**
      * Cria o perfil tatuador apos o User ja ter sido salvo.
@@ -174,7 +177,9 @@ public class ArtistService {
                 artist.getEstudioId(),
                 estudio != null ? estudio.getNome() : null,
                 estudio != null ? estudio.getFotoPerfilUrl() : null,
-                portfolio
+                portfolio,
+                user.getTelefone(),
+                enderecoService.buscar(artist.getEnderecoId())
         );
     }
 
@@ -186,6 +191,7 @@ public class ArtistService {
      *
      * Chaves aceitas: `bio` (String|null) e `fotoUrl` (String|null).
      */
+    @Transactional
     public ArtistProfileDTO atualizarPerfil(User user, Map<String, Object> payload) {
         Artist artist = exigirArtistDoUser(user);
         if (payload == null) payload = Collections.emptyMap();
@@ -214,6 +220,52 @@ public class ArtistService {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "fotoUrl deve ser string ou null");
             }
         }
+
+        if(payload.containsKey("instagram")){
+            Object raw = payload.get("instagram");
+            if (raw == null) {
+                artist.setInstagram(null);
+            } else if (raw instanceof String s) {
+                String t = s.trim();
+                artist.setInstagram(t.isEmpty() ? null : t.replaceFirst("^@+", ""));
+            } else {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "instagram deve ser string ou null");
+            }
+        }
+
+        if(payload.containsKey("nome")){
+            Object raw = payload.get("nome");
+            if (raw == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "nome não pode ser vazio");
+            } else if (raw instanceof String s) {
+                if(s.isBlank()){
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "nome não pode ser vazio");
+                }
+                String t = s.trim();
+                if (t.length() > 150) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "nome não pode ter mais de 150 caracteres");
+                user.setNome(t);
+                userRepository.save(user);
+            } else {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "nome deve ser string");
+            }
+        }
+
+        if (payload.containsKey("telefone")) {
+            Object raw = payload.get("telefone");
+            if (raw == null || (raw instanceof String s0 && s0.isBlank())) {
+                user.setTelefone(null);                       
+            } else if (raw instanceof String s) {
+                String digitos = s.replaceAll("\\D", "");
+                if (digitos.length() != 10 && digitos.length() != 11) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "telefone deve ter 10 ou 11 digitos");
+                }
+                user.setTelefone(digitos);
+            } else {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "telefone deve ser string");
+            }
+            userRepository.save(user);
+        }
+
 
         artistRepository.save(artist);
         return obterPerfil(user);
@@ -389,6 +441,19 @@ public class ArtistService {
         contratoService.aceitarDoConvite(conviteId, tatuadorId, agora);
 
         return ConviteDTO.from(convite);
+    }
+
+    @Transactional
+    public EnderecoDTO atualizarEndereco(User logado, EnderecoDTO body){
+        Artist artist = exigirArtistDoUser(logado);
+
+        Endereco e = enderecoService.salvar(artist.getTatuadorId(), EnderecoOwnerType.tatuador, body, artist.getEnderecoId());
+    
+        artist.setEnderecoId(e.getEnderecoId());
+
+        artistRepository.save(artist);
+
+        return EnderecoDTO.from(e);
     }
 
     @Transactional
