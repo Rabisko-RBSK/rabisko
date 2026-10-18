@@ -6,6 +6,9 @@ import com.rabisko.mvp.artist.repository.ArtistRepository;
 import com.rabisko.mvp.artist.repository.PortfolioImagemRepository;
 import com.rabisko.mvp.appointment.repository.AppointmentRepository;
 import com.rabisko.mvp.chat.repository.ChatRepository;
+import com.rabisko.mvp.endereco.domain.Endereco;
+import com.rabisko.mvp.endereco.domain.EnderecoOwnerType;
+import com.rabisko.mvp.endereco.service.EnderecoService;
 import com.rabisko.mvp.estilo.domain.Estilo;
 import com.rabisko.mvp.estilo.repository.EstiloRepository;
 import com.rabisko.mvp.shared.storage.StorageService;
@@ -68,6 +71,7 @@ public class ArtistService {
     @Autowired private ConviteEstudioRepository conviteEstudioRepository;
     @Autowired private StudioRepository studioRepository;
     @Autowired private ContratoService contratoService;
+    @Autowired private EnderecoService enderecoService;
 
     /**
      * Cria o perfil tatuador apos o User ja ter sido salvo.
@@ -83,7 +87,14 @@ public class ArtistService {
                 .estilos(resolverEstilos(body.getEstilos()))
                 .build();
 
-        return artistRepository.save(novoArtist);
+        Artist a = artistRepository.save(novoArtist);
+
+        if(body.getEndereco() != null){
+            Endereco e = enderecoService.salvar(a.getTatuadorId(), EnderecoOwnerType.tatuador, body.getEndereco(), null);
+            a.setEnderecoId(e.getEnderecoId());
+        }
+
+        return a;
     }
 
     /**

@@ -8,7 +8,7 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Mail, Lock, User, AtSign, Building2, MapPin, PenLine, Phone, CalendarDays, IdCard } from 'lucide-react-native';
+import { Mail, Lock, User, AtSign, Building2, PenLine, Phone, CalendarDays, IdCard } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -20,7 +20,9 @@ import { Button } from '../../components/common/Button';
 import { Checkbox } from '../../components/common/Checkbox';
 import { RoleSwitch } from '../../components/common/RoleSwitch';
 import { PrefChip } from '../../components/common/Chip';
-import { authService } from '../../services/api';
+import { EnderecoForm, validarEndereco } from '../../components/common/EnderecoForm';
+import { authService, type EnderecoInput } from '../../services/api';
+import { geocodificar } from '../../utils/geocodificar';
 
 /** Subtitle copy per role (P1 Cadastro — DESIGN.md §3 / IMPLEMENTATION-CHECKLIST F9). */
 const SUBTITLE_BY_ROLE: Record<UserRoleId, string> = {
@@ -159,7 +161,7 @@ export function RegisterScreen() {
   const [cpf, setCpf] = useState('');
 
   const [bio, setBio] = useState('');
-  const [endereco, setEndereco] = useState('');
+  const [endereco, setEndereco] = useState<EnderecoInput | null>(null);
   const [instagram, setInstagram] = useState('');
   const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
 
@@ -194,9 +196,23 @@ export function RegisterScreen() {
       setErro('Selecione pelo menos um estilo de tatuagem.');
       return;
     }
+    if (role !== 'cliente') {
+      const erroEndereco = validarEndereco(endereco);
+      if (erroEndereco) {
+        setErro(erroEndereco);
+        return;
+      }
+    }
 
     setLoading(true);
     try {
+      // Coordenadas para "Perto de você"; se não der, segue sem elas.
+      let enderecoFinal: EnderecoInput | null = endereco;
+      if (role !== 'cliente' && endereco) {
+        const coords = await geocodificar(endereco);
+        enderecoFinal = { ...endereco, ...(coords ?? {}) };
+      }
+
       let token: string;
       if (role === 'cliente') {
         ({ token } = await authService.registerCliente({
@@ -218,7 +234,7 @@ export function RegisterScreen() {
           cpf: cpf || undefined,
           bio: bio || undefined,
           instagram: instagram || undefined,
-          endereco: endereco || undefined,
+          endereco: enderecoFinal!,
           estilos: selectedStyles.length ? selectedStyles : undefined,
           termosAceitos: termsAccepted,
         }));
@@ -229,7 +245,7 @@ export function RegisterScreen() {
           senha,
           telefone: telefone || undefined,
           cnpj: cnpj || undefined,
-          endereco: endereco || undefined,
+          endereco: enderecoFinal!,
           termosAceitos: termsAccepted,
         }));
       }
@@ -352,14 +368,8 @@ export function RegisterScreen() {
               onChangeText={setBio}
               editable={!loading}
             />
-            <Input
-              label="Endereço de atendimento"
-              placeholder="Rua, número, bairro, cidade — UF"
-              icon={MapPin}
-              value={endereco}
-              onChangeText={setEndereco}
-              editable={!loading}
-            />
+            <Text className="font-body text-[12px] text-fg-2 mb-2 ml-1">Endereço de atendimento</Text>
+            <EnderecoForm value={endereco} onChange={setEndereco} disabled={loading} />
             <Input
               label="@ Instagram"
               placeholder="@seuhandle"
@@ -408,14 +418,8 @@ export function RegisterScreen() {
               onChangeText={(s) => setCnpj(maskCNPJ(s))}
               editable={!loading}
             />
-            <Input
-              label="Endereço completo"
-              placeholder="Rua, número, bairro, cidade — UF"
-              icon={MapPin}
-              value={endereco}
-              onChangeText={setEndereco}
-              editable={!loading}
-            />
+            <Text className="font-body text-[12px] text-fg-2 mb-2 ml-1">Endereço do estúdio</Text>
+            <EnderecoForm value={endereco} onChange={setEndereco} disabled={loading} />
           </>
         )}
 
