@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  blocosDoDia, encaixarNoPasso, motivoConflito, paraHorario, paraMinutos, primeiroNome, sobrepoe,
+  blocosDoDia, encaixarNoPasso, minutosAgoraSeHoje, motivoConflito, paraHorario, paraMinutos, primeiroNome, sobrepoe,
 } from '../src/utils/agendaEstudio.ts';
 
 const reserva = (horario, duracaoMinutos, posicao, propria = false, data = '2026-11-10') =>
@@ -55,6 +55,21 @@ test('rótulos: "Você" para a própria sessão e primeiro nome para colegas', (
   assert.equal(colega.rotulo, 'Ana');
   assert.equal(propria.rotulo, 'Você');
   assert.equal(primeiroNome('   '), 'Tatuador');
+});
+
+test('minuto atual só existe quando o dia exibido é hoje', () => {
+  const agora = new Date(2026, 9, 18, 18, 40);
+  assert.equal(minutosAgoraSeHoje(new Date(2026, 9, 18), agora), 18 * 60 + 40);
+  assert.equal(minutosAgoraSeHoje(new Date(2026, 9, 19), agora), null);
+});
+
+test('horário que já passou (ou é agora) é recusado; logo depois, liberado', () => {
+  const agoraMin = 18 * 60 + 40;
+  assert.equal(motivoConflito({ posicao: 1, inicioMin: 18 * 60 + 30, duracaoMin: 60 }, [], agoraMin), 'Esse horário já passou.');
+  assert.equal(motivoConflito({ posicao: 1, inicioMin: agoraMin, duracaoMin: 60 }, [], agoraMin), 'Esse horário já passou.');
+  assert.equal(motivoConflito({ posicao: 1, inicioMin: 19 * 60, duracaoMin: 60 }, [], agoraMin), null);
+  // Outros dias (agoraMin null) não têm restrição de horário.
+  assert.equal(motivoConflito({ posicao: 1, inicioMin: 9 * 60, duracaoMin: 60 }, [], null), null);
 });
 
 test('o toque é arredondado para o passo de 30 min e respeita a grade', () => {

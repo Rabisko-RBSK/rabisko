@@ -73,7 +73,15 @@ export function primeiroNome(nome: string): string {
  * horário está livre. Mesma ordem de regras do backend: posição ocupada
  * primeiro, depois a agenda do próprio tatuador.
  */
-export function motivoConflito(candidato: Candidato, blocos: BlocoAgenda[]): string | null {
+export function motivoConflito(
+  candidato: Candidato,
+  blocos: BlocoAgenda[],
+  /** Minuto atual quando o dia exibido é hoje (ver minutosAgoraSeHoje). */
+  agoraMin: number | null = null,
+): string | null {
+  if (agoraMin !== null && candidato.inicioMin <= agoraMin) {
+    return 'Esse horário já passou.';
+  }
   for (const b of blocos) {
     if (!sobrepoe(candidato.inicioMin, candidato.duracaoMin, b.inicioMin, b.duracaoMin)) continue;
     const periodo = `das ${paraHorario(Math.max(b.inicioMin, 0))} às ${paraHorario(b.inicioMin + b.duracaoMin)}`;
@@ -87,6 +95,15 @@ export function motivoConflito(candidato: Candidato, blocos: BlocoAgenda[]): str
     }
   }
   return null;
+}
+
+/**
+ * Minuto atual (desde 00:00) se `data` é hoje no relógio do aparelho; null
+ * para outros dias. O backend recusa sessões que começam até "agora".
+ */
+export function minutosAgoraSeHoje(data: Date, agora: Date = new Date()): number | null {
+  if (data.toDateString() !== agora.toDateString()) return null;
+  return agora.getHours() * 60 + agora.getMinutes();
 }
 
 /** Arredonda o minuto tocado para o passo da grade, dentro do horário exibido. */

@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronRight, X } from 'lucide-react-native';
 
 import { appointmentService, BusySlotDTO } from '../../services/api';
-import { BlocoAgenda, paraHorario, paraMinutos } from '../../utils/agendaEstudio';
+import { BlocoAgenda, minutosAgoraSeHoje, paraHorario, paraMinutos } from '../../utils/agendaEstudio';
 import { PosicaoSelecionada, StudioPositionsModal } from './StudioPositionsModal';
 
 
@@ -207,6 +207,12 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
     const match = cleaned.match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
     if (match) {
       const normalized = `${match[1].padStart(2, '0')}:${match[2]}`;
+      if (jaPassou(normalized)) {
+        Alert.alert('Horário indisponível', 'Esse horário já passou. Escolha um horário mais tarde.');
+        setCustomTimeInput('');
+        setCustomTimeActive(false);
+        return;
+      }
       if (FIXED_SLOTS.includes(normalized)) {
         setCustomTimeActive(false);
         setCustomTimeInput('');
@@ -222,7 +228,14 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
     }
   }
 
+  /** Hoje, horários até agora não podem ser reservados (o backend também recusa). */
+  function jaPassou(slot: string): boolean {
+    const agoraMin = minutosAgoraSeHoje(selectedDate);
+    return agoraMin !== null && toMinutes(slot) <= agoraMin;
+  }
+
   function isSlotBlocked(slot: string): boolean {
+    if (jaPassou(slot)) return true;
     const slotMin = toMinutes(slot);
     const durMin = selectedDuration * 60;
     return busySlots.some((b) => {

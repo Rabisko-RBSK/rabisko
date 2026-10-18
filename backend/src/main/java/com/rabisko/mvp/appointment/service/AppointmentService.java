@@ -40,6 +40,10 @@ public class AppointmentService {
     /** Igual ao chk_duracao de `reservas` (duracao_min <= 720). */
     private static final int DURACAO_MAXIMA_MIN = 720;
 
+    /** Faixa usada quando a listagem de sessões vem sem `de`/`ate`. */
+    private static final LocalDate SEM_LIMITE_INICIO = LocalDate.of(1970, 1, 1);
+    private static final LocalDate SEM_LIMITE_FIM = LocalDate.of(9999, 12, 31);
+
     @Autowired private StudioRepository studioRepository;
     @Autowired private AppointmentRepository appointmentRepository;
     @Autowired private AppointmentSessionRepository sessionRepository;
@@ -124,6 +128,9 @@ public class AppointmentService {
             novas.add(new IntervaloSessao(
                 artista.getTatuadorId(), LocalDateTime.of(s.data(), s.horario()), s.duracaoMinutos(), posicao));
         }
+
+        ValidadorAgenda.primeiroHorarioPassado(novas, LocalDateTime.now())
+            .ifPresent(msg -> { throw new AgendamentoInvalidoException(msg); });
 
         List<UUID> equipe = estudio != null
             ? artistRepository.findByEstudioId(estudio.getEstudioId()).stream().map(Artist::getTatuadorId).toList()
@@ -279,8 +286,10 @@ public class AppointmentService {
             Artist artista = artistRepository.findByUserId(logado.getUserId())
                 .orElseThrow(() -> new EntityNotFoundException("Perfil tatuador não encontrado"));
 
-            LocalDate inicio = de != null ? de : LocalDate.MIN;
-            LocalDate fim    = ate != null ? ate : LocalDate.MAX;
+            // Sem filtro: limites largos, mas representáveis no Postgres. LocalDate.MIN/MAX
+            // estouram o timestamptz ao converter do fuso America/Sao_Paulo (erro 500).
+            LocalDate inicio = de != null ? de : SEM_LIMITE_INICIO;
+            LocalDate fim    = ate != null ? ate : SEM_LIMITE_FIM;
             LocalDateTime inicioDia = inicio.atStartOfDay();
             LocalDateTime fimDia   = fim.atTime(LocalTime.MAX);
 

@@ -20,6 +20,7 @@ import {
   PASSO_MIN,
   blocosDoDia,
   encaixarNoPasso,
+  minutosAgoraSeHoje,
   motivoConflito,
   paraHorario,
   paraMinutos,
@@ -50,6 +51,8 @@ const C = {
   gridSoft: '#EFEFEF',
   error: '#B33A3A',
   success: '#1F7A4D',
+  /** Faixa de horários de hoje que já passaram. */
+  passado: 'rgba(107,107,107,0.14)',
 };
 
 export interface PosicaoSelecionada {
@@ -120,7 +123,9 @@ export function StudioPositionsModal({
     [agenda, dataIso, pendentes],
   );
   const semPosicaoProprios = blocos.filter((b) => b.posicao === null && b.propria);
-  const conflito = candidato ? motivoConflito(candidato, blocos) : null;
+  // Hoje: horários até agora não podem ser reservados (o backend também recusa).
+  const agoraMin = minutosAgoraSeHoje(data);
+  const conflito = candidato ? motivoConflito(candidato, blocos, agoraMin) : null;
   const posicoes = agenda?.posicoes ?? 0;
 
   // Rola até a seleção (ou à primeira reserva, ou 09:00) quando os dados chegam.
@@ -243,6 +248,17 @@ export function StudioPositionsModal({
                           />
                         ))}
 
+                        {agoraMin !== null && agoraMin > INICIO_GRADE_MIN && (
+                          <View
+                            pointerEvents="none"
+                            style={{
+                              position: 'absolute', left: 0, top: 0, bottom: 0,
+                              width: xDe(Math.min(agoraMin, FIM_GRADE_MIN)),
+                              backgroundColor: C.passado,
+                            }}
+                          />
+                        )}
+
                         {blocos.filter((b) => b.posicao === posicao
                           && b.inicioMin + b.duracaoMin > INICIO_GRADE_MIN
                           && b.inicioMin < FIM_GRADE_MIN).map((b, k) => (
@@ -305,6 +321,7 @@ export function StudioPositionsModal({
                 <Legenda cor={C.surface} label="Reservado" />
                 <Legenda cor={C.plum} label="Sua sessão" />
                 <Legenda cor="#FFFFFF" borda label="Livre" />
+                {agoraMin !== null && <Legenda cor={C.passado} label="Já passou" />}
               </View>
               {semPosicaoProprios.length > 0 && (
                 <Text className="font-body text-[12px] text-fg-3 mt-2">

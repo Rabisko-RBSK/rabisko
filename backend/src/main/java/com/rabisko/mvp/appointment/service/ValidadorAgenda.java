@@ -2,6 +2,7 @@ package com.rabisko.mvp.appointment.service;
 
 import com.rabisko.mvp.appointment.domain.IntervaloSessao;
 
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Objects;
@@ -49,6 +50,17 @@ public final class ValidadorAgenda {
             }
         }
         return Optional.empty();
+    }
+
+    /**
+     * @return mensagem se alguma sessão nova começa em `agora` ou antes (o
+     *         banco também exige data_sessao > data_criacao), ou vazio.
+     */
+    public static Optional<String> primeiroHorarioPassado(List<IntervaloSessao> novas, LocalDateTime agora) {
+        return novas.stream()
+            .filter(s -> !s.inicio().isAfter(agora))
+            .findFirst()
+            .map(s -> "Esse horário já passou. Escolha um horário a partir de " + agora.format(HORA) + ".");
     }
 
     private static String periodo(IntervaloSessao s) {

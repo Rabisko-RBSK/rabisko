@@ -87,6 +87,20 @@ class ValidadorAgendaTest {
     }
 
     @Test
+    void horarioNoPassadoOuExatamenteAgoraEhRecusado() {
+        LocalDateTime agora = LocalDateTime.parse("2026-11-10T14:20");
+        assertEquals("Esse horário já passou. Escolha um horário a partir de 14:20.",
+                ValidadorAgenda.primeiroHorarioPassado(List.of(sessao(EU, "13:30", 60, 1)), agora).orElseThrow());
+        assertTrue(ValidadorAgenda.primeiroHorarioPassado(List.of(sessao(EU, "14:20", 60, 1)), agora).isPresent());
+    }
+
+    @Test
+    void horarioLogoAposAgoraEhAceito() {
+        LocalDateTime agora = LocalDateTime.parse("2026-11-10T14:20");
+        assertTrue(ValidadorAgenda.primeiroHorarioPassado(List.of(sessao(EU, "14:21", 60, 1)), agora).isEmpty());
+    }
+
+    @Test
     void sessaoQueComecaNoDiaAnteriorEAindaEstaEmAndamentoConflita() {
         IntervaloSessao madrugada = new IntervaloSessao(COLEGA, LocalDateTime.parse("2026-11-09T23:00"), 180, 1);
         assertTrue(validar(List.of(sessao(EU, "01:00", 60, 1)), List.of(madrugada)).isPresent());
