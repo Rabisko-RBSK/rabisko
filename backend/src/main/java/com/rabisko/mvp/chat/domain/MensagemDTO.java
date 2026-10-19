@@ -9,5 +9,14 @@ public record MensagemDTO(
       UUID remetenteId,
       UUID destinatarioId,
       String conteudo,
+      String imagemUrl,
       LocalDateTime dataEnvio
-  ) {}
+  ) {
+    public static MensagemDTO from(Message m) {
+      return new MensagemDTO(
+          m.getMensagemId(), m.getChatId(),
+          m.getRemetenteId(), m.getDestinatarioId(),
+          m.getConteudo(), m.getImagemUrl(), m.getDataEnvio()
+      );
+    }
+  }

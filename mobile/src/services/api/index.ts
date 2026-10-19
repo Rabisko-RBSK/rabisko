@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { useAuthStore } from '../../store/authStore';
+import { multipartImage } from '../../utils/multipart';
 
 const api = axios.create({
   baseURL: process.env.EXPO_PUBLIC_API_URL,
@@ -93,7 +94,9 @@ export interface MensagemDTO {
   chatId: string;
   remetenteId: string;
   destinatarioId: string;
-  conteudo: string;
+  /** Texto, ou legenda quando há imagem. Null em imagem sem legenda. */
+  conteudo: string | null;
+  imagemUrl: string | null;
   dataEnvio: string;
 }
 
@@ -153,7 +156,21 @@ export const chatService = {
       { params: { page, size } }
     );
     return data;
-  }
+  },
+
+  /**
+   * Envia uma imagem local (`file://`) no chat, com legenda opcional.
+   * A mensagem criada também chega pelo WebSocket (/user/queue/messages).
+   */
+  async enviarImagem(chatId: string, localUri: string, legenda?: string): Promise<MensagemDTO> {
+    const form = multipartImage(localUri, 'file', { legenda });
+    const { data } = await api.post<MensagemDTO>(`/chats/${chatId}/imagens`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      // Upload em rede móvel passa fácil dos 10s padrão.
+      timeout: 60000,
+    });
+    return data;
+  },
 }
 
 

@@ -8,15 +8,21 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Image,
+  Modal,
+  Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { CalendarDays, Send } from 'lucide-react-native';
+import { CalendarDays, ImagePlus, Send, X } from 'lucide-react-native';
 
 import { Header } from '../../components/common/Header';
 import { chatService, MensagemDTO } from '../../services/api';
 import { stompClient } from '../../services/ws/stompClient';
 import { useAuthStore } from '../../store/authStore';
 import { ScheduleModal } from './ScheduleModal';
+import { escolherImagemDaGaleria } from '../../utils/imagePicker';
+import { resolverUrlStorage } from '../../utils/storageUrl';
 
 type ChatThreadParams = { chatId: string; outroNome: string; outroUsuarioId: string };
 
@@ -30,6 +36,8 @@ export function ChatThreadScreen() {
   const [texto, setTexto] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [agendando, setAgendando] = useState(false);
+  const [enviandoImagem, setEnviandoImagem] = useState(false);
+  const [imagemAberta, setImagemAberta] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,6 +78,22 @@ export function ChatThreadScreen() {
     }
   }
 
+  async function enviarImagem() {
+    if (enviandoImagem) return;
+    const uri = await escolherImagemDaGaleria({ editar: false });
+    if (!uri) return;
+    setEnviandoImagem(true);
+    try {
+      // A mensagem volta pelo listener do WebSocket; não precisa inserir aqui.
+      await chatService.enviarImagem(chatId, uri);
+    } catch (e) {
+      console.error('Erro ao enviar imagem', e);
+      Alert.alert('Erro', 'Não foi possível enviar a imagem.');
+    } finally {
+      setEnviandoImagem(false);
+    }
+  }
+
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-background"
@@ -100,6 +124,32 @@ export function ChatThreadScreen() {
         onSent={() => setAgendando(false)}
       />
 
+      <Modal
+        visible={!!imagemAberta}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setImagemAberta(null)}
+      >
+        <Pressable
+          className="flex-1 items-center justify-center"
+          style={{ backgroundColor: 'rgba(0,0,0,0.92)' }}
+          onPress={() => setImagemAberta(null)}
+          accessibilityRole="button"
+          accessibilityLabel="Fechar imagem"
+        >
+          {imagemAberta && (
+            <Image
+              source={{ uri: imagemAberta }}
+              style={{ width: '100%', height: '80%' }}
+              resizeMode="contain"
+            />
+          )}
+          <View className="absolute top-12 right-4">
+            <X size={26} color="#ffffff" />
+          </View>
+        </Pressable>
+      </Modal>
+
       <FlatList
         inverted
         data={mensagens}
@@ -116,21 +166,51 @@ export function ChatThreadScreen() {
               }
               style={{ maxWidth: '80%' }}
             >
-              <Text
-                className={
-                  minha
-                    ? 'font-body text-[14px] text-white'
-                    : 'font-body text-[14px] text-ink'
-                }
-              >
-                {item.conteudo}
-              </Text>
+              {item.imagemUrl && (
+                <TouchableOpacity
+                  onPress={() => setImagemAberta(resolverUrlStorage(item.imagemUrl))}
+                  accessibilityRole="imagebutton"
+                  accessibilityLabel="Abrir imagem"
+                >
+                  <Image
+                    source={{ uri: resolverUrlStorage(item.imagemUrl) }}
+                    style={{ width: 220, height: 220, borderRadius: 8 }}
+                    resizeMode="cover"
+                  />
+                </TouchableOpacity>
+              )}
+              {!!item.conteudo && (
+                <Text
+                  className={
+                    minha
+                      ? 'font-body text-[14px] text-white'
+                      : 'font-body text-[14px] text-ink'
+                  }
+                  style={item.imagemUrl ? { marginTop: 6 } : undefined}
+                >
+                  {item.conteudo}
+                </Text>
+              )}
             </View>
           );
         }}
       />
 
       <View className="flex-row items-center px-4 py-3 bg-surface">
+        <TouchableOpacity
+          onPress={enviarImagem}
+          disabled={enviandoImagem}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Enviar imagem"
+          className="w-10 h-10 items-center justify-center mr-1"
+        >
+          {enviandoImagem ? (
+            <ActivityIndicator size="small" color="#000000" />
+          ) : (
+            <ImagePlus size={22} color="#000000" />
+          )}
+        </TouchableOpacity>
         <TextInput
           className="flex-1 bg-background rounded-rd-pill px-4 py-2 mr-2 font-body text-[14px] text-ink"
           value={texto}

@@ -12,6 +12,7 @@ import com.rabisko.mvp.chat.repository.ChatRepository;
 import com.rabisko.mvp.chat.repository.MessageRepository;
 import com.rabisko.mvp.client.domain.Client;
 import com.rabisko.mvp.client.repository.ClientRepository;
+import com.rabisko.mvp.shared.storage.StorageService;
 import com.rabisko.mvp.user.domain.User;
 import com.rabisko.mvp.user.domain.UserRole;
 import com.rabisko.mvp.user.repository.UserRepository;
@@ -21,9 +22,12 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,6 +43,7 @@ public class ChatService {
     @Autowired private ClientRepository clientRepository;
     @Autowired private ArtistRepository artistRepository;
     @Autowired private UserRepository userRepository;
+    @Autowired private StorageService storageService;
 
     @Autowired private SimpMessagingTemplate messagingTemplate;
 
@@ -95,7 +100,7 @@ public class ChatService {
             chat.getChatId(),
             outroUserId,
             outroNome,
-            ultima.map(Message::getConteudo).orElse(null),
+            ultima.map(ChatService::preview).orElse(null),
             ultima.map(Message::getDataEnvio).orElse(null),
             chat.isAtivo()
         );
@@ -128,7 +133,7 @@ public class ChatService {
                     chats.get(i).getChatId(),
                     outro.getUserId(),
                     outroUser.getNome(),
-                    ultima.map(Message::getConteudo).orElse(null),
+                    ultima.map(ChatService::preview).orElse(null),
                     ultima.map(Message::getDataEnvio).orElse(null),
                     chats.get(i).isAtivo()
                 ));
@@ -151,7 +156,7 @@ public class ChatService {
                     chats.get(i).getChatId(),
                     outro.getUserId(),
                     outroUser.getNome(),
-                    ultima.map(Message::getConteudo).orElse(null),
+                    ultima.map(ChatService::preview).orElse(null),
                     ultima.map(Message::getDataEnvio).orElse(null),
                     chats.get(i).isAtivo()
                 ));
@@ -170,11 +175,7 @@ public class ChatService {
         garantirParticipacao(logado, chat);
 
         return messageRepository.findByChatIdOrderByDataEnvioDesc(chatId, pagina)
-            .map(m -> new MensagemDTO(
-                m.getMensagemId(), m.getChatId(),
-                m.getRemetenteId(), m.getDestinatarioId(),
-                m.getConteudo(), m.getDataEnvio()
-            ));
+            .map(MensagemDTO::from);
     }
 
 
@@ -183,6 +184,37 @@ public class ChatService {
             .orElseThrow(() -> new EntityNotFoundException("Chat não encontrado"));
         garantirParticipacao(logado, chat);
 
+        return salvarEDistribuir(logado, chat, req.conteudo(), null);
+    }
+
+
+    /**
+     * Envia uma imagem (com legenda opcional) no chat. O upload vai pro
+     * Supabase Storage e a mensagem segue o mesmo caminho das de texto:
+     * salva e entregue via WebSocket aos dois participantes.
+     */
+    public MensagemDTO enviarImagem(User logado, UUID chatId, MultipartFile file, String legenda){
+        Chat chat = chatRepository.findById(chatId)
+            .orElseThrow(() -> new EntityNotFoundException("Chat não encontrado"));
+        garantirParticipacao(logado, chat);
+
+        String contentType = file == null ? null : file.getContentType();
+        if (contentType == null || !contentType.toLowerCase().startsWith("image/")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O arquivo enviado não é uma imagem.");
+        }
+        if (legenda != null && legenda.length() > 2000) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Legenda maior que 2000 caracteres.");
+        }
+
+        String imagemUrl = storageService.uploadChat(file);
+        String conteudo = (legenda == null || legenda.isBlank()) ? null : legenda.trim();
+
+        return salvarEDistribuir(logado, chat, conteudo, imagemUrl);
+    }
+
+
+    private MensagemDTO salvarEDistribuir(User logado, Chat chat, String conteudo, String imagemUrl) {
+        UUID chatId = chat.getChatId();
         UUID remetenteId = logado.getUserId();
         UUID destinatarioId;
 
@@ -204,21 +236,26 @@ public class ChatService {
             .chatId(chatId)
             .remetenteId(remetenteId)
             .destinatarioId(destinatarioId)
-            .conteudo(req.conteudo())
+            .conteudo(conteudo)
+            .imagemUrl(imagemUrl)
             .build());
 
         User destinatario = (User) userRepository.findById(destinatarioId)
             .orElseThrow(() -> new EntityNotFoundException("Usuário destinatário não encontrado"));
 
-        MensagemDTO dto = new MensagemDTO(
-            salva.getMensagemId(), chatId, remetenteId, destinatarioId,
-            salva.getConteudo(), salva.getDataEnvio()
-        );
+        MensagemDTO dto = MensagemDTO.from(salva);
 
         messagingTemplate.convertAndSendToUser(destinatario.getEmail(), "/queue/messages", dto);
         messagingTemplate.convertAndSendToUser(logado.getEmail(), "/queue/messages", dto);
 
         return dto;
+    }
+
+
+    /** Texto do preview na lista de conversas: legenda/texto, ou um marcador de imagem. */
+    private static String preview(Message m) {
+        if (m.getConteudo() != null && !m.getConteudo().isBlank()) return m.getConteudo();
+        return m.getImagemUrl() != null ? "📷 Imagem" : null;
     }
 
 

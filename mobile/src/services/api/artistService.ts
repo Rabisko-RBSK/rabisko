@@ -1,4 +1,5 @@
 import api, { type EnderecoInput } from './index';
+import { multipartImage } from '../../utils/multipart';
 
 /**
  * Imagem do portfólio de um tatuador. Espelha a tabela `portfolio_imagens`
@@ -127,21 +128,6 @@ export interface ContratoDTO {
   dataEncerramento: string | null;
 }
 
-/**
- * Monta o body multipart para upload de uma imagem local (URI `file://`)
- * em RN. O `as any` é o cast padrão pro tipo do RN, que aceita o objeto
- * `{ uri, name, type }` mas não está expresso na lib `FormData` do DOM.
- */
-function multipartImage(uri: string, fieldName: string, descricao?: string): FormData {
-  const form = new FormData();
-  const nome = uri.split('/').pop() || 'imagem.jpg';
-  const ext = nome.split('.').pop()?.toLowerCase();
-  const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
-  form.append(fieldName, { uri, name: nome, type: mime } as any);
-  if (descricao) form.append('descricao', descricao);
-  return form;
-}
-
 export const artistService = {
   /**
    * Perfil do tatuador autenticado (identificado pelo JWT).
@@ -199,7 +185,7 @@ export const artistService = {
     localUri: string,
     descricao?: string,
   ): Promise<PortfolioImage> {
-    const form = multipartImage(localUri, 'file', descricao);
+    const form = multipartImage(localUri, 'file', { descricao });
     const { data } = await api.post<PortfolioImage>('/artist/me/portfolio', form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
