@@ -185,7 +185,7 @@ npx supabase migration new nome_da_migration
 npx supabase migration up --local
 ```
 
-Os buckets `profile_images` e `portfolio_images` (públicos) são declarados em `supabase/config.toml` (`[storage.buckets.*]`) e criados pelo `start`/`db reset` local.
+Os buckets `profile_images`, `portfolio_images` e `chat_images` (públicos) são declarados em `supabase/config.toml` (`[storage.buckets.*]`) e criados pelo `start`/`db reset` local.
 
 > Os scripts em `backend/src/main/resources/db/migration` **não** são aplicados por nada (o projeto não usa Flyway). A fonte de verdade do schema é `supabase/migrations`.
 
@@ -213,7 +213,7 @@ Os buckets `profile_images` e `portfolio_images` (públicos) são declarados em 
    A porta 8081 já é publicada pelo Dev Container. A variável `REACT_NATIVE_PACKAGER_HOSTNAME` funciona no SDK 57, mas o código do Expo CLI a marca como não documentada e candidata a remoção. Se um dia parar de funcionar, use o túnel.
 5. Escaneie o QR Code com o Expo Go (Android: "Scan QR Code" no app; iOS: câmera).
 
-**Limitação conhecida:** o backend grava as URLs das imagens com o `SUPABASE_URL` (`http://127.0.0.1:54321/...`). No celular, `127.0.0.1` é o próprio aparelho, então imagens enviadas no ambiente local não carregam no app. O upload em si funciona.
+**Limitação conhecida:** o backend grava as URLs das imagens com o `SUPABASE_URL` (`http://127.0.0.1:54321/...`). No celular, `127.0.0.1` é o próprio aparelho, então essas URLs não carregam como estão. Telas que passam a URL por `resolverUrlStorage` (`mobile/src/utils/storageUrl.ts`, hoje usado no chat) trocam o host pelo do `EXPO_PUBLIC_API_URL` e funcionam; as demais ainda não carregam a imagem no ambiente local.
 
 **Firewall do Windows:** se o celular não alcança `http://<IP-do-host>:8080`, verifique se o firewall permite conexões de entrada para o Docker Desktop na rede atual (redes marcadas como "Pública" costumam bloquear).
 
