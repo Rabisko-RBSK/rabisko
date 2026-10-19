@@ -4,6 +4,7 @@ import {
   ActivityIndicator, Alert,
 } from 'react-native';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { useFocusEffect } from '@react-navigation/native';
 
 import { Header } from '../../components/common/Header';
 import { SessionDetailModal } from './SessionDetailModal';
@@ -90,14 +91,29 @@ export function CalendarScreen() {
   const sunday = React.useMemo(() => addDays(monday, 6), [monday]);
   const days   = React.useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(monday, i)), [monday]);
 
-  React.useEffect(() => {
-    setLoading(true);
-    appointmentService
-      .listarSessoes({ de: formatDate(monday), ate: formatDate(sunday) })
-      .then(setSessoes)
-      .catch(() => Alert.alert('Erro', 'Não foi possível carregar a agenda.'))
-      .finally(() => setLoading(false));
-  }, [weekOffset, monday, sunday]);
+  // Recarrega a cada foco da aba: ela continua montada ao trocar de aba, então
+  // sem isso as sessões agendadas pelo chat depois da primeira abertura não
+  // apareciam. Spinner só na troca de semana; ao voltar pra aba, atualiza em
+  // silêncio (sem repetir o alerta de erro).
+  const semanaCarregada = React.useRef<string | null>(null);
+  useFocusEffect(
+    React.useCallback(() => {
+      const semana = formatDate(monday);
+      const trocouSemana = semanaCarregada.current !== semana;
+      let ativo = true;
+      if (trocouSemana) setLoading(true);
+      appointmentService
+        .listarSessoes({ de: semana, ate: formatDate(sunday) })
+        .then((lista) => {
+          if (!ativo) return;
+          setSessoes(lista);
+          semanaCarregada.current = semana;
+        })
+        .catch(() => { if (ativo && trocouSemana) Alert.alert('Erro', 'Não foi possível carregar a agenda.'); })
+        .finally(() => { if (ativo) setLoading(false); });
+      return () => { ativo = false; };
+    }, [monday, sunday]),
+  );
 
   React.useEffect(() => {
     if (weekOffset !== 0) { setNowX(null); return; }

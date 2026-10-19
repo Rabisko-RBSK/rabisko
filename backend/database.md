@@ -127,6 +127,7 @@ Estabelecimentos físicos de tatuagem
 | `email` | `varchar` |  |
 | `user_id` | `uuid` |  |
 | `endereco` | `text` |  Nullable |
+| `posicoes` | `int4` |  Default 1, entre 1 e 50 |
 
 ## Table `mensagens`
 
@@ -211,6 +212,7 @@ Sessões de tatuagem agendadas
 | `status` | `reserva_status` |  |
 | `observacoes` | `text` |  Nullable |
 | `data_criacao` | `timestamptz` |  |
+| `posicao` | `int4` |  Nullable, >= 1 (posição do estúdio ocupada) |
 
 ## Table `servicos`
 
