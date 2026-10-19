@@ -1,14 +1,18 @@
 package com.rabisko.mvp.artist.domain;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDate;
 import java.util.List;
+
+import com.rabisko.mvp.endereco.domain.EnderecoDTO;
 
 
 @Getter
@@ -32,16 +36,14 @@ public class RegisterArtistaDTO {
 
     private String cpf;
 
+    @Valid
+    @NotNull
+    private EnderecoDTO endereco;
 
     private String bio;
 
     private String instagram;
 
-    /**
-     * Lista de NOMES de estilos que o tatuador faz (ex.: ["Realismo", "Blackwork"]).
-     * O ArtistService resolve cada nome pra um id consultando a tabela `estilos`
-     * e popula a juncao M:N `tatuador_estilos`.
-     */
     private List<String> estilos;
 
     @AssertTrue(message = "Voce deve aceitar os termos de uso")

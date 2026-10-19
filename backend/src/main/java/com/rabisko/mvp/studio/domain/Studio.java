@@ -57,6 +57,15 @@ public class Studio {
     @Column(name = "foto_perfil_url")
     private String fotoPerfilUrl;
 
+    /**
+     * Quantidade de posicoes (macas/bancadas) de atendimento. Cada sessao de
+     * um tatuador do estudio ocupa uma posicao (`reservas.posicao`), e duas
+     * sessoes nao podem se sobrepor na mesma posicao.
+     */
+    @Column(name = "posicoes", nullable = false)
+    @Builder.Default
+    private int posicoes = 1;
+
     @CreationTimestamp
     @Column(name = "data_criacao", updatable = false, nullable = false)
     private LocalDateTime dataCriacao;

@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -11,18 +11,23 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { UserPlus, UserRound } from 'lucide-react-native';
+import { Armchair, UserPlus, UserRound } from 'lucide-react-native';
 
 import { Header } from '../../components/common/Header';
+import { Input } from '../../components/common/Input';
 import { useColaboradores } from '../../hooks/useColaboradores';
 import { useConvitesEstudio } from '../../hooks/useConvitesEstudio';
+import { usePosicoesEstudio } from '../../hooks/usePosicoesEstudio';
 import { StudioEquipeStackParamList } from '../../routes/studio-equipe.stack';
 import { ConviteDetalheDTO } from '../../services/api/artistService';
 import { ColaboradorDTO } from '../../services/api/studioService';
+import { formatarContrato } from '../../utils/contrato';
 import { tempoRelativo } from '../../utils/datas';
+import { MAX_POSICOES, MIN_POSICOES, rotuloPosicoes, validarNovaQuantidade } from '../../utils/posicoesEstudio';
 
 /**
- * Equipe do estúdio — primeira aba do fluxo do ESTÚDIO. Lista os tatuadores
+ * Equipe do estúdio — primeira aba do fluxo do ESTÚDIO. Mostra as posições de
+ * atendimento (com opção de alterar a quantidade), lista os tatuadores
  * vinculados (com opção de remover) e os convites pendentes enviados (com
  * opção de cancelar). O botão no header abre a busca para convidar.
  */
@@ -87,39 +92,59 @@ function EmptyCard({ title, text }: { title: string; text: string }) {
   );
 }
 
-/** Linha com avatar, nome, subtítulo e uma ação em texto à direita. */
+/** Linha com avatar, nome, subtítulo, detalhes opcionais e uma ação em texto à direita. */
 function PessoaRow({
   fotoUrl,
   nome,
   subtitulo,
+  detalhes = [],
   actionLabel,
   accessibilityLabel,
   busy,
   disabled,
   onAction,
+  onPress,
 }: {
   fotoUrl: string | null;
   nome: string;
   subtitulo: string | null;
+  /** Linhas extras abaixo do subtítulo (ex.: condições do contrato). */
+  detalhes?: string[];
   actionLabel: string;
   accessibilityLabel: string;
   busy: boolean;
   disabled: boolean;
   onAction: () => void;
+  /** Toque na pessoa (avatar/nome); a ação à direita continua separada. */
+  onPress?: () => void;
 }) {
   return (
     <View className="bg-surface-2 rounded-rd-lg p-4 mb-3 flex-row items-center">
-      <Avatar uri={fotoUrl} />
-      <View className="flex-1">
-        <Text className="font-body-semibold text-[15px] text-ink" numberOfLines={1}>
-          {nome}
-        </Text>
-        {subtitulo ? (
-          <Text className="font-body text-[12px] text-fg-3" numberOfLines={1}>
-            {subtitulo}
+      <TouchableOpacity
+        onPress={onPress}
+        disabled={!onPress}
+        activeOpacity={0.7}
+        className="flex-1 flex-row items-center"
+        accessibilityRole={onPress ? 'button' : undefined}
+        accessibilityLabel={onPress ? `Ver contratos de ${nome}` : undefined}
+      >
+        <Avatar uri={fotoUrl} />
+        <View className="flex-1">
+          <Text className="font-body-semibold text-[15px] text-ink" numberOfLines={1}>
+            {nome}
           </Text>
-        ) : null}
-      </View>
+          {subtitulo ? (
+            <Text className="font-body text-[12px] text-fg-3" numberOfLines={1}>
+              {subtitulo}
+            </Text>
+          ) : null}
+          {detalhes.map((d) => (
+            <Text key={d} className="font-body text-[12px] text-plum mt-0.5" numberOfLines={1}>
+              {d}
+            </Text>
+          ))}
+        </View>
+      </TouchableOpacity>
       {busy ? (
         <ActivityIndicator color="#602C66" />
       ) : (
@@ -138,6 +163,134 @@ function PessoaRow({
       )}
     </View>
   );
+}
+
+/**
+ * Quantidade de posições (macas/bancadas) que os tatuadores dividem ao agendar.
+ * Só salva quando o valor é válido e diferente do atual.
+ */
+function PosicoesCard({
+  posicoes,
+  loading,
+  error,
+  salvando,
+  onSalvar,
+  onRetry,
+}: {
+  posicoes: number | null;
+  loading: boolean;
+  error: string | null;
+  salvando: boolean;
+  onSalvar: (n: number) => Promise<void>;
+  onRetry: () => void;
+}) {
+  const [novaQuantidade, setNovaQuantidade] = useState('');
+  const [salvoEm, setSalvoEm] = useState<number | null>(null);
+
+  if (loading && posicoes === null) {
+    return (
+      <View className="py-8 items-center">
+        <ActivityIndicator color="#602C66" />
+      </View>
+    );
+  }
+  if (error && posicoes === null) {
+    return <LoadError message={error} onRetry={onRetry} />;
+  }
+
+  const validacao = validarNovaQuantidade(novaQuantidade, posicoes);
+  const podeSalvar = validacao.ok && !salvando;
+
+  const salvar = async () => {
+    if (!validacao.ok) return; // vazio, inválido ou igual ao atual: nada a alterar
+    try {
+      await onSalvar(validacao.valor);
+      setSalvoEm(validacao.valor);
+      setNovaQuantidade('');
+    } catch (err: any) {
+      console.warn('[Equipe] erro ao alterar posições', err?.response?.status, err?.message);
+      Alert.alert(
+        'Não foi possível alterar',
+        err?.response?.status === 409
+          ? `Há sessões futuras agendadas em posições acima de ${validacao.valor}. Reagende-as antes de reduzir a quantidade.`
+          : 'Não foi possível alterar as posições. Tente novamente.',
+      );
+    }
+  };
+
+  return (
+    <View className="bg-surface-2 rounded-rd-lg p-4">
+      <Text className="font-body text-[13px] text-fg-2 leading-[18px] mb-3">
+        Macas ou bancadas de atendimento. Ao agendar, cada tatuador escolhe uma posição livre.
+      </Text>
+
+      <View className="flex-row items-center justify-between mb-4">
+        <Text className="font-body text-[14px] text-fg-2">Quantidade atual</Text>
+        <Text
+          className="font-display text-[32px] text-ink"
+          accessibilityLabel={`Quantidade atual: ${posicoes != null ? rotuloPosicoes(posicoes) : 'indisponível'}`}
+        >
+          {posicoes ?? '—'}
+        </Text>
+      </View>
+
+      <Input
+        label="Nova quantidade"
+        placeholder={`De ${MIN_POSICOES} a ${MAX_POSICOES}`}
+        icon={Armchair}
+        keyboardType="number-pad"
+        maxLength={2}
+        value={novaQuantidade}
+        onChangeText={(s) => {
+          setNovaQuantidade(s.replace(/\D/g, ''));
+          setSalvoEm(null);
+        }}
+        error={!validacao.ok && validacao.motivo === 'invalido'
+          ? `Informe um número de ${MIN_POSICOES} a ${MAX_POSICOES}.`
+          : undefined}
+        editable={!salvando}
+      />
+      {!validacao.ok && validacao.motivo === 'igual' && (
+        <Text className="font-body text-[12px] text-fg-3 -mt-1 mb-2 ml-1">
+          Essa já é a quantidade atual — nada será alterado.
+        </Text>
+      )}
+      {salvoEm !== null && (
+        <Text className="font-body text-[12px] text-success -mt-1 mb-2 ml-1">
+          Quantidade atualizada para {rotuloPosicoes(salvoEm)}.
+        </Text>
+      )}
+
+      <TouchableOpacity
+        onPress={salvar}
+        disabled={!podeSalvar}
+        activeOpacity={0.85}
+        className="bg-ink rounded-rd-md py-3 items-center mt-1"
+        style={{ opacity: podeSalvar ? 1 : 0.4 }}
+        accessibilityRole="button"
+        accessibilityLabel="Salvar quantidade de posições"
+        accessibilityState={{ disabled: !podeSalvar }}
+      >
+        {salvando ? (
+          <ActivityIndicator color="#FFFFFF" />
+        ) : (
+          <Text className="font-body-bold text-[14px] text-on-ink">Salvar</Text>
+        )}
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+/**
+ * Contrato vigente e, se houver, a renegociação aguardando o aceite do tatuador.
+ * Quem entrou na equipe antes da feature de contratos aparece como "Sem contrato".
+ */
+function detalhesDoColaborador(c: ColaboradorDTO): string[] {
+  const linhas = [c.contratoAtivo ? formatarContrato(c.contratoAtivo) : 'Sem contrato'];
+  if (c.contratoProposto) {
+    linhas.push(`Proposta pendente: ${formatarContrato(c.contratoProposto)}`);
+  }
+  return linhas;
 }
 
 type EquipeNav = NativeStackNavigationProp<StudioEquipeStackParamList, 'Equipe'>;
@@ -164,6 +317,15 @@ export function EquipeScreen() {
     reload: reloadConvites,
   } = useConvitesEstudio();
 
+  const {
+    posicoes,
+    loading: posicoesLoading,
+    error: posicoesError,
+    salvando: salvandoPosicoes,
+    salvar: salvarPosicoes,
+    reload: reloadPosicoes,
+  } = usePosicoesEstudio();
+
   // Ao voltar da busca, pode haver convites novos; tatuadores também podem ter
   // aceitado convites enquanto a aba estava em segundo plano.
   const primeiroFoco = useRef(true);
@@ -175,7 +337,8 @@ export function EquipeScreen() {
       }
       reloadColaboradores();
       reloadConvites();
-    }, [reloadColaboradores, reloadConvites]),
+      reloadPosicoes();
+    }, [reloadColaboradores, reloadConvites, reloadPosicoes]),
   );
 
   const confirmarRemocao = (colaborador: ColaboradorDTO) => {
@@ -266,6 +429,16 @@ export function EquipeScreen() {
           paddingBottom: insets.bottom + 96,
         }}
       >
+        <SectionHeader title="Posições" />
+        <PosicoesCard
+          posicoes={posicoes}
+          loading={posicoesLoading}
+          error={posicoesError}
+          salvando={salvandoPosicoes}
+          onSalvar={salvarPosicoes}
+          onRetry={reloadPosicoes}
+        />
+
         <SectionHeader title="Colaboradores" count={colaboradores.length} />
         {colaboradoresLoading ? (
           <View className="py-8 items-center">
@@ -298,11 +471,15 @@ export function EquipeScreen() {
               fotoUrl={c.fotoPerfilUrl}
               nome={c.nome}
               subtitulo={c.instagram ? formatHandle(c.instagram) : null}
+              detalhes={detalhesDoColaborador(c)}
               actionLabel="Remover"
               accessibilityLabel={`Remover ${c.nome} da equipe`}
               busy={removendoId === c.tatuadorId}
               disabled={removendoId !== null}
               onAction={() => confirmarRemocao(c)}
+              onPress={() =>
+                navigation.navigate('ColaboradorContratos', { tatuadorId: c.tatuadorId, nome: c.nome })
+              }
             />
           ))
         )}
@@ -326,6 +503,7 @@ export function EquipeScreen() {
               fotoUrl={c.fotoTatuadorUrl}
               nome={c.nomeTatuador}
               subtitulo={`Enviado · ${tempoRelativo(c.dataCriacao)}`}
+              detalhes={c.contrato ? [formatarContrato(c.contrato)] : []}
               actionLabel="Cancelar"
               accessibilityLabel={`Cancelar convite de ${c.nomeTatuador}`}
               busy={cancelandoId === c.conviteId}

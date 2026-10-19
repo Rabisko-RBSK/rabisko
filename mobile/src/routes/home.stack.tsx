@@ -8,6 +8,7 @@ import { PaymentScreen } from '../screens/App/PaymentScreen';
 import { ConfirmedScreen } from '../screens/App/ConfirmedScreen';
 import { ChatThreadScreen } from '../screens/App/ChatThreadScreen';
 import { SearchResultsScreen } from '../screens/App/SearchResultsScreen';
+import { FavoritesScreen } from '../screens/App/FavoritesScreen';
 
 export type HomeStackParamList = {
   HomeList: undefined;
@@ -16,7 +17,8 @@ export type HomeStackParamList = {
   Payment: { bookingId: string };
   Confirmed: { artistName?: string; dateTime?: string; total?: string } | undefined;
   ChatThread: { chatId: string; outroNome: string; outroUsuarioId: string };
-  SearchResults: { estilo?: string } | undefined;
+  SearchResults: { estilo?: string; termo?: string } | undefined;
+  Favorites: undefined;
 };
 
 const { Navigator, Screen } = createNativeStackNavigator<HomeStackParamList>();
@@ -35,6 +37,7 @@ export function HomeStack() {
       />
       <Screen name="ChatThread" component={ChatThreadScreen} />
       <Screen name="SearchResults" component={SearchResultsScreen} />
+      <Screen name="Favorites" component={FavoritesScreen} />
     </Navigator>
   );
 }

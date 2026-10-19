@@ -58,9 +58,11 @@ public class SimulationService {
     private static final int MAX_DIMENSION = 2048;
 
     private final U2NetBackgroundRemover u2NetBackgroundRemover;
+    private final DepthAnythingEstimator depthEstimator;
 
-    public SimulationService(U2NetBackgroundRemover u2NetBackgroundRemover) {
+    public SimulationService(U2NetBackgroundRemover u2NetBackgroundRemover, DepthAnythingEstimator depthEstimator) {
         this.u2NetBackgroundRemover = u2NetBackgroundRemover;
+        this.depthEstimator = depthEstimator;
         // Garante que os plugins do TwelveMonkeys (WebP, JPEG CMYK) sejam registrados no ImageIO,
         // mesmo dentro do jar executável do Spring Boot, onde o registro automático pode falhar.
         ImageIO.scanForPlugins();
@@ -68,16 +70,7 @@ public class SimulationService {
 
     public byte[] removeBackground(MultipartFile image, RemovalMode mode) throws IOException, OrtException {
 
-        byte[] bytes = image.getBytes();
-        BufferedImage imgOriginal = ImageIO.read(new ByteArrayInputStream(bytes));
-        if (imgOriginal == null) {
-            String formato = detectFormat(bytes);
-            System.err.println("===> [SIMULADOR] Formato de imagem não suportado: " + formato
-                    + " (content-type informado: " + image.getContentType() + ")");
-            throw new UnsupportedImageFormatException("Formato de imagem não suportado (" + formato
-                    + "). Envie a referência em JPG, PNG ou WebP.");
-        }
-
+        BufferedImage imgOriginal = readImage(image);
         BufferedImage imgReduzida = limitSize(imgOriginal);
 
         if (mode == RemovalMode.AUTO) {
@@ -94,6 +87,38 @@ public class SimulationService {
         ImageIO.write(pngFinal, "png", baos);
 
         return baos.toByteArray();
+    }
+
+    /**
+     * Gera o mapa de profundidade da foto base (corpo do cliente) com o Depth Anything V2,
+     * codificado como PNG em tons de cinza de 16 bits. Ver {@link DepthMap} para a convenção dos valores.
+     *
+     * A foto não passa pelo {@link #limitSize}: o estimador já reduz para ~518 px em passos,
+     * e uma redução extra antes só adicionaria serrilhado.
+     */
+    public byte[] generateDepthMap(MultipartFile image) throws IOException, OrtException {
+        BufferedImage base = readImage(image);
+        DepthMap depthMap = depthEstimator.estimate(base);
+        System.out.println("===> [SIMULADOR] Mapa de profundidade " + depthMap.width() + "x" + depthMap.height()
+                + " gerado para foto " + base.getWidth() + "x" + base.getHeight());
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ImageIO.write(depthMap.toGray16Image(), "png", baos);
+
+        return baos.toByteArray();
+    }
+
+    private BufferedImage readImage(MultipartFile image) throws IOException {
+        byte[] bytes = image.getBytes();
+        BufferedImage decoded = ImageIO.read(new ByteArrayInputStream(bytes));
+        if (decoded == null) {
+            String formato = detectFormat(bytes);
+            System.err.println("===> [SIMULADOR] Formato de imagem não suportado: " + formato
+                    + " (content-type informado: " + image.getContentType() + ")");
+            throw new UnsupportedImageFormatException("Formato de imagem não suportado (" + formato
+                    + "). Envie a imagem em JPG, PNG ou WebP.");
+        }
+        return decoded;
     }
 
     /**

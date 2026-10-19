@@ -42,6 +42,28 @@ Perfil específico de usuários que contratam tatuagens
 | `dados_pagamento_token` | `varchar` |  Nullable |
 | `data_criacao` | `timestamptz` |  |
 
+## Table `contratos_colaborador`
+
+Condições de contrato entre estúdio e tatuador (comissão, aluguel de bancada ou salário). Contratos nunca são editados: renegociar cria um novo `proposto`, e o anterior só vira `encerrado` quando o tatuador aceita. No máximo 1 `ativo` e 1 `proposto` por par estúdio–tatuador. Comissão usa `percentual_estudio` (0–100, sobre o valor bruto do serviço); aluguel e salário usam `valor_fixo` + `periodicidade`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `contrato_id` | `uuid` | Primary |
+| `estudio_id` | `uuid` |  |
+| `tatuador_id` | `uuid` |  |
+| `convite_id` | `uuid` |  Nullable, Unique |
+| `modelo` | `contrato_modelo` |  |
+| `percentual_estudio` | `numeric` |  Nullable |
+| `valor_fixo` | `numeric` |  Nullable |
+| `periodicidade` | `contrato_periodicidade` |  Nullable |
+| `observacoes` | `varchar` |  Nullable |
+| `status` | `contrato_status` |  |
+| `data_criacao` | `timestamptz` |  |
+| `data_resposta` | `timestamptz` |  Nullable |
+| `data_encerramento` | `timestamptz` |  Nullable |
+
 ## Table `controle_etapas`
 
 ### Columns
@@ -105,6 +127,7 @@ Estabelecimentos físicos de tatuagem
 | `email` | `varchar` |  |
 | `user_id` | `uuid` |  |
 | `endereco` | `text` |  Nullable |
+| `posicoes` | `int4` |  Default 1, entre 1 e 50 |
 
 ## Table `mensagens`
 
@@ -189,6 +212,7 @@ Sessões de tatuagem agendadas
 | `status` | `reserva_status` |  |
 | `observacoes` | `text` |  Nullable |
 | `data_criacao` | `timestamptz` |  |
+| `posicao` | `int4` |  Nullable, >= 1 (posição do estúdio ocupada) |
 
 ## Table `servicos`
 

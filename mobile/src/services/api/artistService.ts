@@ -1,4 +1,5 @@
-import api from './index';
+import api, { type EnderecoInput } from './index';
+import { multipartImage } from '../../utils/multipart';
 
 /**
  * Imagem do portfólio de um tatuador. Espelha a tabela `portfolio_imagens`
@@ -42,12 +43,35 @@ export interface ArtistProfile {
 
   /** Galeria de trabalhos (portfolio_imagens), já ordenada por `ordem`. */
   portfolio: PortfolioImage[];
+
+  /** users.telefone — só dígitos (10 ou 11); null quando não informado. */
+  telefone: string | null;
+  /** Endereço próprio do tatuador (não o do estúdio); null quando não cadastrado. */
+  endereco: EnderecoDTO | null;
+}
+
+/** Endereço como o backend devolve: campos opcionais vêm null. */
+export interface EnderecoDTO {
+  cep: string;
+  logradouro: string;
+  numero: string | null;
+  complemento: string | null;
+  bairro: string | null;
+  cidade: string;
+  uf: string;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 /** Campos editáveis do perfil — semântica PATCH: apenas o que vier é alterado. */
 export interface AtualizarPerfilDTO {
   bio?: string | null;
   fotoUrl?: string | null;
+  nome?: string;
+  /** Com ou sem máscara; null ou "" remove. */
+  telefone?: string | null;
+  /** Com ou sem "@"; null ou "" remove. */
+  instagram?: string | null;
 }
 
 export type ConviteStatus = 'pendente' | 'aceito' | 'recusado' | 'cancelado';
@@ -71,21 +95,37 @@ export interface ConviteDetalheDTO {
   tatuadorId: string;
   nomeTatuador: string;
   fotoTatuadorUrl: string | null;
+  contrato: ContratoDTO | null;
 }
 
-/**
- * Monta o body multipart para upload de uma imagem local (URI `file://`)
- * em RN. O `as any` é o cast padrão pro tipo do RN, que aceita o objeto
- * `{ uri, name, type }` mas não está expresso na lib `FormData` do DOM.
- */
-function multipartImage(uri: string, fieldName: string, descricao?: string): FormData {
-  const form = new FormData();
-  const nome = uri.split('/').pop() || 'imagem.jpg';
-  const ext = nome.split('.').pop()?.toLowerCase();
-  const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
-  form.append(fieldName, { uri, name: nome, type: mime } as any);
-  if (descricao) form.append('descricao', descricao);
-  return form;
+export type ContratoModelo = 'comissao' | 'aluguel' | 'salario';
+
+export type ContratoPeriodicidade = 'diaria' | 'semanal' | 'mensal';
+
+export type ContratoStatus = 'proposto' | 'ativo' | 'recusado' | 'cancelado' | 'encerrado';
+
+export interface ContratoInput {
+  modelo: ContratoModelo;
+  percentualEstudio?: number;
+  valorFixo?: number;
+  periodicidade?: ContratoPeriodicidade;
+  observacoes?: string;
+}
+
+export interface ContratoDTO {
+  contratoId: string;
+  estudioId: string;
+  tatuadorId: string;
+  conviteId: string | null;
+  modelo: ContratoModelo;
+  percentualEstudio: number | null;
+  valorFixo: number | null;
+  periodicidade: ContratoPeriodicidade | null;
+  observacoes: string | null;
+  status: ContratoStatus;
+  dataCriacao: string;
+  dataResposta: string | null;
+  dataEncerramento: string | null;
 }
 
 export const artistService = {
@@ -109,6 +149,12 @@ export const artistService = {
    */
   async atualizarMeuPerfil(dto: AtualizarPerfilDTO): Promise<ArtistProfile> {
     const { data } = await api.patch<ArtistProfile>('/artist/me', dto);
+    return data;
+  },
+
+  /** Cria ou atualiza o endereço próprio do tatuador (PUT /artist/me/endereco). */
+  async atualizarEndereco(dto: EnderecoInput): Promise<EnderecoDTO> {
+    const { data } = await api.put<EnderecoDTO>('/artist/me/endereco', dto);
     return data;
   },
 
@@ -139,7 +185,7 @@ export const artistService = {
     localUri: string,
     descricao?: string,
   ): Promise<PortfolioImage> {
-    const form = multipartImage(localUri, 'file', descricao);
+    const form = multipartImage(localUri, 'file', { descricao });
     const { data } = await api.post<PortfolioImage>('/artist/me/portfolio', form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
@@ -171,6 +217,23 @@ export const artistService = {
 
   async listarConvites(): Promise<ConviteDetalheDTO[]> {
     const { data } = await api.get<ConviteDetalheDTO[]>(`/artist/me/convites`);
+    return data;
+  },
+
+  /** Todos os contratos do tatuador (qualquer estúdio/status), do mais recente ao mais antigo. */
+  async listarContratos(): Promise<ContratoDTO[]> {
+    const { data } = await api.get<ContratoDTO[]>(`/artist/me/contratos`);
+    return data;
+  },
+
+  /** Aceita a renegociação: o contrato atual é encerrado e o proposto vira ativo. */
+  async aceitarPropostaContrato(): Promise<ContratoDTO> {
+    const { data } = await api.post<ContratoDTO>(`/artist/me/contratos/proposta/aceitar`);
+    return data;
+  },
+
+  async recusarPropostaContrato(): Promise<ContratoDTO> {
+    const { data } = await api.post<ContratoDTO>(`/artist/me/contratos/proposta/recusar`);
     return data;
   },
 };

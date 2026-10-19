@@ -1,8 +1,13 @@
 package com.rabisko.mvp.studio.service;
 
+import com.rabisko.mvp.appointment.domain.AppointmentStatus;
+import com.rabisko.mvp.appointment.repository.AppointmentSessionRepository;
 import com.rabisko.mvp.artist.domain.Artist;
 import com.rabisko.mvp.artist.domain.ArtistStudioSearchResultDTO;
 import com.rabisko.mvp.artist.repository.ArtistRepository;
+import com.rabisko.mvp.endereco.domain.Endereco;
+import com.rabisko.mvp.endereco.domain.EnderecoOwnerType;
+import com.rabisko.mvp.endereco.service.EnderecoService;
 import com.rabisko.mvp.studio.domain.*;
 import com.rabisko.mvp.studio.repository.ConviteEstudioRepository;
 import com.rabisko.mvp.studio.repository.StudioRepository;
@@ -16,6 +21,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -32,6 +38,14 @@ public class StudioService {
     @Autowired
     private ConviteEstudioRepository conviteEstudioRepository;
 
+    @Autowired
+    private ContratoService contratoService;
+
+    @Autowired
+    private AppointmentSessionRepository sessionRepository;
+    @Autowired 
+    private EnderecoService enderecoService;
+
     public Studio cadastrarEstudio(User user, RegisterEstudioDTO body) {
         Studio novoStudio = Studio.builder()
                 .userId(user.getUserId())
@@ -39,12 +53,45 @@ public class StudioService {
                 .email(user.getEmail())
                 .cnpj(body.getCnpj())
                 .telefone(body.getTelefone())
+                .posicoes(body.getPosicoes() != null ? body.getPosicoes() : 1)
                 .build();
 
-        return studioRepository.save(novoStudio);
+        Studio s = studioRepository.save(novoStudio);
+
+        if(body.getEndereco() != null){
+            Endereco e = enderecoService.salvar(s.getEstudioId(), EnderecoOwnerType.estudio, body.getEndereco(), null);
+            s.setEnderecoId(e.getEnderecoId());
+        }
+
+        return s;
     }
 
-    public ConviteDTO convidarTatuador(User logado, UUID tatuadorId) {
+    public StudioDTO meuEstudio(User logado) {
+        return StudioDTO.from(exigirEstudioDoUser(logado));
+    }
+
+    @Transactional
+    public StudioDTO atualizarEstudio(User logado, AtualizarEstudioDTO body) {
+        Studio estudio = exigirEstudioDoUser(logado);
+
+        // Mesma quantidade: nada muda (nem escrita no banco).
+        if (body.posicoes() == estudio.getPosicoes()) {
+            return StudioDTO.from(estudio);
+        }
+
+        if (body.posicoes() < estudio.getPosicoes()
+                && sessionRepository.existeReservaFuturaAcimaDaPosicao(
+                        estudio.getEstudioId(), body.posicoes(), LocalDateTime.now(), AppointmentStatus.cancelada)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Existem sessoes futuras em posicoes acima de " + body.posicoes());
+        }
+
+        estudio.setPosicoes(body.posicoes());
+        return StudioDTO.from(studioRepository.save(estudio));
+    }
+
+    @Transactional
+    public ConviteDTO convidarTatuador(User logado, UUID tatuadorId, ContratoInputDTO contrato) {
         Studio estudio = exigirEstudioDoUser(logado);
 
         Artist tatuador = artistRepository.findById(tatuadorId)
@@ -65,10 +112,13 @@ public class StudioService {
                 .build();
 
         try {
-            return ConviteDTO.from(conviteEstudioRepository.saveAndFlush(convite));
+            convite = conviteEstudioRepository.saveAndFlush(convite);
         } catch (DataIntegrityViolationException e) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Ja existe um convite pendente para este tatuador");
         }
+
+        contratoService.proporNoConvite(estudio.getEstudioId(), tatuadorId, convite.getConviteId(), contrato);
+        return ConviteDTO.from(convite);
     }
 
     @Transactional
@@ -83,19 +133,32 @@ public class StudioService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Apenas convites pendentes podem ser cancelados");
         }
 
+        LocalDateTime agora = LocalDateTime.now();
         convite.setStatus(ConviteStatus.cancelado);
-        convite.setDataResposta(LocalDateTime.now());
+        convite.setDataResposta(agora);
+        contratoService.cancelarDoConvite(conviteId, agora);
         return ConviteDTO.from(convite);
     }
 
     public List<ConviteDetalheDTO> listarConvitesPendentes(User logado) {
         Studio estudio = exigirEstudioDoUser(logado);
-        return conviteEstudioRepository.listarDetalhesDoEstudio(estudio.getEstudioId(), ConviteStatus.pendente);
+        return contratoService.comContratos(
+                conviteEstudioRepository.listarDetalhesDoEstudio(estudio.getEstudioId(), ConviteStatus.pendente));
     }
 
     public List<ColaboradorDTO> listarColaboradores(User logado) {
         Studio estudio = exigirEstudioDoUser(logado);
-        return artistRepository.listarColaboradores(estudio.getEstudioId());
+        List<ColaboradorDTO> colaboradores = artistRepository.listarColaboradores(estudio.getEstudioId());
+
+        Map<UUID, ContratoService.ContratosVigentes> contratos = contratoService.contratosVigentes(
+                estudio.getEstudioId(), colaboradores.stream().map(ColaboradorDTO::tatuadorId).toList());
+
+        return colaboradores.stream()
+                .map(c -> {
+                    ContratoService.ContratosVigentes v = contratos.get(c.tatuadorId());
+                    return c.withContratos(v.ativo(), v.proposto());
+                })
+                .toList();
     }
 
     @Transactional
@@ -108,6 +171,31 @@ public class StudioService {
 
         tatuador.setEstudioId(null);
         tatuador.setVinculadoEstudio(false);
+        contratoService.encerrarVinculo(estudio.getEstudioId(), tatuadorId);
+    }
+
+    public ContratoDTO proporContrato(User logado, UUID tatuadorId, ContratoInputDTO contrato) {
+        Studio estudio = exigirEstudioDoUser(logado);
+        exigirColaborador(estudio, tatuadorId);
+        return ContratoDTO.from(contratoService.proporRenegociacao(estudio.getEstudioId(), tatuadorId, contrato));
+    }
+
+    public ContratoDTO cancelarPropostaContrato(User logado, UUID tatuadorId) {
+        Studio estudio = exigirEstudioDoUser(logado);
+        exigirColaborador(estudio, tatuadorId);
+        return ContratoDTO.from(contratoService.cancelarRenegociacao(estudio.getEstudioId(), tatuadorId));
+    }
+
+    public List<ContratoDTO> historicoContratos(User logado, UUID tatuadorId) {
+        Studio estudio = exigirEstudioDoUser(logado);
+        return contratoService.historico(estudio.getEstudioId(), tatuadorId);
+    }
+
+    // Garante que a proposta e de renegociacao: quem nao e da equipe so recebe contrato via convite
+    private Artist exigirColaborador(Studio estudio, UUID tatuadorId) {
+        return artistRepository.findById(tatuadorId)
+                .filter(a -> Objects.equals(a.getEstudioId(), estudio.getEstudioId()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Colaborador nao encontrado"));
     }
 
     private Studio exigirEstudioDoUser(User user) {
