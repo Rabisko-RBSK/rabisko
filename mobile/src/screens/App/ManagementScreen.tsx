@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { CalendarCheck, MessageSquare, RotateCw, Wallet } from 'lucide-react-native';
+import { CalendarCheck, MessageSquare, Receipt, RotateCw, Wallet } from 'lucide-react-native';
 
 import { Header } from '../../components/common/Header';
 import { useArtistDashboard } from '../../hooks/useArtistDashboard';
@@ -17,8 +17,8 @@ import { formatarBRL } from '../../services/api/dashboardService';
  * Gestão — primeira aba do fluxo do tatuador (DESIGN.md §10 #13 — Dashboard:
  * visão de reservas e faturamento).
  *
- * v1: três KPIs lado a lado (empilhados): chats abertos, faturamento do mês
- * e total de agendamentos do mês. Próximas métricas (tempo médio de resposta,
+ * v1: quatro KPIs empilhados: chats abertos, faturamento do mês, total de
+ * agendamentos do mês e valor médio por serviço no mês. Próximas métricas (tempo médio de resposta,
  * mensagens nos últimos 14d, top clientes) entram aqui.
  *
  * O hook `useArtistDashboard` cuida do fetch, loading e erro — esta tela só
@@ -62,6 +62,16 @@ export function ManagementScreen() {
               label="Agendamentos do mês"
               value={dashboard?.totalAgendamentosMes ?? 0}
               hint="Serviços criados desde o primeiro dia do mês."
+            />
+            <KpiCard
+              icon={<Receipt size={22} color="#602C66" />}
+              label="Valor médio por serviço"
+              value={
+                dashboard?.valorMedioServicoMes != null
+                  ? formatarBRL(dashboard.valorMedioServicoMes)
+                  : '—'
+              }
+              hint="Faturamento do mês dividido pelos agendamentos do mês."
             />
           </View>
         )}
