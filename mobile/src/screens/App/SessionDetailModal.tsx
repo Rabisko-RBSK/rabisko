@@ -5,6 +5,10 @@ import { X, CalendarDays, Clock, Banknote, UserCircle2 } from 'lucide-react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SessaoListItemDTO } from '../../services/api';
+import { useAuthStore } from '../../store/authStore';
+import { acessoAnamnese } from '../../services/anamneseFlow';
+import { AnamneseButton } from '../../components/anamnese/AnamneseButton';
+import { studioDashboardTheme as theme } from '../../theme/studioDashboard';
 
 
 const PT_WEEKDAYS = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
@@ -59,12 +63,15 @@ interface Props {
   visible: boolean;
   onClose: () => void;
   sessao: SessaoListItemDTO | null;
+  onOpenAnamnese: () => void;
 }
 
-export function SessionDetailModal({ visible, onClose, sessao }: Props) {
+export function SessionDetailModal({ visible, onClose, sessao, onOpenAnamnese }: Props) {
+  const perfil = useAuthStore((state) => state.role);
   if (!sessao) return null;
 
   const badgeColors = statusBadgeColors(sessao.status);
+  const acesso = acessoAnamnese(sessao, perfil);
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
@@ -125,6 +132,17 @@ export function SessionDetailModal({ visible, onClose, sessao }: Props) {
               </View>
             </View>
             <DetailRow icon={<Banknote size={18} color="#602C66" />} label={formatPreco(sessao.valorTotal)} />
+          </View>
+          <View style={{ marginTop: 24, padding: 16, gap: 12, backgroundColor: theme.colors.card,
+            borderRadius: theme.radius.row, width: '100%', maxWidth: 560, alignSelf: 'center' }}>
+            <Text style={{ fontFamily: theme.fonts.bold, fontSize: 18, lineHeight: 26, color: theme.colors.text }}>
+              Anamnese desta sessão
+            </Text>
+            <Text style={{ fontFamily: theme.fonts.regular, fontSize: 14, lineHeight: 22, color: theme.colors.text }}>
+              {acesso.motivo}
+            </Text>
+            <AnamneseButton title={perfil === 'cliente' ? 'Preencher minha parte' : 'Preencher registro pós-atendimento'}
+              disabled={!acesso.permitido} onPress={onOpenAnamnese} />
           </View>
         </ScrollView>
       </SafeAreaView>

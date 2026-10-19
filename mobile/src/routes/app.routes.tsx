@@ -4,7 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { HomeStack } from './home.stack';
 import { ChatStack } from './chat.stack';
 import { SimuladorScreen } from '../screens/App/SimuladorScreen';
-import { BookingsScreen } from '../screens/App/BookingsScreen';
+import { ClientSessionsStack } from './sessions.stack';
 import { SettingsScreen } from '../screens/App/SettingsScreen';
 import { BottomNav } from '../components/common/BottomNav';
 
@@ -35,7 +35,7 @@ export function AppRoutes() {
       <Screen name="Home" component={HomeStack} />
       <Screen name="Chat" component={ChatStack} />
       <Screen name="Simulador" component={SimuladorScreen} />
-      <Screen name="Sessoes" component={BookingsScreen} />
+      <Screen name="Sessoes" component={ClientSessionsStack} />
       <Screen name="Settings" component={SettingsScreen} />
     </Navigator>
   );

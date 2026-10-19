@@ -15,6 +15,7 @@ export interface ProdutoAnamnese {
 export interface AnexoConsentimento {
   uri: string;
   nome: string;
+  tipo?: 'imagem' | 'pdf';
 }
 
 export interface FichaAnamnese {

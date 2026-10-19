@@ -1,8 +1,21 @@
 # Ficha de anamnese — issue #187
 
-Entrada: perfil Tatuador → Gestão → Ficha de anamnese. O acesso independe da
-disponibilidade dos indicadores do dashboard. Cliente preenche seus dados no
-formulário acompanhado do profissional; não há envio remoto nesta etapa.
+Entradas: Cliente → Reservas → Detalhes da sessão → Anamnese; Tatuador →
+Agenda → Detalhes da sessão → Anamnese. A agenda permite consultar semanas
+anteriores para acessar atendimentos concluídos. Não há entrada pela Gestão.
+
+Cada abertura leva `sessionId` e `appointmentId` da sessão selecionada. O cliente
+preenche identificação e anexa o termo após a confirmação da reserva, antes do
+início do atendimento. O tatuador preenche procedimento, produtos e confirmações
+somente quando a sessão está marcada como `concluida` e sua data não é futura.
+A passagem do tempo não equivale à conclusão. A interface explica os bloqueios.
+Datas efetivas do procedimento não são preenchidas automaticamente pela reserva.
+
+As duas partes possuem validações próprias: o cliente não preenche informações
+técnicas; o tatuador não preenche dados pessoais nem anexa o documento pelo cliente.
+A maioridade do cliente é conferida na data reservada. A orientação e assinatura
+do termo devem ocorrer antes do procedimento; a conferência posterior pelo
+tatuador registra esse fato, sem adiar o consentimento para depois do atendimento.
 
 O usuário confirmou que não existe uma tela correspondente no Figma e pediu
 o padrão visual do dashboard do estúdio. A tela reutiliza seus tokens de cores
@@ -41,13 +54,21 @@ item 7, páginas 5 **e 6**:
 | Procedimento | Tipo, data e local do corpo |
 | Intercorrências | Texto obrigatório; informar “Nenhuma” quando não houver |
 | Menores | Bloqueio de menores de 18 na data do procedimento, conforme ressalva de SP na página 6; autorização parental não libera o atendimento |
-| Consentimento | Fotos de todas as páginas do TCLE assinado; confirmação de orientação prévia e entrega da segunda via |
+| Consentimento | Modelo original para baixar; PDF ou fotos de todas as páginas de uma via assinada; outra via com o cliente; confirmação de orientação prévia e entrega da segunda via |
 | Produtos | Lista com nome, lote, fabricante, registro Anvisa, fabricação, validade e abertura |
 | Profissional | Nome do profissional responsável |
 
-O app não gera um TCLE nem interpreta uma marcação como assinatura. Deve ser
-anexado o documento utilizado pelo estabelecimento, assinado previamente ao
-procedimento. Não substitui a guarda do documento original.
+O modelo fornecido pelo solicitante está em `assets/documents/tcle-modelo.pdf`,
+incluído sem alterações de conteúdo. A seção do cliente permite baixar o modelo:
+no navegador, download do PDF; no celular, menu de compartilhamento para salvar
+ou imprimir. Orienta imprimir duas vias, preencher e assinar antes do atendimento,
+anexar uma via e guardar a outra com o cliente. O app não interpreta uma marcação
+como assinatura nem oferece assinatura digital. Não substitui a guarda do original.
+
+Anexos aceitos: PDF e fotos, até 10 arquivos de até 10 MB cada. PDFs são identificados
+pelo nome e tipo na revisão, sem serem renderizados como imagens. O modelo baixado
+não conta como anexo assinado. A seleção da via assinada continua em memória;
+upload e persistência permanecem na #188.
 
 ## Limite com a issue #188
 
@@ -58,6 +79,12 @@ ou mensagem de sucesso de salvamento. O aviso aparece antes do preenchimento e
 na revisão. Sair com alterações pede confirmação de descarte. Encerrar o app ou
 sair da conta também descarta o formulário.
 
+O vínculo nesta etapa é somente o contexto de navegação. Não há compartilhamento
+real entre contas, envio de notificações ou ação para concluir atendimento.
+As listas de reservas e sessões dependem da API existente. As regras de interface
+usam o status recebido na abertura; a #188 deve conferir novamente o estado,
+o participante autenticado e as permissões em toda leitura e gravação.
+
 `FichaAnamnese` em `src/services/anamnese.ts` é o modelo do formulário, ainda não
 um contrato de API. Na #188: definir DTOs e transporte das imagens; converter as
 datas civis DD/MM/AAAA; validar novamente no servidor; vincular cliente e
@@ -66,6 +93,11 @@ falhas recuperáveis, histórico e confirmação real somente após persistênci
 
 ## Verificação
 
+Verificação em instalação limpa das dependências: 21 testes passaram; TypeScript
+sem erros; ESLint dos arquivos alterados sem erros, com dois avisos preexistentes
+de atualização de estado em efeitos na Agenda. O PDF incluído foi comparado ao
+original e é idêntico. A validação visual e os seletores nativos continuam pendentes.
+
 O visual segue os tokens já usados no dashboard do estúdio: fundo bege,
 cartões brancos, fonte Inter e ações roxas. A ficha usa estilos explícitos,
 campos com estado de foco e erro e títulos que podem quebrar linha. Não houve
@@ -73,9 +105,12 @@ acesso ao conteúdo do link do Figma fornecido; a referência verificada foi o
 dashboard existente no repositório. A conferência visual no navegador e em
 dispositivo continua necessária.
 
-- `npm run test:anamnese`: datas, maioridade, produtos, consentimento e ausência de mutação.
+- `npm run test:anamnese`: 21 casos de datas, maioridade, produtos, consentimento,
+  ausência de mutação, separação de partes e liberação por perfil/status/horário.
 - `npx tsc --noEmit`; `npm run lint`.
-- Expo: acessar pela Gestão mesmo sem API; revisar vazio; preencher uma ficha de
+- Expo, com API e sessões de teste: acessar pelas Reservas como cliente e pela
+  Agenda como tatuador; conferir bloqueio em reserva não confirmada e atendimento
+  não concluído, inclusive após a data; revisar vazio; preencher uma ficha de
   adulto; adicionar/remover produtos; anexar/remover páginas; revisar e editar sem
   perder os valores; voltar e cancelar/confirmar descarte; conferir teclado,
   rolagem, fontes ampliadas e larguras de 320–430px.

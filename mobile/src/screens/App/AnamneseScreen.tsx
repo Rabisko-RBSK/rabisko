@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Check, ChevronLeft } from 'lucide-react-native';
@@ -6,19 +6,22 @@ import { usePreventRemove } from '@react-navigation/native';
 import type { NavigationAction } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import { baixarModeloTermo } from '../../services/termoConsentimento';
 
 import { AnamneseButton as Button } from '../../components/anamnese/AnamneseButton';
 import { useAuthStore } from '../../store/authStore';
 import { theme } from '../../theme';
 import { studioDashboardTheme as visual } from '../../theme/studioDashboard';
-import type { ManagementStackParamList } from '../../routes/management.stack';
+import type { SessionsStackParamList } from '../../routes/sessions.stack';
 import {
   camposCliente, camposData, camposProcedimento, camposProduto,
-  novaFicha, novoProduto, validarFicha,
+  novoProduto,
 } from '../../services/anamnese';
+import { acessoAnamnese, dataDaReserva, fichaDaSessao, validarParteCliente, validarParteTatuador } from '../../services/anamneseFlow';
 import type { ErrosAnamnese, FichaAnamnese } from '../../services/anamnese';
 
-type Props = NativeStackScreenProps<ManagementStackParamList, 'Anamnese'>;
+type Props = NativeStackScreenProps<SessionsStackParamList, 'Anamnese'>;
 
 const MAX_CONTENT_WIDTH = 560;
 const c = visual.colors;
@@ -82,26 +85,38 @@ function Confirmacao({ label, description, value, onChange, error, review }: {
 }
 
 /** Dados ficam apenas em memória até a integração da issue #188. */
-export function AnamneseScreen({ navigation }: Props) {
+export function AnamneseScreen({ navigation, route }: Props) {
+  const { sessao } = route.params;
+  const perfil = useAuthStore((state) => state.role);
+  const cliente = perfil === 'cliente';
+  const [agora, setAgora] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setAgora(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const acesso = acessoAnamnese(sessao, perfil, agora);
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const gutter = width < 360 ? theme.spacing[4] : theme.spacing[6];
   const nome = useAuthStore((state) => state.user?.name ?? '');
-  const [ficha, setFicha] = useState(() => novaFicha(nome));
+  const [ficha, setFicha] = useState(() => fichaDaSessao(sessao, cliente ? 'cliente' : 'artista', nome));
   const [erros, setErros] = useState<ErrosAnamnese>({});
   const [revisao, setRevisao] = useState(false);
   const [alterado, setAlterado] = useState(false);
   const [anexando, setAnexando] = useState(false);
   const [erroAnexo, setErroAnexo] = useState('');
+  const [baixando, setBaixando] = useState(false);
+  const [erroDownload, setErroDownload] = useState('');
   const [saida, setSaida] = useState<NavigationAction | null>(null);
   const scroll = useRef<ScrollView>(null);
 
   usePreventRemove(alterado, ({ data }) => setSaida(data.action));
 
   function atualizar(proxima: FichaAnamnese) {
+    if (!acessoAnamnese(sessao, perfil).permitido) return;
     setFicha(proxima);
     setAlterado(true);
-    if (Object.keys(erros).length) setErros(validarFicha(proxima));
+    if (Object.keys(erros).length) setErros(cliente ? validarParteCliente(proxima, sessao) : validarParteTatuador(proxima));
   }
 
   async function anexarTermo() {
@@ -122,7 +137,7 @@ export function AnamneseScreen({ navigation }: Props) {
         uri: arquivo.uri, nome: arquivo.fileName ?? `Página ${ficha.consentimento.anexos.length + indice + 1}`,
       }));
       if (ficha.consentimento.anexos.length + anexos.length > 10) {
-        setErroAnexo('Anexe no máximo 10 páginas.');
+        setErroAnexo('Anexe no máximo 10 arquivos.');
         return;
       }
       atualizar({ ...ficha, consentimento: { ...ficha.consentimento, anexos: [...ficha.consentimento.anexos, ...anexos] } });
@@ -133,8 +148,51 @@ export function AnamneseScreen({ navigation }: Props) {
     }
   }
 
+  async function baixarTermo() {
+    if (baixando) return;
+    setBaixando(true);
+    setErroDownload('');
+    try {
+      await baixarModeloTermo();
+    } catch {
+      setErroDownload('Não foi possível abrir o modelo para salvar. Tente novamente.');
+    } finally {
+      setBaixando(false);
+    }
+  }
+
+  async function anexarPdf() {
+    if (anexando || ficha.consentimento.anexos.length >= 10) return;
+    setAnexando(true);
+    setErroAnexo('');
+    try {
+      const resultado = await DocumentPicker.getDocumentAsync({
+        type: 'application/pdf', multiple: false, copyToCacheDirectory: true,
+      });
+      if (resultado.canceled) return;
+      const arquivo = resultado.assets[0];
+      if (!arquivo || !arquivo.name.toLowerCase().endsWith('.pdf') ||
+          (arquivo.mimeType && arquivo.mimeType !== 'application/pdf')) {
+        setErroAnexo('Selecione um arquivo PDF.');
+        return;
+      }
+      if (arquivo.size === undefined || arquivo.size === 0 || arquivo.size > 10 * 1024 * 1024) {
+        setErroAnexo('Selecione um PDF válido de até 10 MB.');
+        return;
+      }
+      atualizar({ ...ficha, consentimento: { ...ficha.consentimento, anexos: [
+        ...ficha.consentimento.anexos, { uri: arquivo.uri, nome: arquivo.name, tipo: 'pdf' },
+      ] } });
+    } catch {
+      setErroAnexo('Não foi possível anexar o PDF. Tente novamente.');
+    } finally {
+      setAnexando(false);
+    }
+  }
+
   function revisar() {
-    const resultado = validarFicha(ficha);
+    if (!acessoAnamnese(sessao, perfil).permitido) { setAgora(new Date()); return; }
+    const resultado = cliente ? validarParteCliente(ficha, sessao) : validarParteTatuador(ficha);
     setErros(resultado);
     if (!Object.keys(resultado).length) setRevisao(true);
     scroll.current?.scrollTo({ y: 0, animated: true });
@@ -161,28 +219,39 @@ export function AnamneseScreen({ navigation }: Props) {
         width: '100%', maxWidth: MAX_CONTENT_WIDTH, alignSelf: 'center' }}>
       <View style={s.intro}>
         <Text style={s.eyebrow}>CUIDADO EM CADA DETALHE</Text>
-        <Text style={s.introTitle}>Conheça seu cliente.</Text>
+        <Text style={s.introTitle}>{cliente ? 'Antes do atendimento' : 'Registro pós-atendimento'}</Text>
         <Text style={s.body}>
-          Preencha os dados com o cliente e confira os registros do atendimento. Todos os campos são obrigatórios.
+          {cliente ? 'Tatuador' : 'Cliente'}: {sessao.outroNome}{'\n'}
+          Reserva: {dataDaReserva(sessao)} às {sessao.horario.slice(0, 5)}
+        </Text>
+        <Text style={s.body}>
+          {cliente ? 'Preencha seus dados e anexe o termo assinado. Os registros do procedimento serão preenchidos pelo tatuador após a conclusão da sessão.'
+            : 'Preencha somente o que ocorreu no atendimento concluído. Os dados pessoais e o termo pertencem à parte do cliente.'}
         </Text>
         <Text accessibilityRole="alert" style={s.notice}>
           {revisao ? 'Ficha revisada, ainda não salva. ' : ''}
-          O salvamento ainda não está disponível. Ao sair desta tela, os dados serão descartados.
+          O salvamento e o compartilhamento entre contas ainda não estão disponíveis. Ao sair desta tela, os dados serão descartados.
         </Text>
       </View>
+      {!acesso.permitido ? <View style={s.card}>
+        <Text accessibilityRole="alert" style={s.body}>{acesso.motivo}</Text>
+        <Button title="Voltar à sessão" onPress={() => navigation.goBack()} />
+      </View> : <>
       {!!Object.keys(erros).length && !revisao && <Text accessibilityRole="alert"
         style={[s.error, { marginBottom: 20 }]}>Revise os campos indicados abaixo para continuar.</Text>}
 
-      <Secao titulo="01 · Identificação">
+      {cliente && <Secao titulo="01 · Seus dados">
         {camposCliente.map(([campo, label]) => <Campo key={campo} label={label}
           value={ficha.cliente[campo]} date={camposData.has(campo)} review={revisao}
           multiline={campo === 'enderecoCompleto'} error={erros[`cliente.${campo}`]}
           onChange={(value) => atualizar({ ...ficha, cliente: { ...ficha.cliente, [campo]: value } })} />)}
         <Text style={s.hint}>Endereço: logradouro, número, complemento, bairro, cidade, UF e CEP.</Text>
         <Text style={s.hint}>Em São Paulo, tatuagem e piercing são proibidos para menores de 18 anos, mesmo com autorização dos pais.</Text>
-      </Secao>
+      </Secao>}
 
-      <Secao titulo="02 · Procedimento">
+      {!cliente && <>
+      <Secao titulo="01 · Procedimento realizado">
+        <Text style={s.hint}>Informe as datas reais. A data reservada não é uma confirmação de que o procedimento ocorreu.</Text>
         {camposProcedimento.map(([campo, label]) => <Campo key={campo} label={label}
           value={ficha.procedimento[campo]} date={camposData.has(campo)} review={revisao}
           multiline={campo === 'intercorrencias'} error={erros[`procedimento.${campo}`]}
@@ -190,7 +259,7 @@ export function AnamneseScreen({ navigation }: Props) {
         <Text style={s.hint}>Descreva alergias, infecções, acidentes ou outras intercorrências. Se não houver, informe “Nenhuma”.</Text>
       </Secao>
 
-      <Secao titulo="03 · Produtos utilizados">
+      <Secao titulo="02 · Produtos utilizados">
         {ficha.produtos.map((produto, indice) => <View key={indice} style={s.product}>
           <Text style={s.productTitle}>Produto {indice + 1}</Text>
           {camposProduto.map(([campo, label]) => <Campo key={campo} label={label} value={produto[campo]}
@@ -204,34 +273,47 @@ export function AnamneseScreen({ navigation }: Props) {
           onPress={() => atualizar({ ...ficha, produtos: [...ficha.produtos, novoProduto()] })} />}
         {erros.produtos && <Text style={s.error}>{erros.produtos}</Text>}
       </Secao>
+      </>}
 
-      <Secao titulo="04 · Consentimento">
+      <Secao titulo={cliente ? '02 · Termo assinado' : '03 · Conferência do consentimento'}>
+        {cliente ? <>
         <Text style={s.body}>
-          Anexe fotos legíveis de todas as páginas do Termo de Consentimento Livre e Esclarecido,
-          assinado antes do procedimento, conforme o documento de identidade. Mantenha uma via
-          com a ficha e entregue a segunda ao cliente. As confirmações abaixo não substituem o termo assinado.
+          Baixe o modelo do Termo de Consentimento Livre e Esclarecido (TCLE).
+          Imprima duas vias, preencha e assine após receber as orientações do tatuador,
+          antes do atendimento. Anexe uma via assinada em PDF ou fotos legíveis de todas
+          as páginas e guarde a outra via com você.
         </Text>
+        <Button title="Baixar modelo do termo (PDF)" variant="outline" loading={baixando} onPress={baixarTermo} />
+        {Platform.OS !== 'web' && <Text style={s.hint}>Escolha onde salvar ou imprimir no menu de compartilhamento do celular.</Text>}
+        {!!erroDownload && <Text accessibilityRole="alert" style={s.error}>{erroDownload}</Text>}
         {ficha.consentimento.anexos.map((anexo, indice) => <View key={`${anexo.uri}-${indice}`} style={s.attachment}>
           <Text style={s.value}>{indice + 1}. {anexo.nome}</Text>
-          <Image source={{ uri: anexo.uri }} resizeMode="contain"
+          {anexo.tipo === 'pdf' ? <Text style={s.hint}>PDF da via assinada selecionado. Ainda não foi enviado.</Text> : <Image source={{ uri: anexo.uri }} resizeMode="contain"
             accessibilityLabel={`Página ${indice + 1} do termo de consentimento`}
-            style={{ width: '100%', aspectRatio: 0.707, backgroundColor: theme.colors.paper }} />
-          {!revisao && <Button title="Remover página" variant="ghost" accessibilityLabel={`Remover página ${indice + 1}`}
+            style={{ width: '100%', aspectRatio: 0.707, backgroundColor: theme.colors.paper }} />}
+          {!revisao && <Button title="Remover anexo" variant="ghost" accessibilityLabel={`Remover anexo ${indice + 1}`}
             onPress={() => atualizar({ ...ficha, consentimento: { ...ficha.consentimento,
               anexos: ficha.consentimento.anexos.filter((_, i) => i !== indice) } })} />}
         </View>)}
-        {!revisao && <Button title="📎 Anexar termo assinado" accessibilityLabel="Anexar termo assinado" variant="outline" loading={anexando}
+        {!revisao && <Button title="📎 Anexar via assinada em PDF" accessibilityLabel="Anexar via assinada em PDF" variant="outline" loading={anexando}
+          disabled={ficha.consentimento.anexos.length >= 10} onPress={anexarPdf} />}
+        {!revisao && <Button title="📎 Anexar fotos da via assinada" accessibilityLabel="Anexar fotos da via assinada" variant="outline" loading={anexando}
           disabled={ficha.consentimento.anexos.length >= 10} onPress={anexarTermo} />}
         {!!(erroAnexo || erros.anexos) && <Text accessibilityRole="alert" style={s.error}>{erroAnexo || erros.anexos}</Text>}
-        <Text style={s.hint}>Até 10 imagens, com no máximo 10 MB por página. Os anexos também serão descartados ao sair.</Text>
+        <Text style={s.hint}>Até 10 arquivos, com no máximo 10 MB por arquivo. Anexe todas as páginas de uma via assinada. Os anexos serão descartados ao sair enquanto o salvamento não estiver disponível.</Text>
+        </> : <>
+        <Text style={s.body}>Confirme o que foi realizado antes do procedimento. O termo deve ter sido assinado previamente; estas marcações não substituem o documento.</Text>
+        <Text style={s.notice}>A parte preenchida pelo cliente e seus anexos estarão disponíveis aqui após a integração de salvamento e compartilhamento.</Text>
         <Confirmacao label="Orientação e assinatura" description="O cliente foi orientado sobre os riscos e assinou o termo antes do procedimento."
           value={ficha.consentimento.orientado} review={revisao} error={erros.orientado}
           onChange={() => atualizar({ ...ficha, consentimento: { ...ficha.consentimento, orientado: !ficha.consentimento.orientado } })} />
         <Confirmacao label="Segunda via entregue" description="A segunda via do termo foi entregue ao cliente."
           value={ficha.consentimento.segundaViaEntregue} review={revisao} error={erros.segundaViaEntregue}
           onChange={() => atualizar({ ...ficha, consentimento: { ...ficha.consentimento, segundaViaEntregue: !ficha.consentimento.segundaViaEntregue } })} />
+        </>}
       </Secao>
-      <Button title={revisao ? 'Voltar à edição' : 'Revisar ficha'} onPress={revisao ? editar : revisar} />
+      <Button title={revisao ? 'Voltar à edição' : 'Revisar minha parte'} onPress={revisao ? editar : revisar} />
+      </>}
     </ScrollView>
 
     <Modal visible={!!saida} transparent animationType="fade" onRequestClose={() => setSaida(null)}>
