@@ -38,6 +38,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.Collection;
@@ -404,7 +405,11 @@ public class ArtistService {
                             inicioMes,
                             inicioProxMes);
 
-            return new ArtistDashboardDTO(chatsAbertos, valorTotalMes, totalAgendamentosMes);
+            BigDecimal valorMedioServicoMes = totalAgendamentosMes == 0
+                    ? null
+                    : valorTotalMes.divide(BigDecimal.valueOf(totalAgendamentosMes), 2, RoundingMode.HALF_UP);
+
+            return new ArtistDashboardDTO(chatsAbertos, valorTotalMes, totalAgendamentosMes, valorMedioServicoMes);
     }
 
     public List<ConviteDetalheDTO> encontrarConvitesPendentes(User logado) {
