@@ -12,8 +12,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronRight, X } from 'lucide-react-native';
 
 import { appointmentService, BusySlotDTO } from '../../services/api';
+import { HorarioDTO, artistService } from '../../services/api/artistService';
 import { BlocoAgenda, minutosAgoraSeHoje, paraHorario, paraMinutos } from '../../utils/agendaEstudio';
 import { PosicaoSelecionada, StudioPositionsModal } from './StudioPositionsModal';
+import { atende, intervalosDoDia } from '../../utils/horario';
 
 
 interface Session {
@@ -96,6 +98,8 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
   const [valorTotal, setValorTotal] = useState<string>('');
   const [enviando, setEnviando] = useState(false);
   const [busySlots, setBusySlots] = useState<BusySlotDTO[]>([]);
+  /** Grade de atendimento do tatuador; vazia = sem restrição de dia/horário. */
+  const [horarios, setHorarios] = useState<HorarioDTO[]>([]);
   const [estudio, setEstudio] = useState<EstudioInfo | null>(null);
   const [selectedPosicao, setSelectedPosicao] = useState<number | null>(null);
   const [posicoesVisible, setPosicoesVisible] = useState(false);
@@ -113,6 +117,15 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
       .then(setBusySlots)
       .catch(() => setBusySlots([]));
   }, [selectedDate, selectedDuration, visible]);
+
+  // Grade de atendimento: limita os dias e horários oferecidos (o backend também valida).
+  useEffect(() => {
+    if (!visible) return;
+    artistService
+      .meusHorarios()
+      .then(setHorarios)
+      .catch(() => setHorarios([]));
+  }, [visible]);
 
   // Tatuador de estúdio escolhe horário + posição na tela de posições.
   useEffect(() => {
@@ -149,7 +162,18 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
     [activeIdx],
   );
 
+  /** Com grade definida, só dias com algum intervalo aceitam sessões. */
+  function diaAberto(day: Date): boolean {
+    return horarios.length === 0 || intervalosDoDia(horarios, day).length > 0;
+  }
+
+  /** Primeiro dia dos próximos 28 em que o tatuador atende (ou hoje, sem grade). */
+  function primeiroDiaAberto(): Date {
+    return DAYS.find(diaAberto) ?? DAYS[0];
+  }
+
   function handleDateSelect(day: Date) {
+    if (!diaAberto(day)) return;
     setSelectedDate(day);
     setSelectedTime(null);
     setSelectedPosicao(null);
@@ -191,6 +215,10 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
       setSelectedTime(null);
       setSelectedPosicao(null);
       updateActive({ duracaoMinutos: h * 60, horario: null, posicao: null });
+    } else if (selectedTime && !atende(horarios, selectedDate, selectedTime, h * 60)) {
+      // A nova duração ultrapassa o fechamento: escolhe o horário de novo.
+      setSelectedTime(null);
+      updateActive({ duracaoMinutos: h * 60, horario: null });
     } else {
       updateActive({ duracaoMinutos: h * 60 });
     }
@@ -209,6 +237,12 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
       const normalized = `${match[1].padStart(2, '0')}:${match[2]}`;
       if (jaPassou(normalized)) {
         Alert.alert('Horário indisponível', 'Esse horário já passou. Escolha um horário mais tarde.');
+        setCustomTimeInput('');
+        setCustomTimeActive(false);
+        return;
+      }
+      if (!atende(horarios, selectedDate, normalized, selectedDuration * 60)) {
+        Alert.alert('Fora do seu horário', 'Esse horário não cabe no seu horário de atendimento deste dia.');
         setCustomTimeInput('');
         setCustomTimeActive(false);
         return;
@@ -236,6 +270,7 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
 
   function isSlotBlocked(slot: string): boolean {
     if (jaPassou(slot)) return true;
+    if (!atende(horarios, selectedDate, slot, selectedDuration * 60)) return true;
     const slotMin = toMinutes(slot);
     const durMin = selectedDuration * 60;
     return busySlots.some((b) => {
@@ -245,8 +280,9 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
   }
 
   function addSession() {
+    const dia = primeiroDiaAberto();
     const newSession: Session = {
-      data: DAYS[0],
+      data: dia,
       horario: null,
       duracaoMinutos: 60,
       posicao: null,
@@ -256,7 +292,7 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
       setActiveIdx(next.length - 1);
       return next;
     });
-    setSelectedDate(DAYS[0]);
+    setSelectedDate(dia);
     setSelectedTime(null);
     setSelectedPosicao(null);
     setSelectedDuration(1);
@@ -460,13 +496,17 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   {DAYS.map((day, i) => {
                     const active = sameDay(day, selectedDate);
+                    const fechado = !diaAberto(day);
                     return (
                       <TouchableOpacity
                         key={i}
                         onPress={() => handleDateSelect(day)}
+                        disabled={fechado}
                         className={`items-center mr-2 px-3 py-2 rounded-rd-xs ${
                           active ? 'bg-ink' : 'bg-surface'
                         }`}
+                        style={{ opacity: fechado ? 0.3 : 1 }}
+                        accessibilityState={{ disabled: fechado, selected: active }}
                       >
                         <Text className={`font-body text-[11px] ${active ? 'text-background' : 'text-fg-2'}`}>
                           {DAY_NAMES[day.getDay()]}
@@ -478,6 +518,15 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
                     );
                   })}
                 </ScrollView>
+                {horarios.length > 0 && (
+                  <Text className="font-body text-[12px] text-fg-2 mt-2">
+                    {intervalosDoDia(horarios, selectedDate).length > 0
+                      ? `Seu horário neste dia: ${intervalosDoDia(horarios, selectedDate)
+                          .map((h) => `${h.abre}–${h.fecha}`)
+                          .join(', ')}`
+                      : 'Você não atende neste dia.'}
+                  </Text>
+                )}
               </Section>
 
               {estudio ? (

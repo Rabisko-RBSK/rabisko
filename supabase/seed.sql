@@ -107,6 +107,39 @@ INSERT INTO "public"."tatuador_estilos" ("tatuador_id", "estilo_id") VALUES
 ON CONFLICT ("tatuador_id", "estilo_id") DO NOTHING;
 
 -- ----------------------------------------------------------------------------
+-- horarios_atendimento: grade semanal de cada tatuador
+-- (dia_semana ISO: 1 = segunda ... 7 = domingo). Cobre os casos da regra:
+--   * Carla: um intervalo por dia (ter a sex) + sábado mais curto;
+--   * Diego: dois intervalos por dia (pausa para almoço);
+--   * Filipe: expediente que vai até a noite;
+--   * João: sem grade -> sem restrição de dia/horário no agendamento.
+-- ----------------------------------------------------------------------------
+INSERT INTO "public"."horarios_atendimento" ("horario_id", "tatuador_id", "dia_semana", "abre", "fecha") VALUES
+    -- Carla: ter a sex 13h-20h, sáb 10h-14h
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee01', '44444444-4444-4444-4444-444444444401', 2, '13:00', '20:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee02', '44444444-4444-4444-4444-444444444401', 3, '13:00', '20:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee03', '44444444-4444-4444-4444-444444444401', 4, '13:00', '20:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee04', '44444444-4444-4444-4444-444444444401', 5, '13:00', '20:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee05', '44444444-4444-4444-4444-444444444401', 6, '10:00', '14:00'),
+    -- Diego: seg a sex 10h-12h e 14h-19h
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee11', '44444444-4444-4444-4444-444444444402', 1, '10:00', '12:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee12', '44444444-4444-4444-4444-444444444402', 1, '14:00', '19:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee13', '44444444-4444-4444-4444-444444444402', 2, '10:00', '12:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee14', '44444444-4444-4444-4444-444444444402', 2, '14:00', '19:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee15', '44444444-4444-4444-4444-444444444402', 3, '10:00', '12:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee16', '44444444-4444-4444-4444-444444444402', 3, '14:00', '19:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee17', '44444444-4444-4444-4444-444444444402', 4, '10:00', '12:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee18', '44444444-4444-4444-4444-444444444402', 4, '14:00', '19:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee19', '44444444-4444-4444-4444-444444444402', 5, '10:00', '12:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee20', '44444444-4444-4444-4444-444444444402', 5, '14:00', '19:00'),
+    -- Filipe: qua a sáb 12h-22h
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee31', '44444444-4444-4444-4444-444444444403', 3, '12:00', '22:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee32', '44444444-4444-4444-4444-444444444403', 4, '12:00', '22:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee33', '44444444-4444-4444-4444-444444444403', 5, '12:00', '22:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee34', '44444444-4444-4444-4444-444444444403', 6, '12:00', '22:00')
+ON CONFLICT ("horario_id") DO NOTHING;
+
+-- ----------------------------------------------------------------------------
 -- enderecos: endereços polimórficos (cliente/estúdio) com lat/lng simples
 -- (PostGIS/geo_point foram removidos pela migration remove_postgis).
 -- ----------------------------------------------------------------------------

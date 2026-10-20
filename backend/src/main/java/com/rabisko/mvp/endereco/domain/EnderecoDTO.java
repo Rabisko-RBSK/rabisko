@@ -10,6 +10,8 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.UUID;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 public record EnderecoDTO(
         @NotBlank @Pattern(regexp = "\\d{5}-?\\d{3}", message = "CEP deve ter 8 dígitos (00000-000)")
         String cep,
@@ -38,6 +40,7 @@ public record EnderecoDTO(
         @DecimalMin("-180") @DecimalMax("180")
         BigDecimal longitude
 ) {
+    @JsonIgnore
     @AssertTrue(message = "Informe latitude e longitude juntas, ou nenhuma das duas")
     public boolean isCoordenadasCompletas() {
         return (latitude == null) == (longitude == null);

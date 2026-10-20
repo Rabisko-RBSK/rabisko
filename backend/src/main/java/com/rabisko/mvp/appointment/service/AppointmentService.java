@@ -10,6 +10,7 @@ import com.rabisko.mvp.chat.repository.ChatRepository;
 import com.rabisko.mvp.chat.service.ChatService;
 import com.rabisko.mvp.client.domain.Client;
 import com.rabisko.mvp.client.repository.ClientRepository;
+import com.rabisko.mvp.horario.service.HorarioService;
 import com.rabisko.mvp.studio.domain.Studio;
 import com.rabisko.mvp.studio.repository.StudioRepository;
 import com.rabisko.mvp.user.domain.User;
@@ -26,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -41,6 +43,9 @@ public class AppointmentService {
     /** Igual ao chk_duracao de `reservas` (duracao_min <= 720). */
     private static final int DURACAO_MAXIMA_MIN = 720;
 
+    private static final DateTimeFormatter FORMATO_SESSAO = DateTimeFormatter.ofPattern("dd/MM 'às' HH:mm");
+
+
     /** Faixa usada quando a listagem de sessões vem sem `de`/`ate`. */
     private static final LocalDate SEM_LIMITE_INICIO = LocalDate.of(1970, 1, 1);
     private static final LocalDate SEM_LIMITE_FIM = LocalDate.of(9999, 12, 31);
@@ -52,6 +57,7 @@ public class AppointmentService {
     @Autowired private ArtistRepository artistRepository;
     @Autowired private ClientRepository clientRepository;
     @Autowired private UserRepository userRepository;
+    @Autowired private HorarioService horarioService;
     @Autowired private ChatService chatService;
 
     @Transactional
@@ -136,6 +142,13 @@ public class AppointmentService {
         ValidadorAgenda.primeiroHorarioPassado(novas, LocalDateTime.now())
             .ifPresent(msg -> { throw new AgendamentoInvalidoException(msg); });
 
+        for (IntervaloSessao s : novas) {
+            if (!horarioService.atende(artista.getTatuadorId(), s.inicio(), s.duracaoMinutos())) {
+                throw new AgendamentoInvalidoException(
+                    "A sessão de " + s.inicio().format(FORMATO_SESSAO) + " está fora do seu horário de atendimento.");
+            }
+        }
+        
         List<UUID> equipe = estudio != null
             ? artistRepository.findByEstudioId(estudio.getEstudioId()).stream().map(Artist::getTatuadorId).toList()
             : List.of(artista.getTatuadorId());
