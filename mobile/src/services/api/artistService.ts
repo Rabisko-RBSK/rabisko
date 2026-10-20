@@ -1,5 +1,6 @@
 import api, { type EnderecoInput } from './index';
 import { multipartImage } from '../../utils/multipart';
+import type { HorarioDia } from '../../utils/horarios';
 
 /**
  * Imagem do portfólio de um tatuador. Espelha a tabela `portfolio_imagens`
@@ -48,6 +49,8 @@ export interface ArtistProfile {
   telefone: string | null;
   /** Endereço próprio do tatuador (não o do estúdio); null quando não cadastrado. */
   endereco: EnderecoDTO | null;
+  /** Dias abertos (tatuador_horarios); vazio = horário não informado. */
+  horarios: HorarioDia[];
 }
 
 /** Endereço como o backend devolve: campos opcionais vêm null. */
@@ -149,6 +152,18 @@ export const artistService = {
    */
   async atualizarMeuPerfil(dto: AtualizarPerfilDTO): Promise<ArtistProfile> {
     const { data } = await api.patch<ArtistProfile>('/artist/me', dto);
+    return data;
+  },
+
+  /** Substitui a semana do tatuador logado; envie só os dias abertos (PUT /artist/me/horarios). */
+  async atualizarHorarios(horarios: HorarioDia[]): Promise<HorarioDia[]> {
+    const { data } = await api.put<HorarioDia[]>('/artist/me/horarios', { horarios });
+    return data;
+  },
+
+  /** Horário de funcionamento de qualquer tatuador (perfil público); vazio = não informado. */
+  async obterHorarios(tatuadorId: string): Promise<HorarioDia[]> {
+    const { data } = await api.get<HorarioDia[]>(`/artist/${tatuadorId}/horarios`);
     return data;
   },
 

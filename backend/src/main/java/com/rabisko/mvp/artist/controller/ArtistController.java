@@ -3,7 +3,9 @@ package com.rabisko.mvp.artist.controller;
 import com.rabisko.mvp.artist.domain.ArtistDashboardDTO;
 import com.rabisko.mvp.artist.domain.ArtistProfileDTO;
 import com.rabisko.mvp.artist.domain.ArtistSearchResultDTO;
+import com.rabisko.mvp.artist.domain.AtualizarHorariosDTO;
 import com.rabisko.mvp.artist.domain.AvaliacaoDTO;
+import com.rabisko.mvp.artist.domain.HorarioDiaDTO;
 import com.rabisko.mvp.artist.domain.PortfolioImagemDTO;
 import com.rabisko.mvp.artist.domain.UploadResponseDTO;
 import com.rabisko.mvp.artist.service.ArtistService;
@@ -136,6 +138,24 @@ public class ArtistController {
     @GetMapping("/{tatuadorId}/avaliacoes")
     public ResponseEntity<List<AvaliacaoDTO>> listarAvaliacoes(@PathVariable UUID tatuadorId) {
         return ResponseEntity.ok(artistService.listarAvaliacoes(tatuadorId));
+    }
+
+    /**
+     * Horario de funcionamento de um tatuador (qualquer usuario logado pode
+     * consultar — exibido no perfil publico). Lista vazia = nao informado.
+     */
+    @GetMapping("/{tatuadorId}/horarios")
+    public ResponseEntity<List<HorarioDiaDTO>> listarHorarios(@PathVariable UUID tatuadorId) {
+        return ResponseEntity.ok(artistService.listarHorarios(tatuadorId));
+    }
+
+    /** Substitui a semana inteira do tatuador logado (so os dias abertos). */
+    @PutMapping("/me/horarios")
+    public ResponseEntity<List<HorarioDiaDTO>> alterarHorarios(
+            @AuthenticationPrincipal User user,
+            @RequestBody @Valid AtualizarHorariosDTO body
+    ) {
+        return ResponseEntity.ok(artistService.substituirHorarios(user, body.horarios()));
     }
 
     @GetMapping("/me/convites")

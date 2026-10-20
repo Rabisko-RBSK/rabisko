@@ -7,9 +7,12 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Header } from '../../components/common/Header';
 import { Button } from '../../components/common/Button';
 import { StatusPill } from '../../components/common/Chip';
+import { HorarioFuncionamentoView } from '../../components/common/HorarioFuncionamentoView';
 import { HomeStackParamList } from '../../routes/home.stack';
 import { chatService } from '../../services/api';
+import { artistService } from '../../services/api/artistService';
 import { searchService, ArtistSearchResult } from '../../services/api/searchService';
+import type { HorarioDia } from '../../utils/horarios';
 import { useFavoritesStore } from '../../store/favoritesStore';
 
 type ProfileRoute = RouteProp<HomeStackParamList, 'EstablishmentProfile'>;
@@ -22,6 +25,8 @@ export function EstablishmentProfileScreen() {
   const [artistData, setArtistData] = useState<ArtistSearchResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [iniciandoConversa, setIniciandoConversa] = useState(false);
+  /** null = ainda carregando ou falhou (o bloco não aparece); [] = não informado. */
+  const [horarios, setHorarios] = useState<HorarioDia[] | null>(null);
 
   const { isFavorite, toggleFavorite } = useFavoritesStore();
   const favorited = artistId ? isFavorite(artistId) : false;
@@ -55,6 +60,18 @@ export function EstablishmentProfileScreen() {
       }
     }
     carregar();
+    return () => {
+      active = false;
+    };
+  }, [artistId]);
+
+  useEffect(() => {
+    if (!artistId) return;
+    let active = true;
+    artistService
+      .obterHorarios(artistId)
+      .then((h) => active && setHorarios(h))
+      .catch((err) => console.warn('[EstablishmentProfile] erro ao carregar horários', err));
     return () => {
       active = false;
     };
@@ -162,6 +179,12 @@ export function EstablishmentProfileScreen() {
           ) : (
             <Text className="font-body text-[13px] text-fg-3">Atendimento na região de São Paulo/SP</Text>
           )}
+
+          {horarios ? (
+            <View className="mt-3 pt-3 border-t border-hairline">
+              <HorarioFuncionamentoView horarios={horarios} />
+            </View>
+          ) : null}
         </View>
       </ScrollView>
 

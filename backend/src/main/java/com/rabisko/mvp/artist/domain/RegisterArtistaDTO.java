@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -45,6 +46,11 @@ public class RegisterArtistaDTO {
     private String instagram;
 
     private List<String> estilos;
+
+    /** Dias abertos da semana; obrigatorio ter ao menos um. */
+    @Valid
+    @NotEmpty(message = "Informe ao menos um dia de atendimento")
+    private List<HorarioDiaDTO> horarios;
 
     @AssertTrue(message = "Voce deve aceitar os termos de uso")
     private boolean termosAceitos;

@@ -22,7 +22,9 @@ import { RoleSwitch } from '../../components/common/RoleSwitch';
 import { PrefChip } from '../../components/common/Chip';
 import { EnderecoForm, validarEndereco } from '../../components/common/EnderecoForm';
 import { DatePickerModal } from '../../components/common/DatePickerModal';
+import { HorarioFuncionamentoInput } from '../../components/common/HorarioFuncionamentoInput';
 import { isValidCNPJ } from '../../utils/validators';
+import { semanaPadrao, semanaParaApi, validarSemana, type SemanaForm } from '../../utils/horarios';
 import { authService, type EnderecoInput } from '../../services/api';
 import { geocodificar } from '../../utils/geocodificar';
 
@@ -161,6 +163,7 @@ export function RegisterScreen() {
   const [endereco, setEndereco] = useState<EnderecoInput | null>(null);
   const [instagram, setInstagram] = useState('');
   const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
+  const [horarios, setHorarios] = useState<SemanaForm>(semanaPadrao);
 
   const [cnpj, setCnpj] = useState('');
   const [posicoes, setPosicoes] = useState('');
@@ -211,6 +214,11 @@ export function RegisterScreen() {
       }
       if (selectedStyles.length === 0) {
         setErro('Selecione pelo menos um estilo de tatuagem.');
+        return;
+      }
+      const erroHorarios = validarSemana(horarios);
+      if (erroHorarios) {
+        setErro(erroHorarios);
         return;
       }
     }
@@ -277,6 +285,7 @@ export function RegisterScreen() {
           instagram: instagram || undefined,
           endereco: enderecoFinal!,
           estilos: selectedStyles.length ? selectedStyles : undefined,
+          horarios: semanaParaApi(horarios),
           termosAceitos: termsAccepted,
         }));
       } else {
@@ -304,7 +313,7 @@ export function RegisterScreen() {
     }
   }, [
     role, nome, email, senha, confirmarSenha, telefone, dataNasc, cpf,
-    bio, instagram, endereco, cnpj, posicoes, selectedStyles, termsAccepted,
+    bio, instagram, endereco, cnpj, posicoes, selectedStyles, horarios, termsAccepted,
     setToken, setUser, setRole,
   ]);
 
@@ -452,6 +461,12 @@ export function RegisterScreen() {
             />
             <Text className="font-body text-[12px] text-fg-2 mb-2 ml-1">Endereço de atendimento</Text>
             <EnderecoForm value={endereco} onChange={setEndereco} disabled={loading} />
+            <HorarioFuncionamentoInput
+              label="Horário de funcionamento"
+              value={horarios}
+              onChange={setHorarios}
+              disabled={loading}
+            />
             <Input
               label="@ Instagram"
               placeholder="@seuhandle"

@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { useAuthStore } from '../../store/authStore';
 import { multipartImage } from '../../utils/multipart';
+import type { HorarioDia } from '../../utils/horarios';
 
 const api = axios.create({
   baseURL: process.env.EXPO_PUBLIC_API_URL,
@@ -44,6 +45,8 @@ export interface RegisterArtistaData {
   instagram?: string;
   endereco: EnderecoInput;
   estilos?: string[];
+  /** Só os dias abertos; obrigatório ter ao menos um. */
+  horarios: HorarioDia[];
   termosAceitos: boolean;
 }
 

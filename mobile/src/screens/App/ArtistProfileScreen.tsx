@@ -38,6 +38,7 @@ import { useMeusContratos } from '../../hooks/useMeusContratos';
 import { Avaliacao } from '../../services/api/avaliacaoService';
 import { artistService } from '../../services/api/artistService';
 import { formatarContrato } from '../../utils/contrato';
+import { resumoSemana } from '../../utils/horarios';
 import { tempoRelativo } from '../../utils/datas';
 import { escolherImagemDaGaleria } from '../../utils/imagePicker';
 
@@ -235,6 +236,27 @@ function DadosCadastraisCard({ resumo, onPress }: { resumo: string; onPress: () 
     >
       <View className="flex-1">
         <Text className="font-aux-bold text-[16px] text-ink mb-1">Dados cadastrais</Text>
+        <Text className="font-body text-[13px] text-fg-3" numberOfLines={1}>
+          {resumo}
+        </Text>
+      </View>
+      <ChevronRight size={20} color="#6B6B6B" />
+    </TouchableOpacity>
+  );
+}
+
+/** Atalho para a edição do horário de funcionamento, com o resumo da semana. */
+function HorarioCard({ resumo, onPress }: { resumo: string; onPress: () => void }) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.85}
+      className="bg-surface rounded-rd-lg p-5 flex-row items-center"
+      accessibilityRole="button"
+      accessibilityLabel={`Editar horário de funcionamento: ${resumo}`}
+    >
+      <View className="flex-1">
+        <Text className="font-aux-bold text-[16px] text-ink mb-1">Horário de funcionamento</Text>
         <Text className="font-body text-[13px] text-fg-3" numberOfLines={1}>
           {resumo}
         </Text>
@@ -743,6 +765,12 @@ export function ArtistProfileScreen() {
                 onPress={() => navigation.navigate('Convites')}
               />
             )}
+            <View className="mt-3">
+              <HorarioCard
+                resumo={resumoSemana(profile?.horarios ?? [])}
+                onPress={() => navigation.navigate('EditarHorario')}
+              />
+            </View>
             <View className="mt-3">
               <DadosCadastraisCard
                 resumo={

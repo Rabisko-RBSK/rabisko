@@ -278,6 +278,22 @@ Simulações de tatuagem aplicadas em foto do cliente
 | `estilo_id` | `uuid` | Primary |
 | `data_criacao` | `timestamptz` |  |
 
+## Table `tatuador_horarios`
+
+Horário de funcionamento semanal do tatuador. Uma linha por dia aberto; dia sem linha = fechado.
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `horario_id` | `uuid` | Primary |
+| `tatuador_id` | `uuid` |  FK `tatuadores` (on delete cascade) |
+| `dia_semana` | `int2` |  1 = segunda ... 7 = domingo (ISO-8601) |
+| `abre` | `time` |  |
+| `fecha` | `time` |  > `abre` |
+
+Unique: (`tatuador_id`, `dia_semana`)
+
 ## Table `tatuadores`
 
 Perfil profissional de tatuadores, vinculados ou não a estúdios

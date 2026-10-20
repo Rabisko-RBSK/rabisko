@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { ArtistProfileScreen } from '../screens/App/ArtistProfileScreen';
 import { ConvitesScreen } from '../screens/App/ConvitesScreen';
+import { EditarHorarioScreen } from '../screens/App/EditarHorarioScreen';
 import { EditarPerfilScreen } from '../screens/App/EditarPerfilScreen';
 import { MeuContratoScreen } from '../screens/App/MeuContratoScreen';
 import { PortfolioScreen } from '../screens/App/PortfolioScreen';
@@ -13,7 +14,7 @@ import { PortfolioImage } from '../services/api/artistService';
  * própria aba, sem voltar); `Portfolio` é empilhado em cima quando o tatuador
  * toca em "Ver Todos"; `Convites` quando toca no cartão de convites de estúdio;
  * `MeuContrato` pelo cartão do estúdio vinculado; `EditarPerfil` pelo cartão
- * de dados cadastrais.
+ * de dados cadastrais; `EditarHorario` pelo cartão de horário de funcionamento.
  *
  * O perfil do tatuador na visão do CLIENTE é outra tela: EstablishmentProfile,
  * registrada no HomeStack.
@@ -25,6 +26,7 @@ export type ArtistProfileStackParamList = {
   Convites: undefined;
   MeuContrato: { estudioId: string; nomeEstudio: string };
   EditarPerfil: undefined;
+  EditarHorario: undefined;
 };
 
 const { Navigator, Screen } =
@@ -38,6 +40,7 @@ export function ArtistProfileStack() {
       <Screen name="Convites" component={ConvitesScreen} />
       <Screen name="MeuContrato" component={MeuContratoScreen} />
       <Screen name="EditarPerfil" component={EditarPerfilScreen} />
+      <Screen name="EditarHorario" component={EditarHorarioScreen} />
     </Navigator>
   );
 }

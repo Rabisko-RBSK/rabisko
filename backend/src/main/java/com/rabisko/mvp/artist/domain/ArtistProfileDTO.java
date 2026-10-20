@@ -17,6 +17,8 @@ public record ArtistProfileDTO(
         String fotoEstudioUrl,
         List<PortfolioImagemDTO> portfolio,
         String telefone,
-        EnderecoDTO endereco
+        EnderecoDTO endereco,
+        /** Dias abertos (1 = segunda ... 7 = domingo); vazio = horario nao informado. */
+        List<HorarioDiaDTO> horarios
 ) {}
 

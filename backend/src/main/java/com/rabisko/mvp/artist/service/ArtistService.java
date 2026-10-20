@@ -3,6 +3,7 @@ package com.rabisko.mvp.artist.service;
 import com.rabisko.mvp.appointment.domain.AppointmentStatus;
 import com.rabisko.mvp.artist.domain.*;
 import com.rabisko.mvp.artist.repository.ArtistRepository;
+import com.rabisko.mvp.artist.repository.HorarioFuncionamentoRepository;
 import com.rabisko.mvp.artist.repository.PortfolioImagemRepository;
 import com.rabisko.mvp.appointment.repository.AppointmentRepository;
 import com.rabisko.mvp.chat.repository.ChatRepository;
@@ -76,6 +77,7 @@ public class ArtistService {
     @Autowired private ContratoService contratoService;
     @Autowired private EnderecoService enderecoService;
     @Autowired private UserRepository userRepository;
+    @Autowired private HorarioFuncionamentoRepository horarioRepository;
 
     /**
      * Cria o perfil tatuador apos o User ja ter sido salvo.
@@ -83,6 +85,11 @@ public class ArtistService {
      * pra um Estilo do catalogo via resolverEstilos().
      */
     public Artist cadastrarArtista(User user, RegisterArtistaDTO body) {
+        // IllegalArgumentException: o UserController devolve a mensagem crua no 400.
+        ValidadorHorarios.primeiroErro(body.getHorarios()).ifPresent(erro -> {
+            throw new IllegalArgumentException(erro);
+        });
+
         Artist novoArtist = Artist.builder()
                 .userId(user.getUserId())
                 .bio(body.getBio())
@@ -97,6 +104,8 @@ public class ArtistService {
             Endereco e = enderecoService.salvar(a.getTatuadorId(), EnderecoOwnerType.tatuador, body.getEndereco(), null);
             a.setEnderecoId(e.getEnderecoId());
         }
+
+        gravarHorarios(a.getTatuadorId(), body.getHorarios());
 
         return a;
     }
@@ -180,8 +189,52 @@ public class ArtistService {
                 estudio != null ? estudio.getFotoPerfilUrl() : null,
                 portfolio,
                 user.getTelefone(),
-                enderecoService.buscar(artist.getEnderecoId())
+                enderecoService.buscar(artist.getEnderecoId()),
+                horariosDoTatuador(artist.getTatuadorId())
         );
+    }
+
+    /**
+     * Horario de funcionamento de qualquer tatuador (perfil publico).
+     * Lista vazia = tatuador ainda nao informou o horario.
+     */
+    public List<HorarioDiaDTO> listarHorarios(UUID tatuadorId) {
+        if (!artistRepository.existsById(tatuadorId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Tatuador nao encontrado");
+        }
+        return horariosDoTatuador(tatuadorId);
+    }
+
+    /** Substitui a semana inteira do tatuador logado (PUT /artist/me/horarios). */
+    @Transactional
+    public List<HorarioDiaDTO> substituirHorarios(User user, List<HorarioDiaDTO> horarios) {
+        Artist artist = exigirArtistDoUser(user);
+        ValidadorHorarios.primeiroErro(horarios).ifPresent(erro -> {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, erro);
+        });
+
+        horarioRepository.apagarDoTatuador(artist.getTatuadorId());
+        gravarHorarios(artist.getTatuadorId(), horarios);
+        return horariosDoTatuador(artist.getTatuadorId());
+    }
+
+    private List<HorarioDiaDTO> horariosDoTatuador(UUID tatuadorId) {
+        return horarioRepository.findByTatuadorIdOrderByDiaSemanaAsc(tatuadorId)
+                .stream()
+                .map(HorarioDiaDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    /** Grava os dias ja validados pelo ValidadorHorarios. */
+    private void gravarHorarios(UUID tatuadorId, List<HorarioDiaDTO> horarios) {
+        horarioRepository.saveAll(horarios.stream()
+                .map(h -> HorarioFuncionamento.builder()
+                        .tatuadorId(tatuadorId)
+                        .diaSemana(h.diaSemana().shortValue())
+                        .abre(h.abre())
+                        .fecha(h.fecha())
+                        .build())
+                .collect(Collectors.toList()));
     }
 
     /**
