@@ -5,5 +5,7 @@ import java.math.BigDecimal;
 public record ArtistDashboardDTO(
     long chatsAbertos,
     BigDecimal valorTotalMes,
-    long totalAgendamentosMes
+    long totalAgendamentosMes,
+    /** valorTotalMes / totalAgendamentosMes; null quando nao ha servicos no mes. */
+    BigDecimal valorMedioServicoMes
 ) {}

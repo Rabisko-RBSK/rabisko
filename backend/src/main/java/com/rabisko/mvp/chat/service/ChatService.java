@@ -26,6 +26,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -213,6 +215,15 @@ public class ChatService {
     }
 
 
+    /**
+     * Mensagem enviada em nome do tatuador ao confirmar um agendamento.
+     * O chamador já validou que o tatuador participa do chat.
+     */
+    public MensagemDTO enviarConfirmacaoAgendamento(User tatuador, Chat chat, String conteudo) {
+        return salvarEDistribuir(tatuador, chat, conteudo, null);
+    }
+
+
     private MensagemDTO salvarEDistribuir(User logado, Chat chat, String conteudo, String imagemUrl) {
         UUID chatId = chat.getChatId();
         UUID remetenteId = logado.getUserId();
@@ -245,8 +256,20 @@ public class ChatService {
 
         MensagemDTO dto = MensagemDTO.from(salva);
 
-        messagingTemplate.convertAndSendToUser(destinatario.getEmail(), "/queue/messages", dto);
-        messagingTemplate.convertAndSendToUser(logado.getEmail(), "/queue/messages", dto);
+        Runnable distribuir = () -> {
+            messagingTemplate.convertAndSendToUser(destinatario.getEmail(), "/queue/messages", dto);
+            messagingTemplate.convertAndSendToUser(logado.getEmail(), "/queue/messages", dto);
+        };
+
+        // Dentro de uma transação (ex.: confirmação de agendamento), só entrega
+        // depois do commit — se der rollback, a mensagem não chega a ninguém.
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override public void afterCommit() { distribuir.run(); }
+            });
+        } else {
+            distribuir.run();
+        }
 
         return dto;
     }

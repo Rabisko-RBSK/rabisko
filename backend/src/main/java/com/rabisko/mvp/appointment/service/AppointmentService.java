@@ -7,6 +7,7 @@ import com.rabisko.mvp.artist.domain.Artist;
 import com.rabisko.mvp.artist.repository.ArtistRepository;
 import com.rabisko.mvp.chat.domain.Chat;
 import com.rabisko.mvp.chat.repository.ChatRepository;
+import com.rabisko.mvp.chat.service.ChatService;
 import com.rabisko.mvp.client.domain.Client;
 import com.rabisko.mvp.client.repository.ClientRepository;
 import com.rabisko.mvp.horario.service.HorarioService;
@@ -57,6 +58,7 @@ public class AppointmentService {
     @Autowired private ClientRepository clientRepository;
     @Autowired private UserRepository userRepository;
     @Autowired private HorarioService horarioService;
+    @Autowired private ChatService chatService;
 
     @Transactional
     public AppointmentDTO criarAgendamento(User logado, CreateAppointmentRequest req) {
@@ -97,6 +99,8 @@ public class AppointmentService {
                 .posicao(s.posicao())
                 .build()))
             .collect(Collectors.toList());
+
+        chatService.enviarConfirmacaoAgendamento(logado, chat, MensagemConfirmacao.montar(novas, logado.getNome()));
 
         return toDTO(appointment, sessoesSalvas);
     }
