@@ -17,16 +17,20 @@ import { Header } from '../../components/common/Header';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
 import { EnderecoForm, validarEndereco } from '../../components/common/EnderecoForm';
+import { HorarioSemanalForm } from '../../components/common/HorarioSemanalForm';
 import { useArtistProfile } from '../../hooks/useArtistProfile';
+import { useHorarios } from '../../hooks/useHorarios';
 import { useAuthStore } from '../../store/authStore';
 import type { EnderecoInput } from '../../services/api';
 import {
   AtualizarPerfilDTO,
   ArtistProfile,
   EnderecoDTO,
+  HorarioDTO,
   artistService,
 } from '../../services/api/artistService';
 import { geocodificar } from '../../utils/geocodificar';
+import { mesmaGrade } from '../../utils/horario';
 import { digitosTelefone, formatarTelefone, telefoneValido } from '../../utils/telefone';
 
 /**
@@ -69,32 +73,45 @@ function mesmoEndereco(a: EnderecoInput | null, b: EnderecoInput | null): boolea
 export function EditarPerfilScreen() {
   const navigation = useNavigation();
   const { profile, loading, error, reload } = useArtistProfile();
+  const horarios = useHorarios();
+  const carregando = loading || horarios.loading;
+  const falhou = !!error || !!horarios.error || !profile;
+  const recarregar = () => {
+    reload();
+    horarios.reload();
+  };
 
   return (
     <View className="flex-1 bg-background">
       <Header title="DADOS CADASTRAIS" onBack={() => navigation.goBack()} />
-      {loading ? (
+      {carregando ? (
         <View className="py-10 items-center">
           <ActivityIndicator color="#602C66" />
         </View>
-      ) : error || !profile ? (
+      ) : falhou || !profile ? (
         <View className="items-center mt-8 px-6">
           <Text className="font-body text-[13px] text-fg-2 text-center mb-3">
             Não foi possível carregar seus dados.
           </Text>
-          <TouchableOpacity onPress={reload} hitSlop={8} accessibilityRole="button">
+          <TouchableOpacity onPress={recarregar} hitSlop={8} accessibilityRole="button">
             <Text className="font-body-semibold text-[13px] text-plum">Tentar novamente</Text>
           </TouchableOpacity>
         </View>
       ) : (
         // Montado só com o perfil carregado: o estado do formulário nasce com os valores atuais.
-        <EditarPerfilForm profile={profile} />
+        <EditarPerfilForm profile={profile} horariosIniciais={horarios.horarios} />
       )}
     </View>
   );
 }
 
-function EditarPerfilForm({ profile }: { profile: ArtistProfile }) {
+function EditarPerfilForm({
+  profile,
+  horariosIniciais,
+}: {
+  profile: ArtistProfile;
+  horariosIniciais: HorarioDTO[];
+}) {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
@@ -105,6 +122,7 @@ function EditarPerfilForm({ profile }: { profile: ArtistProfile }) {
   const [telefone, setTelefone] = useState(formatarTelefone(profile.telefone ?? ''));
   const [instagram, setInstagram] = useState((profile.instagram ?? '').replace(/^@+/, ''));
   const [endereco, setEndereco] = useState<EnderecoInput | null>(enderecoInicial);
+  const [horarios, setHorarios] = useState<HorarioDTO[]>(horariosIniciais);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -131,7 +149,9 @@ function EditarPerfilForm({ profile }: { profile: ArtistProfile }) {
     const igLimpo = instagram.trim().replace(/^@+/, '');
     if (igLimpo !== (profile.instagram ?? '').replace(/^@+/, '')) patch.instagram = igLimpo || null;
 
-    if (Object.keys(patch).length === 0 && !enderecoMudou) {
+    const horariosMudaram = !mesmaGrade(horarios, horariosIniciais);
+
+    if (Object.keys(patch).length === 0 && !enderecoMudou && !horariosMudaram) {
       navigation.goBack();
       return;
     }
@@ -153,6 +173,10 @@ function EditarPerfilForm({ profile }: { profile: ArtistProfile }) {
             'Não foi possível localizar o endereço no mapa. Você pode não aparecer em "Perto de você".',
           );
         }
+      }
+
+      if (horariosMudaram) {
+        await artistService.atualizarHorarios(horarios);
       }
 
       // O perfil recarrega sozinho ao ganhar foco.
@@ -220,6 +244,13 @@ function EditarPerfilForm({ profile }: { profile: ArtistProfile }) {
           <View className="mb-3" />
         )}
         <EnderecoForm value={endereco} onChange={setEndereco} disabled={salvando} />
+
+        <Text className="font-aux-bold text-[16px] text-ink mt-4 mb-1">Horário de atendimento</Text>
+        <Text className="font-body text-[12px] text-fg-3 mb-3 leading-[16px]">
+          Os dias e horários em que você aceita sessões. Eles aparecem no seu perfil e limitam os
+          horários que você pode agendar. Sem nenhum dia marcado, não há restrição.
+        </Text>
+        <HorarioSemanalForm value={horarios} onChange={setHorarios} disabled={salvando} />
 
         {erro && <Text className="font-body text-[12px] text-error mt-1 mb-3 ml-1">{erro}</Text>}
 

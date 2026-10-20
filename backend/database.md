@@ -129,6 +129,22 @@ Estabelecimentos físicos de tatuagem
 | `endereco` | `text` |  Nullable |
 | `posicoes` | `int4` |  Default 1, entre 1 e 50 |
 
+## Table `horarios_atendimento`
+
+Grade semanal de atendimento. Cada linha é um intervalo de um dia da semana; um dia pode ter mais de um intervalo (ex.: pausa para almoço), sem sobreposição — a regra de sobreposição é validada no `HorarioService`. Cada linha pertence a exatamente um dono (`tatuador_id` ou `estudio_id`, garantido por `chk_horario_dono`); hoje só tatuadores usam, a coluna `estudio_id` fica pronta para o horário do estúdio. `dia_semana` segue a ISO-8601 (1 = segunda … 7 = domingo, igual a `DayOfWeek#getValue`). `fecha > abre`, então expediente que vira a meia-noite não é suportado. Tatuador sem nenhuma linha não tem restrição: o agendamento (`AppointmentService`) só recusa sessões fora da grade de quem cadastrou horário. Alterar a grade não afeta sessões já marcadas
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `horario_id` | `uuid` | Primary |
+| `tatuador_id` | `uuid` |  Nullable |
+| `estudio_id` | `uuid` |  Nullable |
+| `dia_semana` | `smallint` |  |
+| `abre` | `time` |  |
+| `fecha` | `time` |  |
+| `data_criacao` | `timestamptz` |  |
+
 ## Table `mensagens`
 
 Mensagens trocadas dentro de um chat

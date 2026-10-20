@@ -8,6 +8,7 @@ import com.rabisko.mvp.artist.domain.PortfolioImagemDTO;
 import com.rabisko.mvp.artist.domain.UploadResponseDTO;
 import com.rabisko.mvp.artist.service.ArtistService;
 import com.rabisko.mvp.endereco.domain.EnderecoDTO;
+import com.rabisko.mvp.horario.domain.HorarioDTO;
 import com.rabisko.mvp.studio.domain.ContratoDTO;
 import com.rabisko.mvp.studio.domain.ConviteDTO;
 import com.rabisko.mvp.studio.domain.ConviteDetalheDTO;
@@ -18,6 +19,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -90,6 +92,26 @@ public class ArtistController {
             @RequestBody(required = false) Map<String, Object> payload
     ) {
         return ResponseEntity.ok(artistService.atualizarPerfil(user, payload));
+    }
+
+    @GetMapping("/me/horarios")
+    public ResponseEntity<List<HorarioDTO>> meusHorarios(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(artistService.meusHorarios(user));
+    }
+
+    @PutMapping ("/me/horarios")
+    public ResponseEntity<List<HorarioDTO>> atualizarHorarios(
+        @AuthenticationPrincipal User user,
+        @RequestBody List<@Valid HorarioDTO> listaHorarios
+    ) {
+        return ResponseEntity.ok(artistService.atualizarHorarios(user, listaHorarios));
+    }
+
+    @GetMapping("/{tatuadorId}/horarios")
+    public ResponseEntity<List<HorarioDTO>> horariosDoTatuador(
+        @PathVariable UUID tatuadorId
+    ) {
+        return ResponseEntity.ok(artistService.horariosDoTatuador(tatuadorId));
     }
 
     /**

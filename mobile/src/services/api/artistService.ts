@@ -50,6 +50,16 @@ export interface ArtistProfile {
   endereco: EnderecoDTO | null;
 }
 
+/**
+ * Um intervalo de atendimento do tatuador. diaSemana: 1 = segunda ... 7 = domingo.
+ * Horários em "HH:mm" (o backend pode devolver "HH:mm:ss"; use normalizarHora).
+ */
+export interface HorarioDTO {
+  diaSemana: number;
+  abre: string;
+  fecha: string;
+}
+
 /** Endereço como o backend devolve: campos opcionais vêm null. */
 export interface EnderecoDTO {
   cep: string;
@@ -155,6 +165,24 @@ export const artistService = {
   /** Cria ou atualiza o endereço próprio do tatuador (PUT /artist/me/endereco). */
   async atualizarEndereco(dto: EnderecoInput): Promise<EnderecoDTO> {
     const { data } = await api.put<EnderecoDTO>('/artist/me/endereco', dto);
+    return data;
+  },
+
+  /** Grade de atendimento do tatuador logado. Lista vazia = sem restrição. */
+  async meusHorarios(): Promise<HorarioDTO[]> {
+    const { data } = await api.get<HorarioDTO[]>('/artist/me/horarios');
+    return data;
+  },
+
+  /** Substitui a semana inteira; lista vazia remove a grade. */
+  async atualizarHorarios(horarios: HorarioDTO[]): Promise<HorarioDTO[]> {
+    const { data } = await api.put<HorarioDTO[]>('/artist/me/horarios', horarios);
+    return data;
+  },
+
+  /** Grade de qualquer tatuador (perfil público). */
+  async horariosDoTatuador(tatuadorId: string): Promise<HorarioDTO[]> {
+    const { data } = await api.get<HorarioDTO[]>(`/artist/${tatuadorId}/horarios`);
     return data;
   },
 

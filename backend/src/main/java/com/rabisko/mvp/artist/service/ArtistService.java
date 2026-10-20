@@ -12,6 +12,8 @@ import com.rabisko.mvp.endereco.domain.EnderecoOwnerType;
 import com.rabisko.mvp.endereco.service.EnderecoService;
 import com.rabisko.mvp.estilo.domain.Estilo;
 import com.rabisko.mvp.estilo.repository.EstiloRepository;
+import com.rabisko.mvp.horario.domain.HorarioDTO;
+import com.rabisko.mvp.horario.service.HorarioService;
 import com.rabisko.mvp.shared.storage.StorageService;
 import com.rabisko.mvp.studio.domain.ContratoDTO;
 import com.rabisko.mvp.studio.domain.ConviteDTO;
@@ -74,6 +76,7 @@ public class ArtistService {
     @Autowired private StudioRepository studioRepository;
     @Autowired private ContratoService contratoService;
     @Autowired private EnderecoService enderecoService;
+    @Autowired private HorarioService horarioService;
     @Autowired private UserRepository userRepository;
 
     /**
@@ -148,6 +151,23 @@ public class ArtistService {
         return rows.stream()
                 .map(ArtistSearchResultDTO::fromProjection)
                 .collect(Collectors.toList());
+    }
+
+    public List<HorarioDTO> meusHorarios(User user){
+        Artist artist = exigirArtistDoUser(user);
+
+        return horarioService.listar(artist.getTatuadorId());
+    }
+
+    public List<HorarioDTO> atualizarHorarios(User user, List<HorarioDTO> horariosNovos){
+        Artist artist = exigirArtistDoUser(user);
+
+        horarioService.substituir(artist.getTatuadorId(), horariosNovos);
+        return horarioService.listar(artist.getTatuadorId());
+    }
+
+    public List<HorarioDTO> horariosDoTatuador(UUID idTatuador){
+        return horarioService.listar(idTatuador);
     }
 
 
