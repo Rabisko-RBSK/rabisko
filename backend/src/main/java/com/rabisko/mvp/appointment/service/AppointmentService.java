@@ -85,6 +85,7 @@ public class AppointmentService {
             .chatId(req.chatId())
             .clienteId(cliente.getClientId())
             .tatuadorId(artista.getTatuadorId())
+            .estudioId(artista.getEstudioId())
             .status(AppointmentStatus.confirmada)
             .valorTotal(req.valorTotal())
             .build());
