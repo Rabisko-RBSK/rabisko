@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { useAuthStore } from '../../store/authStore';
+import { multipartImage } from '../../utils/multipart';
 
 const api = axios.create({
   baseURL: process.env.EXPO_PUBLIC_API_URL,
@@ -38,12 +39,24 @@ export interface RegisterArtistaData {
   senha: string;
   telefone?: string;
   dataNasc?: string;
-  cpf?: string;
+  cnpj?: string;
   bio?: string;
   instagram?: string;
-  endereco?: string;
+  endereco: EnderecoInput;
   estilos?: string[];
   termosAceitos: boolean;
+}
+
+export interface EnderecoInput {
+  cep: string;
+  logradouro: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade: string;
+  uf: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface RegisterEstudioData {
@@ -52,7 +65,9 @@ export interface RegisterEstudioData {
   senha: string;
   telefone?: string;
   cnpj?: string;
-  endereco?: string;
+  /** Quantidade de posições (macas/bancadas) de atendimento, de 1 a 50. */
+  posicoes: number;
+  endereco: EnderecoInput;
   termosAceitos: boolean;
 }
 
@@ -79,7 +94,9 @@ export interface MensagemDTO {
   chatId: string;
   remetenteId: string;
   destinatarioId: string;
-  conteudo: string;
+  /** Texto, ou legenda quando há imagem. Null em imagem sem legenda. */
+  conteudo: string | null;
+  imagemUrl: string | null;
   dataEnvio: string;
 }
 
@@ -139,7 +156,21 @@ export const chatService = {
       { params: { page, size } }
     );
     return data;
-  }
+  },
+
+  /**
+   * Envia uma imagem local (`file://`) no chat, com legenda opcional.
+   * A mensagem criada também chega pelo WebSocket (/user/queue/messages).
+   */
+  async enviarImagem(chatId: string, localUri: string, legenda?: string): Promise<MensagemDTO> {
+    const form = multipartImage(localUri, 'file', { legenda });
+    const { data } = await api.post<MensagemDTO>(`/chats/${chatId}/imagens`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      // Upload em rede móvel passa fácil dos 10s padrão.
+      timeout: 60000,
+    });
+    return data;
+  },
 }
 
 
@@ -147,6 +178,8 @@ export interface AppointmentSessionInput {
   data: string;
   horario: string;
   duracaoMinutos: number;
+  /** Obrigatória quando o tatuador é vinculado a um estúdio. */
+  posicao?: number;
 }
 
 export interface AppointmentSessionDTO {
@@ -154,6 +187,28 @@ export interface AppointmentSessionDTO {
   data: string;
   horario: string;
   duracaoMinutos: number;
+  posicao: number | null;
+}
+
+/** Sessão já reservada no estúdio (gráfico de posições). */
+export interface ReservaPosicaoDTO {
+  /** null em sessões antigas, sem posição. */
+  posicao: number | null;
+  data: string;
+  horario: string;
+  duracaoMinutos: number;
+  tatuadorNome: string;
+  /** true quando a sessão é do tatuador logado. */
+  propria: boolean;
+}
+
+export interface AgendaEstudioDTO {
+  vinculadoEstudio: boolean;
+  estudioId: string | null;
+  nomeEstudio: string | null;
+  posicoes: number;
+  data: string;
+  reservas: ReservaPosicaoDTO[];
 }
 
 export interface AppointmentDTO {
@@ -208,6 +263,14 @@ export const appointmentService = {
 
   async listarSessoes(params?: { de?: string; ate?: string }): Promise<SessaoListItemDTO[]> {
     const { data: res } = await api.get<SessaoListItemDTO[]>('/appointments/minhas-sessoes', { params });
+    return res;
+  },
+
+  /** Posições do estúdio do tatuador logado e as reservas do dia. */
+  async agendaEstudio(date: string): Promise<AgendaEstudioDTO> {
+    const { data: res } = await api.get<AgendaEstudioDTO>('/appointments/agenda-estudio', {
+      params: { date },
+    });
     return res;
   },
 };

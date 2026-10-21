@@ -1,4 +1,5 @@
-import api from './index';
+import api, { type EnderecoInput } from './index';
+import { multipartImage } from '../../utils/multipart';
 
 /**
  * Imagem do portfólio de um tatuador. Espelha a tabela `portfolio_imagens`
@@ -42,12 +43,45 @@ export interface ArtistProfile {
 
   /** Galeria de trabalhos (portfolio_imagens), já ordenada por `ordem`. */
   portfolio: PortfolioImage[];
+
+  /** users.telefone — só dígitos (10 ou 11); null quando não informado. */
+  telefone: string | null;
+  /** Endereço próprio do tatuador (não o do estúdio); null quando não cadastrado. */
+  endereco: EnderecoDTO | null;
+}
+
+/**
+ * Um intervalo de atendimento do tatuador. diaSemana: 1 = segunda ... 7 = domingo.
+ * Horários em "HH:mm" (o backend pode devolver "HH:mm:ss"; use normalizarHora).
+ */
+export interface HorarioDTO {
+  diaSemana: number;
+  abre: string;
+  fecha: string;
+}
+
+/** Endereço como o backend devolve: campos opcionais vêm null. */
+export interface EnderecoDTO {
+  cep: string;
+  logradouro: string;
+  numero: string | null;
+  complemento: string | null;
+  bairro: string | null;
+  cidade: string;
+  uf: string;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 /** Campos editáveis do perfil — semântica PATCH: apenas o que vier é alterado. */
 export interface AtualizarPerfilDTO {
   bio?: string | null;
   fotoUrl?: string | null;
+  nome?: string;
+  /** Com ou sem máscara; null ou "" remove. */
+  telefone?: string | null;
+  /** Com ou sem "@"; null ou "" remove. */
+  instagram?: string | null;
 }
 
 export type ConviteStatus = 'pendente' | 'aceito' | 'recusado' | 'cancelado';
@@ -104,21 +138,6 @@ export interface ContratoDTO {
   dataEncerramento: string | null;
 }
 
-/**
- * Monta o body multipart para upload de uma imagem local (URI `file://`)
- * em RN. O `as any` é o cast padrão pro tipo do RN, que aceita o objeto
- * `{ uri, name, type }` mas não está expresso na lib `FormData` do DOM.
- */
-function multipartImage(uri: string, fieldName: string, descricao?: string): FormData {
-  const form = new FormData();
-  const nome = uri.split('/').pop() || 'imagem.jpg';
-  const ext = nome.split('.').pop()?.toLowerCase();
-  const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
-  form.append(fieldName, { uri, name: nome, type: mime } as any);
-  if (descricao) form.append('descricao', descricao);
-  return form;
-}
-
 export const artistService = {
   /**
    * Perfil do tatuador autenticado (identificado pelo JWT).
@@ -140,6 +159,30 @@ export const artistService = {
    */
   async atualizarMeuPerfil(dto: AtualizarPerfilDTO): Promise<ArtistProfile> {
     const { data } = await api.patch<ArtistProfile>('/artist/me', dto);
+    return data;
+  },
+
+  /** Cria ou atualiza o endereço próprio do tatuador (PUT /artist/me/endereco). */
+  async atualizarEndereco(dto: EnderecoInput): Promise<EnderecoDTO> {
+    const { data } = await api.put<EnderecoDTO>('/artist/me/endereco', dto);
+    return data;
+  },
+
+  /** Grade de atendimento do tatuador logado. Lista vazia = sem restrição. */
+  async meusHorarios(): Promise<HorarioDTO[]> {
+    const { data } = await api.get<HorarioDTO[]>('/artist/me/horarios');
+    return data;
+  },
+
+  /** Substitui a semana inteira; lista vazia remove a grade. */
+  async atualizarHorarios(horarios: HorarioDTO[]): Promise<HorarioDTO[]> {
+    const { data } = await api.put<HorarioDTO[]>('/artist/me/horarios', horarios);
+    return data;
+  },
+
+  /** Grade de qualquer tatuador (perfil público). */
+  async horariosDoTatuador(tatuadorId: string): Promise<HorarioDTO[]> {
+    const { data } = await api.get<HorarioDTO[]>(`/artist/${tatuadorId}/horarios`);
     return data;
   },
 
@@ -170,7 +213,7 @@ export const artistService = {
     localUri: string,
     descricao?: string,
   ): Promise<PortfolioImage> {
-    const form = multipartImage(localUri, 'file', descricao);
+    const form = multipartImage(localUri, 'file', { descricao });
     const { data } = await api.post<PortfolioImage>('/artist/me/portfolio', form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });

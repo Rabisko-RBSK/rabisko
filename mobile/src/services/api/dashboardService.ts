@@ -4,6 +4,8 @@ export interface ArtistDashboard {
   chatsAbertos: number;
   valorTotalMes: string;
   totalAgendamentosMes: number;
+  /** Faturamento do mês / agendamentos do mês. Null quando não há serviços no mês. */
+  valorMedioServicoMes: string | null;
 }
 
 

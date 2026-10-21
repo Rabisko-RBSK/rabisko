@@ -321,7 +321,8 @@ export function HomeScreen() {
   };
 
   const featuredArtist = allArtists[0] ?? null;
-  const firstName = (user?.name?.split(' ')[0] ?? 'VOCÊ').toUpperCase();
+  const userFirstName = user?.name?.trim() ? user.name.trim().split(/\s+/)[0] : null;
+  const saudacao = userFirstName ? `Olá, ${userFirstName}` : 'Olá';
 
   return (
     <View className="flex-1 bg-background">
@@ -334,8 +335,8 @@ export function HomeScreen() {
       >
         {/* Header Superior — Saudação e Localização (Notificações removido) */}
         <View className="px-6 mb-5">
-          <Text className="font-body-semibold text-[12px] text-fg-3 tracking-[1.5px]">
-            OLÁ, {firstName}
+          <Text className="font-body-semibold text-[12px] text-fg-3 tracking-[0.5px]">
+            {saudacao}
           </Text>
           <View className="flex-row items-center mt-1">
             <MapPin size={12} color="#6B6B6B" style={{ marginRight: 4 }} />

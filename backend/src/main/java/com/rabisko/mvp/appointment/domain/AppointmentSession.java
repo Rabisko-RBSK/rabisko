@@ -41,6 +41,13 @@ public class AppointmentSession {
     @Column(name = "duracao_min", nullable = false)
     private int duracaoMinutos;
 
+    /**
+     * Posição do estúdio ocupada (1..estudios.posicoes). Null quando o
+     * tatuador não tem estúdio ou para sessões anteriores às posições.
+     */
+    @Column(name = "posicao")
+    private Integer posicao;
+
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "status", nullable = false, columnDefinition = "reserva_status")

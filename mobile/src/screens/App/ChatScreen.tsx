@@ -3,11 +3,22 @@ import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'rea
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { MessageSquarePlus } from 'lucide-react-native';
 
 import { chatService, ChatDTO } from '../../services/api';
 import { stompClient } from '../../services/ws/stompClient';
 import { ChatStackParamList } from '../../routes/chat.stack';
+import { useAuthStore } from '../../store/authStore';
+
+// A mesma tela serve cliente e tatuador; só os textos mudam.
+const TEXTOS_CLIENTE = {
+  subtitulo: 'Converse direto com os tatuadores que você reservou.',
+  vazio: 'Você ainda não tem conversas. Inicie uma a partir do perfil de um artista.',
+};
+
+const TEXTOS_ARTISTA = {
+  subtitulo: 'Converse com os clientes interessados no seu trabalho.',
+  vazio: 'Você ainda não tem conversas. Quando um cliente iniciar uma conversa pelo seu perfil, ela aparece aqui.',
+};
 
 function iniciais(nome: string): string {
   const partes = nome.trim().split(/\s+/);
@@ -27,6 +38,8 @@ export function ChatScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<ChatStackParamList>>();
   const [chats, setChats] = useState<ChatDTO[]>([]);
   const [loading, setLoading] = useState(false);
+  const role = useAuthStore((s) => s.role);
+  const textos = role === 'artista' ? TEXTOS_ARTISTA : TEXTOS_CLIENTE;
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -59,7 +72,7 @@ export function ChatScreen() {
       >
         <Text className="font-display text-[32px] text-ink tracking-wide">Mensagens</Text>
         <Text className="font-body text-[14px] text-fg-2 mt-2">
-          Converse direto com os tatuadores que você reservou.
+          {textos.subtitulo}
         </Text>
 
         {loading && chats.length === 0 && (
@@ -68,7 +81,7 @@ export function ChatScreen() {
 
         {!loading && chats.length === 0 && (
           <Text className="font-body text-[13px] text-fg-3 mt-8 text-center">
-            Você ainda não tem conversas. Inicie uma a partir do perfil de um artista.
+            {textos.vazio}
           </Text>
         )}
 
@@ -109,16 +122,6 @@ export function ChatScreen() {
           ))}
         </View>
       </ScrollView>
-
-      <TouchableOpacity
-        activeOpacity={0.85}
-        accessibilityRole="button"
-        accessibilityLabel="Nova conversa"
-        className="absolute self-center bg-surface items-center justify-center rounded-rd-pill"
-        style={{ bottom: 24, width: 48, height: 48 }}
-      >
-        <MessageSquarePlus size={22} color="#000000" />
-      </TouchableOpacity>
     </View>
   );
 }

@@ -31,6 +31,9 @@ public class StorageService {
     @Value("${supabase.bucket.portfolio:portfolio_images}")
     private String portfolioBucket;
 
+    @Value("${supabase.bucket.chat:chat_images}")
+    private String chatBucket;
+
     /** Sobe imagem para o bucket de fotos de perfil; devolve a URL publica. */
     public String uploadFotoPerfil(MultipartFile file) {
         return upload(profileBucket, file);
@@ -39,6 +42,11 @@ public class StorageService {
     /** Sobe imagem para o bucket de portfolio; devolve a URL publica. */
     public String uploadPortfolio(MultipartFile file) {
         return upload(portfolioBucket, file);
+    }
+
+    /** Sobe imagem anexada a uma mensagem de chat; devolve a URL publica. */
+    public String uploadChat(MultipartFile file) {
+        return upload(chatBucket, file);
     }
 
     /** Apaga uma imagem do bucket. Best-effort: loga e segue se o objeto sumiu. */

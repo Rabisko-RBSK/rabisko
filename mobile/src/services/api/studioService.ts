@@ -22,8 +22,32 @@ export interface TatuadorBuscaDTO {
   fotoPerfilUrl: string | null;
 }
 
+/** Perfil do estúdio logado (GET/PATCH /studio/me). */
+export interface StudioDTO {
+  estudioId: string;
+  nome: string;
+  email: string;
+  cnpj: string | null;
+  telefone: string | null;
+  enderecoId: string | null;
+  fotoPerfilUrl: string | null;
+  /** Posições (macas/bancadas) de atendimento, de 1 a 50. */
+  posicoes: number;
+}
+
 /** Rotas `/studio/**` — exigem role ESTUDIO no backend. */
 export const studioService = {
+  async meuEstudio(): Promise<StudioDTO> {
+    const { data } = await api.get<StudioDTO>('/studio/me');
+    return data;
+  },
+
+  /** 409 se houver sessões futuras em posições que deixariam de existir. */
+  async atualizarPosicoes(posicoes: number): Promise<StudioDTO> {
+    const { data } = await api.patch<StudioDTO>('/studio/me', { posicoes });
+    return data;
+  },
+
   /** `termo` casa com nome, e-mail ou instagram; mínimo de 2 caracteres. */
   async buscarTatuadores(termo: string): Promise<TatuadorBuscaDTO[]> {
     const { data } = await api.get<TatuadorBuscaDTO[]>('/studio/tatuadores', {

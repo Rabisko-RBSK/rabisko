@@ -13,6 +13,8 @@ import * as ImagePicker from 'expo-image-picker';
 export interface EscolherImagemOpts {
   /** Força recorte quadrado (1:1). Útil para fotos de avatar. */
   quadrada?: boolean;
+  /** Abre o editor de recorte antes de devolver (padrão: true). */
+  editar?: boolean;
 }
 
 export async function escolherImagemDaGaleria(
@@ -40,7 +42,7 @@ export async function escolherImagemDaGaleria(
 
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['images'],
-    allowsEditing: true,
+    allowsEditing: opts.editar ?? true,
     aspect: opts.quadrada ? [1, 1] : undefined,
     quality: 0.85,
   });

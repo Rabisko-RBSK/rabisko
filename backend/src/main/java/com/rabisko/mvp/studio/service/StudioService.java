@@ -1,8 +1,13 @@
 package com.rabisko.mvp.studio.service;
 
+import com.rabisko.mvp.appointment.domain.AppointmentStatus;
+import com.rabisko.mvp.appointment.repository.AppointmentSessionRepository;
 import com.rabisko.mvp.artist.domain.Artist;
 import com.rabisko.mvp.artist.domain.ArtistStudioSearchResultDTO;
 import com.rabisko.mvp.artist.repository.ArtistRepository;
+import com.rabisko.mvp.endereco.domain.Endereco;
+import com.rabisko.mvp.endereco.domain.EnderecoOwnerType;
+import com.rabisko.mvp.endereco.service.EnderecoService;
 import com.rabisko.mvp.studio.domain.*;
 import com.rabisko.mvp.studio.repository.ConviteEstudioRepository;
 import com.rabisko.mvp.studio.repository.StudioRepository;
@@ -36,6 +41,11 @@ public class StudioService {
     @Autowired
     private ContratoService contratoService;
 
+    @Autowired
+    private AppointmentSessionRepository sessionRepository;
+    @Autowired 
+    private EnderecoService enderecoService;
+
     public Studio cadastrarEstudio(User user, RegisterEstudioDTO body) {
         Studio novoStudio = Studio.builder()
                 .userId(user.getUserId())
@@ -43,9 +53,41 @@ public class StudioService {
                 .email(user.getEmail())
                 .cnpj(body.getCnpj())
                 .telefone(body.getTelefone())
+                .posicoes(body.getPosicoes() != null ? body.getPosicoes() : 1)
                 .build();
 
-        return studioRepository.save(novoStudio);
+        Studio s = studioRepository.save(novoStudio);
+
+        if(body.getEndereco() != null){
+            Endereco e = enderecoService.salvar(s.getEstudioId(), EnderecoOwnerType.estudio, body.getEndereco(), null);
+            s.setEnderecoId(e.getEnderecoId());
+        }
+
+        return s;
+    }
+
+    public StudioDTO meuEstudio(User logado) {
+        return StudioDTO.from(exigirEstudioDoUser(logado));
+    }
+
+    @Transactional
+    public StudioDTO atualizarEstudio(User logado, AtualizarEstudioDTO body) {
+        Studio estudio = exigirEstudioDoUser(logado);
+
+        // Mesma quantidade: nada muda (nem escrita no banco).
+        if (body.posicoes() == estudio.getPosicoes()) {
+            return StudioDTO.from(estudio);
+        }
+
+        if (body.posicoes() < estudio.getPosicoes()
+                && sessionRepository.existeReservaFuturaAcimaDaPosicao(
+                        estudio.getEstudioId(), body.posicoes(), LocalDateTime.now(), AppointmentStatus.cancelada)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Existem sessoes futuras em posicoes acima de " + body.posicoes());
+        }
+
+        estudio.setPosicoes(body.posicoes());
+        return StudioDTO.from(studioRepository.save(estudio));
     }
 
     @Transactional

@@ -4,7 +4,9 @@ import com.rabisko.mvp.artist.domain.Artist;
 import com.rabisko.mvp.artist.domain.ArtistSearchProjection;
 import com.rabisko.mvp.artist.domain.ArtistStudioSearch;
 import com.rabisko.mvp.studio.domain.ColaboradorDTO;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -17,6 +19,17 @@ public interface ArtistRepository extends JpaRepository<Artist, UUID> {
 
     /** Busca o perfil tatuador a partir do User. */
     Optional<Artist> findByUserId(UUID userId);
+
+    /** Tatuadores vinculados a um estudio (equipe que divide as posicoes). */
+    List<Artist> findByEstudioId(UUID estudioId);
+
+    /**
+     * SELECT ... FOR UPDATE no tatuador. Serializa os agendamentos de quem nao
+     * tem estudio (quem tem e serializado pelo lock do estudio).
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select a from Artist a where a.tatuadorId = :tatuadorId")
+    Optional<Artist> lockById(@Param("tatuadorId") UUID tatuadorId);
 
     /**
      * Busca de tatuadores com filtros opcionais (estilos + distancia).

@@ -1,7 +1,10 @@
 package com.rabisko.mvp.appointment.controller;
 
+import com.rabisko.mvp.appointment.domain.AgendaEstudioDTO;
+import com.rabisko.mvp.appointment.domain.AgendamentoInvalidoException;
 import com.rabisko.mvp.appointment.domain.AppointmentDTO;
 import com.rabisko.mvp.appointment.domain.BusySlotDTO;
+import com.rabisko.mvp.appointment.domain.ConflitoAgendaException;
 import com.rabisko.mvp.appointment.domain.CreateAppointmentRequest;
 import com.rabisko.mvp.appointment.domain.SessaoListItemDTO;
 import com.rabisko.mvp.appointment.service.AppointmentService;
@@ -10,11 +13,13 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -64,6 +69,30 @@ public class AppointmentController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate de,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate ate) {
         return appointmentService.listarSessoes(usuario, de, ate);
+    }
+
+    /**
+     * GET /appointments/agenda-estudio?date=YYYY-MM-DD
+     * Posições do estúdio do tatuador logado e as sessões já reservadas em
+     * cada uma no dia (tela de posições ao agendar). Tatuador sem estúdio
+     * recebe vinculadoEstudio=false.
+     */
+    @GetMapping("/appointments/agenda-estudio")
+    public AgendaEstudioDTO agendaEstudio(
+            @AuthenticationPrincipal User usuario,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return appointmentService.obterAgendaDoEstudio(usuario, date);
+    }
+
+    /** 409 com o motivo do conflito no corpo (o handler padrão do Spring esconde a mensagem). */
+    @ExceptionHandler(ConflitoAgendaException.class)
+    public ResponseEntity<Map<String, String>> conflito(ConflitoAgendaException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("mensagem", e.getMessage()));
+    }
+
+    @ExceptionHandler(AgendamentoInvalidoException.class)
+    public ResponseEntity<Map<String, String>> agendamentoInvalido(AgendamentoInvalidoException e) {
+        return ResponseEntity.badRequest().body(Map.of("mensagem", e.getMessage()));
     }
 
     /**

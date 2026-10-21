@@ -6,6 +6,9 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Header } from '../../components/common/Header';
 import { SessionDetailModal } from './SessionDetailModal';
 import { appointmentService, SessaoListItemDTO } from '../../services/api';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { SessionsStackParamList } from '../../routes/sessions.stack';
 
 
 const PT_MONTHS_SHORT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -38,6 +41,7 @@ function formatDuracao(min: number): string {
 type Tab = 'upcoming' | 'past';
 
 export function BookingsScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<SessionsStackParamList>>();
   const [view, setView] = React.useState<Tab>('upcoming');
   const [sessoes, setSessoes] = React.useState<SessaoListItemDTO[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -119,6 +123,11 @@ export function BookingsScreen() {
         visible={detalheVisivel}
         onClose={() => setDetalheVisivel(false)}
         sessao={selectedSessao}
+        onOpenAnamnese={() => {
+          if (!selectedSessao) return;
+          setDetalheVisivel(false);
+          navigation.navigate('Anamnese', { sessao: selectedSessao });
+        }}
       />
     </View>
   );

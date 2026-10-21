@@ -46,8 +46,12 @@ public class Message {
     @Column(name = "destinatario_id", updatable = false, nullable = false)
     private UUID destinatarioId;
 
-    /** Texto da mensagem. Sem suporte a anexos no MVP. */
+    /** Texto da mensagem. Opcional quando ha imagem (vira a legenda). */
     private String conteudo;
+
+    /** URL publica da imagem anexada (bucket chat_images), ou null. */
+    @Column(name = "imagem_url", updatable = false)
+    private String imagemUrl;
 
     @CreationTimestamp
     @Column(name = "data_envio", updatable = false, nullable = false)

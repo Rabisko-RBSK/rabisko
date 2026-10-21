@@ -8,5 +8,6 @@ public record AppointmentSessionDTO(
     UUID sessionId,
     LocalDate data,
     LocalTime horario,
-    int duracaoMinutos
+    int duracaoMinutos,
+    Integer posicao
 ) {}
