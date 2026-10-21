@@ -9,6 +9,9 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Header } from '../../components/common/Header';
 import { SessionDetailModal } from './SessionDetailModal';
 import { appointmentService, SessaoListItemDTO } from '../../services/api';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { SessionsStackParamList } from '../../routes/sessions.stack';
 
 
 const GANTT_START  = 8;
@@ -80,6 +83,7 @@ function formatDataHora(dateStr: string, horario: string): string {
 
 
 export function CalendarScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<SessionsStackParamList>>();
   const [weekOffset, setWeekOffset] = React.useState(0);
   const [sessoes, setSessoes] = React.useState<SessaoListItemDTO[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -151,10 +155,9 @@ export function CalendarScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
         <View className="flex-row items-center justify-center px-4 py-3" style={{ gap: 16 }}>
           <TouchableOpacity
-            onPress={() => setWeekOffset((w) => Math.max(0, w - 1))}
-            disabled={weekOffset === 0}
+            onPress={() => setWeekOffset((w) => w - 1)}
             hitSlop={8}
-            style={{ opacity: weekOffset === 0 ? 0.3 : 1 }}
+            accessibilityLabel="Semana anterior"
           >
             <ChevronLeft size={22} color="#1A1A1A" />
           </TouchableOpacity>
@@ -343,6 +346,11 @@ export function CalendarScreen() {
         visible={detalheVisivel}
         onClose={() => setDetalheVisivel(false)}
         sessao={selectedSessao}
+        onOpenAnamnese={() => {
+          if (!selectedSessao) return;
+          setDetalheVisivel(false);
+          navigation.navigate('Anamnese', { sessao: selectedSessao });
+        }}
       />
     </View>
   );

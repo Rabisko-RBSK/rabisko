@@ -10,6 +10,7 @@
     "ios": "expo start --ios --offline",
     "web": "expo start --web --offline",
     "lint": "expo lint",
+    "test:anamnese": "node --experimental-strip-types --test tests/anamnese.test.mjs tests/anamneseFlow.test.mjs",
     "test:studio": "node --experimental-strip-types tests/studioDashboard.test.mjs",
     "test:agenda": "node --experimental-strip-types --test tests/agendaEstudio.test.mjs tests/posicoesEstudio.test.mjs"
   },
@@ -27,6 +28,8 @@
     "axios": "^1.15.2",
     "date-fns": "^4.1.0",
     "expo": "^57.0.25",
+    "expo-asset": "~57.0.18",
+    "expo-document-picker": "~57.0.2",
     "expo-camera": "~57.0.5",
     "expo-constants": "~57.0.19",
     "expo-font": "~57.0.4",
