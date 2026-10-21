@@ -210,18 +210,18 @@ ON CONFLICT ("mensagem_id") DO NOTHING;
 -- servicos: propostas/orçamentos em negociação ou finalizados
 -- ----------------------------------------------------------------------------
 INSERT INTO "public"."servicos"
-    ("servico_id", "chat_id", "tatuador_id", "cliente_id", "descricao", "tamanho_cm", "local_corpo",
+    ("servico_id", "chat_id", "tatuador_id", "cliente_id", "estudio_id", "descricao", "tamanho_cm", "local_corpo",
      "valor_total", "valor_sinal", "finalizado", "data_finalizacao", "status") VALUES
     ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', '88888888-8888-8888-8888-888888888801',
-     '44444444-4444-4444-4444-444444444401', '22222222-2222-2222-2222-222222222201',
+     '44444444-4444-4444-4444-444444444401', '22222222-2222-2222-2222-222222222201', NULL,
      'Composição blackwork floral no antebraço', 15.0, 'Antebraço direito',
      900.00, 200.00, false, NULL, 'EM_NEGOCIACAO'),
     ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02', '88888888-8888-8888-8888-888888888802',
-     '44444444-4444-4444-4444-444444444402', '22222222-2222-2222-2222-222222222202',
+     '44444444-4444-4444-4444-444444444402', '22222222-2222-2222-2222-222222222202', '33333333-3333-3333-3333-333333333301',
      'Retrato realista em preto e cinza', 20.0, 'Panturrilha esquerda',
      1500.00, 300.00, true, '2026-08-20 18:00:00-03', 'FINALIZADO'),
     ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa03', '88888888-8888-8888-8888-888888888803',
-     '44444444-4444-4444-4444-444444444403', '22222222-2222-2222-2222-222222222201',
+     '44444444-4444-4444-4444-444444444403', '22222222-2222-2222-2222-222222222201', '33333333-3333-3333-3333-333333333301',
      'Fechamento de costas com tema oriental (dragão e ondas)', 45.0, 'Costas inteiras',
      4500.00, 900.00, true, NULL, 'ACEITO')
 ON CONFLICT ("servico_id") DO NOTHING;
@@ -357,10 +357,13 @@ novos AS (
         (3, 9,  7, 'cacc1353-c691-49b4-9a66-ce4a73891f3c', 1100)
     ) AS v(k, i, dia, tatuador_id, valor) ON v.k = ms.k
 )
+-- estudio_id: Diego, Filipe e João fizeram esses trabalhos no Tinta Negra
+-- (o dashboard do estúdio conta por servicos.estudio_id).
 INSERT INTO "public"."servicos"
-    ("servico_id", "tatuador_id", "cliente_id", "descricao", "valor_total", "status", "data_criacao")
+    ("servico_id", "tatuador_id", "cliente_id", "estudio_id", "descricao", "valor_total", "status", "data_criacao")
 SELECT ('aaaaaaaa-aaaa-aaaa-aaaa-' || lpad((s.k * 1000 + s.n)::text, 12, '0'))::uuid,
-       s.tatuador_id::uuid, s.cliente_id::uuid, 'Serviço do histórico do dashboard',
+       s.tatuador_id::uuid, s.cliente_id::uuid, '33333333-3333-3333-3333-333333333301'::uuid,
+       'Serviço do histórico do dashboard',
        s.valor, s.status, (s.dia + make_interval(hours => s.hora)) AT TIME ZONE 'America/Sao_Paulo'
 FROM (SELECT * FROM recorrentes UNION ALL SELECT * FROM novos) AS s
 ON CONFLICT ("servico_id") DO NOTHING;
