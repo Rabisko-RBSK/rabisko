@@ -5,11 +5,14 @@
 -- desenvolvimento/local (executado automaticamente por `supabase db reset`,
 -- conforme configurado em supabase/config.toml -> [db.seed]).
 --
--- Baseado no schema definido em migrations/20260815161135_remote_schema.sql,
--- já considerando as migrations subsequentes 20260906125711_remove_postgis.sql
--- (remoção do PostGIS/geo_point) e 20260906144829_remove_unused_tables.sql
--- (remoção de controle_etapas, pagamentos e simulacoes, e de colunas não
--- utilizadas em avaliacoes/chats/clientes/estudios/portfolio_imagens/tatuadores).
+-- Segue o schema após todas as migrations, incluindo a etapa 1 da
+-- reestruturação (20261026160729_reestruturacao_etapa1.sql):
+--   * estilos do tatuador vêm do portfólio (portfolio.estilo_id); a tabela
+--     tatuador_estilos não existe mais;
+--   * portfolio_imagens virou portfolio;
+--   * reservas.orcamento_id virou reservas.servico_id;
+--   * a avaliação do cliente fica no próprio serviço (servicos.avaliacao_*);
+--     a tabela avaliacoes não existe mais.
 --
 -- Todos os IDs são fixos (não gerados via uuid_generate_v4) para que as
 -- referências entre tabelas fiquem legíveis e o seed seja idempotente:
@@ -20,8 +23,8 @@
 --   1xxx.. usuários       2xxx.. clientes        3xxx.. estúdios
 --   4xxx.. tatuadores     5xxx.. estilos         6xxx.. endereços
 --   7xxx.. portfólio      8xxx.. chats           9xxx.. mensagens
---   axxx.. serviços       bxxx.. reservas        dxxx.. qrcodes
---   exxx.. avaliações
+--   axxx.. serviços       bxxx.. reservas        cxxx.. convites
+--   dxxx.. qrcodes        exxx.. horários de atendimento
 -- ============================================================================
 
 BEGIN;
@@ -94,19 +97,6 @@ INSERT INTO "public"."tatuadores"
 ON CONFLICT ("tatuador_id") DO NOTHING;
 
 -- ----------------------------------------------------------------------------
--- tatuador_estilos: estilos praticados por cada tatuador
--- ----------------------------------------------------------------------------
-INSERT INTO "public"."tatuador_estilos" ("tatuador_id", "estilo_id") VALUES
-    ('44444444-4444-4444-4444-444444444401', '55555555-5555-5555-5555-555555555504'), -- Carla: Blackwork
-    ('44444444-4444-4444-4444-444444444401', '55555555-5555-5555-5555-555555555505'), -- Carla: Fineline
-    ('44444444-4444-4444-4444-444444444402', '55555555-5555-5555-5555-555555555503'), -- Diego: Realismo
-    ('44444444-4444-4444-4444-444444444402', '55555555-5555-5555-5555-555555555501'), -- Diego: Old School
-    ('44444444-4444-4444-4444-444444444403', '55555555-5555-5555-5555-555555555508'), -- Filipe: Oriental/Japonês
-    ('44444444-4444-4444-4444-444444444403', '55555555-5555-5555-5555-555555555506'), -- Filipe: Aquarela
-    ('44444444-4444-4444-4444-444444444403', '55555555-5555-5555-5555-555555555507')  -- Filipe: Tribal
-ON CONFLICT ("tatuador_id", "estilo_id") DO NOTHING;
-
--- ----------------------------------------------------------------------------
 -- horarios_atendimento: grade semanal de cada tatuador
 -- (dia_semana ISO: 1 = segunda ... 7 = domingo). Cobre os casos da regra:
 --   * Carla: um intervalo por dia (ter a sex) + sábado mais curto;
@@ -140,7 +130,7 @@ INSERT INTO "public"."horarios_atendimento" ("horario_id", "tatuador_id", "dia_s
 ON CONFLICT ("horario_id") DO NOTHING;
 
 -- ----------------------------------------------------------------------------
--- enderecos: endereços polimórficos (cliente/estúdio) com lat/lng simples
+-- enderecos: endereços polimórficos (cliente/estúdio/tatuador) com lat/lng simples
 -- (PostGIS/geo_point foram removidos pela migration remove_postgis).
 -- ----------------------------------------------------------------------------
 INSERT INTO "public"."enderecos"
@@ -160,15 +150,28 @@ UPDATE "public"."estudios"
  WHERE "estudio_id" = '33333333-3333-3333-3333-333333333301';
 
 -- ----------------------------------------------------------------------------
--- portfolio_imagens: galeria de trabalhos de cada tatuador
+-- portfolio: galeria de trabalhos de cada tatuador. Cada imagem tem um estilo,
+-- e os estilos do tatuador (perfil e busca) são os do portfólio dele:
+--   * Carla: Blackwork e Fineline;
+--   * Diego: Realismo e Old School;
+--   * Filipe: Oriental/Japonês, Aquarela e Tribal;
+--   * João: sem portfólio -> não aparece na busca por estilo.
 -- ----------------------------------------------------------------------------
-INSERT INTO "public"."portfolio_imagens" ("imagem_id", "tatuador_id", "url") VALUES
-    ('77777777-7777-7777-7777-777777777701', '44444444-4444-4444-4444-444444444401', 'https://picsum.photos/seed/carla1/600/800'),
-    ('77777777-7777-7777-7777-777777777702', '44444444-4444-4444-4444-444444444401', 'https://picsum.photos/seed/carla2/600/800'),
-    ('77777777-7777-7777-7777-777777777703', '44444444-4444-4444-4444-444444444402', 'https://picsum.photos/seed/diego1/600/800'),
-    ('77777777-7777-7777-7777-777777777704', '44444444-4444-4444-4444-444444444402', 'https://picsum.photos/seed/diego2/600/800'),
-    ('77777777-7777-7777-7777-777777777705', '44444444-4444-4444-4444-444444444403', 'https://picsum.photos/seed/filipe1/600/800'),
-    ('77777777-7777-7777-7777-777777777706', '44444444-4444-4444-4444-444444444403', 'https://picsum.photos/seed/filipe2/600/800')
+INSERT INTO "public"."portfolio" ("imagem_id", "tatuador_id", "estilo_id", "url") VALUES
+    ('77777777-7777-7777-7777-777777777701', '44444444-4444-4444-4444-444444444401',
+     '55555555-5555-5555-5555-555555555504', 'https://picsum.photos/seed/carla1/600/800'),   -- Blackwork
+    ('77777777-7777-7777-7777-777777777702', '44444444-4444-4444-4444-444444444401',
+     '55555555-5555-5555-5555-555555555505', 'https://picsum.photos/seed/carla2/600/800'),   -- Fineline
+    ('77777777-7777-7777-7777-777777777703', '44444444-4444-4444-4444-444444444402',
+     '55555555-5555-5555-5555-555555555503', 'https://picsum.photos/seed/diego1/600/800'),   -- Realismo
+    ('77777777-7777-7777-7777-777777777704', '44444444-4444-4444-4444-444444444402',
+     '55555555-5555-5555-5555-555555555501', 'https://picsum.photos/seed/diego2/600/800'),   -- Old School
+    ('77777777-7777-7777-7777-777777777705', '44444444-4444-4444-4444-444444444403',
+     '55555555-5555-5555-5555-555555555508', 'https://picsum.photos/seed/filipe1/600/800'),  -- Oriental/Japonês
+    ('77777777-7777-7777-7777-777777777706', '44444444-4444-4444-4444-444444444403',
+     '55555555-5555-5555-5555-555555555506', 'https://picsum.photos/seed/filipe2/600/800'),  -- Aquarela
+    ('77777777-7777-7777-7777-777777777707', '44444444-4444-4444-4444-444444444403',
+     '55555555-5555-5555-5555-555555555507', 'https://picsum.photos/seed/filipe3/600/800')   -- Tribal
 ON CONFLICT ("imagem_id") DO NOTHING;
 
 -- ----------------------------------------------------------------------------
@@ -226,11 +229,19 @@ INSERT INTO "public"."servicos"
      4500.00, 900.00, true, NULL, 'ACEITO')
 ON CONFLICT ("servico_id") DO NOTHING;
 
+-- Avaliação do cliente sobre o serviço finalizado do Diego (nota e data andam
+-- juntas: chk_servicos_avaliacao_completa).
+UPDATE "public"."servicos"
+   SET "avaliacao_nota" = 5,
+       "avaliacao_comentario" = 'Retrato ficou idêntico à foto, atendimento impecável.',
+       "avaliacao_data" = '2026-08-22 10:00:00-03'
+ WHERE "servico_id" = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02';
+
 -- ----------------------------------------------------------------------------
--- reservas: sessões agendadas a partir de um serviço/orçamento
+-- reservas: sessões agendadas a partir de um serviço
 -- ----------------------------------------------------------------------------
 INSERT INTO "public"."reservas"
-    ("reserva_id", "orcamento_id", "tatuador_id", "cliente_id", "data_criacao", "data_sessao", "duracao_min", "status", "observacoes") VALUES
+    ("reserva_id", "servico_id", "tatuador_id", "cliente_id", "data_criacao", "data_sessao", "duracao_min", "status", "observacoes") VALUES
     ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02',
      '44444444-4444-4444-4444-444444444402', '22222222-2222-2222-2222-222222222202',
      '2026-08-10 09:30:00-03', '2026-08-20 15:00:00-03', 180, 'concluida', 'Sessão realizada sem intercorrências.'),
@@ -369,7 +380,7 @@ FROM (SELECT * FROM recorrentes UNION ALL SELECT * FROM novos) AS s
 ON CONFLICT ("servico_id") DO NOTHING;
 
 INSERT INTO "public"."reservas"
-    ("reserva_id", "orcamento_id", "tatuador_id", "cliente_id", "data_criacao", "data_sessao", "duracao_min", "status")
+    ("reserva_id", "servico_id", "tatuador_id", "cliente_id", "data_criacao", "data_sessao", "duracao_min", "status")
 SELECT ('bbbbbbbb-bbbb-bbbb-bbbb-' || right(s.servico_id::text, 12))::uuid,
        s.servico_id, s.tatuador_id, s.cliente_id, s.data_criacao, x.data_sessao,
        120 + (x.n % 3) * 60,

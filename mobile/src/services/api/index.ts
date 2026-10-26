@@ -43,7 +43,6 @@ export interface RegisterArtistaData {
   bio?: string;
   instagram?: string;
   endereco: EnderecoInput;
-  estilos?: string[];
   termosAceitos: boolean;
 }
 

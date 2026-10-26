@@ -70,10 +70,10 @@ public interface ArtistRepository extends JpaRepository<Artist, UUID> {
                     :semEstilo = TRUE
                     OR EXISTS (
                         SELECT 1
-                        FROM tatuador_estilos te
-                        JOIN estilos e ON e.estilo_id = te.estilo_id
-                        WHERE te.tatuador_id = t.tatuador_id
-                          AND LOWER(e.nome) IN (:estilos)
+                        FROM portfolio p
+                        JOIN estilos e ON e.estilo_id = p.estilo_id
+                        WHERE p.tatuador_id = t.tatuador_id
+                        AND LOWER(e.nome) IN (:estilos)
                     )
                   )
               AND (

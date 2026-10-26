@@ -779,10 +779,17 @@ export function ArtistProfileScreen() {
             />
           </View>
         ) : (
-          <PortfolioCarousel
-            images={portfolio}
-            onImagePress={editing ? undefined : abrirPortfolioCompleto}
-          />
+          <>
+            <PortfolioCarousel
+              images={portfolio}
+              onImagePress={editing ? undefined : abrirPortfolioCompleto}
+            />
+            {portfolio.length === 0 && (
+              <Text className="font-body text-[12px] text-fg-3 px-6 mt-2 leading-[16px]">
+                Adicione trabalhos ao portfólio para aparecer nas buscas por estilo.
+              </Text>
+            )}
+          </>
         )}
 
         <SectionHeader

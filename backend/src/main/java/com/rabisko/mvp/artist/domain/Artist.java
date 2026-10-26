@@ -1,22 +1,17 @@
 package com.rabisko.mvp.artist.domain;
 
-import com.rabisko.mvp.estilo.domain.Estilo;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
-import java.util.Set;
 import java.util.UUID;
 
 
@@ -74,32 +69,6 @@ public class Artist {
      */
     @Column(name = "vinculado_estudio", nullable = false)
     private boolean vinculadoEstudio;
-
-    /**
-     * Relacao MUITOS-PRA-MUITOS (Many-to-Many) com a tabela `estilos`.
-     *
-     * O que isso significa?
-     *   Um tatuador pode fazer varios estilos (Realismo, Blackwork, ...)
-     *   e cada estilo pode ser feito por varios tatuadores. Quando isso
-     *   acontece no banco, a gente usa uma TABELA DE JUNCAO no meio:
-     *   `tatuador_estilos` (tatuador_id, estilo_id).
-     *
-     * @JoinTable diz ao Hibernate qual e a tabela do meio e quais sao
-     * as suas colunas. Quando voce chama artist.getEstilos(), o Hibernate
-     * faz o JOIN automatico pra trazer os estilos relacionados.
-     *
-     * fetch = LAZY: NAO carrega os estilos imediatamente quando carrega
-     * o tatuador. So vai no banco buscar a lista quando alguem chamar
-     * getEstilos() (economia de query quando voce so precisa do nome).
-     */
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-            name = "tatuador_estilos",
-            joinColumns = @JoinColumn(name = "tatuador_id"),
-            inverseJoinColumns = @JoinColumn(name = "estilo_id")
-    )
-    @Builder.Default
-    private Set<Estilo> estilos = new HashSet<>();
 
     @CreationTimestamp
     @Column(name = "data_criacao", updatable = false, nullable = false)

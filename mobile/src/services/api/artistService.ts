@@ -8,8 +8,10 @@ import { multipartImage } from '../../utils/multipart';
 export interface PortfolioImage {
   imagemId: string;
   url: string;
-  descricao: string | null;
-  ordem: number | null;
+  /** Estilo do trabalho (obrigatório no upload); define os estilos do tatuador na busca. */
+  estiloId: string | null;
+  descricao?: string | null;
+  ordem?: number | null;
 }
 
 /**
@@ -211,9 +213,10 @@ export const artistService = {
    */
   async adicionarImagemPortfolio(
     localUri: string,
+    estiloId: string,
     descricao?: string,
   ): Promise<PortfolioImage> {
-    const form = multipartImage(localUri, 'file', { descricao });
+    const form = multipartImage(localUri, 'file', { estiloId, descricao });
     const { data } = await api.post<PortfolioImage>('/artist/me/portfolio', form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });

@@ -19,7 +19,6 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -134,9 +133,10 @@ public class ArtistController {
     @PostMapping("/me/portfolio")
     public ResponseEntity<PortfolioImagemDTO> adicionarImagemPortfolio(
             @AuthenticationPrincipal User user,
-            @RequestParam("file") MultipartFile file
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("estiloId") UUID estiloId
     ) {
-        return ResponseEntity.ok(artistService.adicionarImagemPortfolio(user, file));
+        return ResponseEntity.ok(artistService.adicionarImagemPortfolio(user, file, estiloId));
     }
 
     /** Remove imagem do portfolio (apaga linha + tenta apagar do Storage). */

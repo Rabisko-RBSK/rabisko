@@ -4,12 +4,14 @@ import java.util.UUID;
 
 public record PortfolioImagemDTO(
         UUID imagemId,
-        String url
+        String url,
+        UUID estiloId
 ) {
-    public static PortfolioImagemDTO fromEntity(PortfolioImagem img) {
+    public static PortfolioImagemDTO fromEntity(Portfolio img) {
         return new PortfolioImagemDTO(
                 img.getImagemId(),
-                img.getUrl()
+                img.getUrl(),
+                img.getEstiloId()
         );
     }
 }

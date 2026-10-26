@@ -91,7 +91,6 @@ public class ArtistService {
                 .bio(body.getBio())
                 .instagram(body.getInstagram())
                 .vinculadoEstudio(false)
-                .estilos(resolverEstilos(body.getEstilos()))
                 .build();
 
         Artist a = artistRepository.save(novoArtist);
@@ -304,13 +303,18 @@ public class ArtistService {
     }
 
 
-    public PortfolioImagemDTO adicionarImagemPortfolio(User user, MultipartFile file) {
+    public PortfolioImagemDTO adicionarImagemPortfolio(User user, MultipartFile file, UUID estiloId) {
         Artist artist = exigirArtistDoUser(user);
+        if (!estiloRepository.existsById(estiloId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Estilo inválido");
+        }
         String url = storageService.uploadPortfolio(file);
 
-        PortfolioImagem nova = PortfolioImagem.builder()
+
+        Portfolio nova = Portfolio.builder()
                 .tatuadorId(artist.getTatuadorId())
                 .url(url)
+                .estiloId(estiloId)
                 .build();
         nova = portfolioImagemRepository.save(nova);
         return PortfolioImagemDTO.fromEntity(nova);
@@ -318,7 +322,7 @@ public class ArtistService {
 
     public void removerImagemPortfolio(User user, UUID imagemId) {
         Artist artist = exigirArtistDoUser(user);
-        PortfolioImagem img = portfolioImagemRepository
+        Portfolio img = portfolioImagemRepository
                 .findByImagemIdAndTatuadorId(imagemId, artist.getTatuadorId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Imagem nao encontrada"));
 
@@ -346,44 +350,6 @@ public class ArtistService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Usuario nao possui perfil de tatuador"
                 ));
-    }
-
-    /**
-     * Pega os nomes de estilos vindos no cadastro e devolve as entidades
-     * Estilo correspondentes do catalogo. Comparacao case-insensitive.
-     *
-     * Se o front mandar um nome que NAO existe no catalogo (ex.: typo),
-     * o estilo simplesmente nao entra — o cadastro nao falha. So loga
-     * um warning pra a gente investigar depois.
-     *
-     * Por que nao deixar criar estilo novo na hora? Pra manter o
-     * catalogo controlado (evita "Realismo", "realista", "Realismoo"...
-     * cada tatuador inventando seu).
-     */
-    private Set<Estilo> resolverEstilos(List<String> nomes) {
-        if (nomes == null || nomes.isEmpty()) {
-            return new HashSet<>();
-        }
-        List<String> limpos = nomes.stream()
-                .filter(s -> s != null && !s.isBlank())
-                .map(String::trim)
-                .collect(Collectors.toList());
-        if (limpos.isEmpty()) {
-            return new HashSet<>();
-        }
-
-        List<Estilo> encontrados = estiloRepository.findByNomeInIgnoreCase(limpos);
-
-        if (encontrados.size() != limpos.size()) {
-            Set<String> encontradosNomes = encontrados.stream()
-                    .map(e -> e.getNome().toLowerCase(Locale.ROOT))
-                    .collect(Collectors.toSet());
-            List<String> faltantes = limpos.stream()
-                    .filter(s -> !encontradosNomes.contains(s.toLowerCase(Locale.ROOT)))
-                    .collect(Collectors.toList());
-            log.warn("Estilos nao encontrados no catalogo, ignorados: {}", faltantes);
-        }
-        return new HashSet<>(encontrados);
     }
 
     /**

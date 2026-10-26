@@ -5,6 +5,8 @@ import {
   Dimensions,
   FlatList,
   Image,
+  Modal,
+  ScrollView,
   Text,
   TouchableOpacity,
   View,
@@ -12,9 +14,11 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Check, Pencil, Plus, Trash2 } from 'lucide-react-native';
+import { Check, Pencil, Plus, Trash2, X } from 'lucide-react-native';
 
 import { Header } from '../../components/common/Header';
+import { FilterChip } from '../../components/common/Chip';
+import { useEstilos } from '../../hooks/useEstilos';
 import { ArtistProfileStackParamList } from '../../routes/artist-profile.stack';
 import {
   artistService,
@@ -35,6 +39,9 @@ import { escolherImagemDaGaleria } from '../../utils/imagePicker';
  * Modo de edição (botão lápis no canto superior direito): exibe um botão
  * "Adicionar" e overlay de lixeira em cada tile. Operações chamam
  * `POST /artist/me/portfolio` e `DELETE /artist/me/portfolio/{id}`.
+ *
+ * Toda imagem tem um estilo: ao adicionar, o tatuador escolhe a imagem e
+ * depois o estilo. Os estilos do tatuador na busca vêm do portfólio.
  */
 
 type PortfolioRoute = RouteProp<ArtistProfileStackParamList, 'Portfolio'>;
@@ -58,14 +65,25 @@ export function PortfolioScreen() {
   /** Bloqueia novas ações enquanto um add/remove está em curso, pra evitar
    *  taps duplos disparando 2 requests pra mesma imagem. */
   const [working, setWorking] = useState(false);
+  /** Imagem escolhida na galeria, aguardando o tatuador escolher o estilo. */
+  const [uriPendente, setUriPendente] = useState<string | null>(null);
+  const { estilos } = useEstilos();
+  const nomeDoEstilo = (estiloId: string | null) =>
+    estilos.find((e) => e.estiloId === estiloId)?.nome ?? null;
 
   const adicionarImagem = async () => {
     if (working) return;
     const uri = await escolherImagemDaGaleria();
-    if (!uri) return;
+    if (uri) setUriPendente(uri);
+  };
+
+  const enviarComEstilo = async (estiloId: string) => {
+    const uri = uriPendente;
+    if (!uri || working) return;
+    setUriPendente(null);
     setWorking(true);
     try {
-      const nova = await artistService.adicionarImagemPortfolio(uri);
+      const nova = await artistService.adicionarImagemPortfolio(uri, estiloId);
       setImages((prev) => [nova, ...prev]);
     } catch (err: any) {
       console.warn(
@@ -214,12 +232,12 @@ export function PortfolioScreen() {
                 </TouchableOpacity>
               )}
             </View>
-            {item.descricao ? (
+            {nomeDoEstilo(item.estiloId) || item.descricao ? (
               <Text
                 className="font-body text-[12px] text-fg-3 mt-1.5"
                 numberOfLines={1}
               >
-                {item.descricao}
+                {[nomeDoEstilo(item.estiloId), item.descricao].filter(Boolean).join(' · ')}
               </Text>
             ) : null}
           </View>
@@ -232,11 +250,54 @@ export function PortfolioScreen() {
             <Text className="font-body text-[13px] text-fg-2 text-center">
               {editing
                 ? 'Toque em "Adicionar" para enviar a primeira imagem.'
-                : 'As imagens adicionadas ao portfólio aparecerão aqui.'}
+                : 'As imagens adicionadas ao portfólio aparecerão aqui. Os estilos dos seus trabalhos definem em quais buscas você aparece.'}
             </Text>
           </View>
         }
       />
+
+      <Modal
+        visible={uriPendente !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setUriPendente(null)}
+      >
+        <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.35)' }}>
+          <View className="bg-background rounded-t-rd-lg px-6 pt-4" style={{ paddingBottom: insets.bottom + 24, maxHeight: '70%' }}>
+            <View className="flex-row items-center mb-1">
+              <Text className="flex-1 font-aux-bold text-[16px] text-ink">Qual o estilo deste trabalho?</Text>
+              <TouchableOpacity
+                onPress={() => setUriPendente(null)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Cancelar"
+              >
+                <X size={22} color="#1A1A1A" />
+              </TouchableOpacity>
+            </View>
+            <Text className="font-body text-[12px] text-fg-3 mb-4">
+              Clientes que buscarem por esse estilo vão encontrar seu perfil.
+            </Text>
+            {uriPendente ? (
+              <Image
+                source={{ uri: uriPendente }}
+                className="rounded-rd-md mb-4 self-center"
+                style={{ width: 120, height: 120 }}
+              />
+            ) : null}
+            <ScrollView>
+              <View className="flex-row flex-wrap" style={{ gap: 8 }}>
+                {estilos.map((e) => (
+                  <FilterChip key={e.estiloId} label={e.nome} onPress={() => enviarComEstilo(e.estiloId)} />
+                ))}
+              </View>
+              {estilos.length === 0 && (
+                <Text className="font-body text-[13px] text-fg-2">Carregando estilos...</Text>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

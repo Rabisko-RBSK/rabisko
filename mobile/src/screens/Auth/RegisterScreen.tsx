@@ -19,7 +19,6 @@ import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
 import { Checkbox } from '../../components/common/Checkbox';
 import { RoleSwitch } from '../../components/common/RoleSwitch';
-import { PrefChip } from '../../components/common/Chip';
 import { EnderecoForm, validarEndereco } from '../../components/common/EnderecoForm';
 import { DatePickerModal } from '../../components/common/DatePickerModal';
 import { isValidCNPJ } from '../../utils/validators';
@@ -39,17 +38,6 @@ const CTA_BY_ROLE: Record<UserRoleId, string> = {
   artista: 'Sou artista',
   estudio: 'Sou estúdio',
 };
-
-const TATTOO_STYLES = [
-  'Realismo',
-  'Minimalista',
-  'Tradicional',
-  'Aquarela',
-  'Geométrico',
-  'Blackwork',
-  'Old School',
-  'Japonês',
-];
 
 /**
  * Converte "dd/mm/aaaa" pra "yyyy-MM-dd" (formato esperado por LocalDate
@@ -160,7 +148,6 @@ export function RegisterScreen() {
   const [bio, setBio] = useState('');
   const [endereco, setEndereco] = useState<EnderecoInput | null>(null);
   const [instagram, setInstagram] = useState('');
-  const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
 
   const [cnpj, setCnpj] = useState('');
   const [posicoes, setPosicoes] = useState('');
@@ -173,12 +160,6 @@ export function RegisterScreen() {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-
-  const toggleStyle = (style: string) => {
-    setSelectedStyles((prev) =>
-      prev.includes(style) ? prev.filter((s) => s !== style) : [...prev, style],
-    );
-  };
 
   const handleRegister = useCallback(async () => {
     setErro(null);
@@ -209,10 +190,6 @@ export function RegisterScreen() {
         setErro('CNPJ inválido. Confira os números.');
         return;
       }
-      if (selectedStyles.length === 0) {
-        setErro('Selecione pelo menos um estilo de tatuagem.');
-        return;
-      }
     }
     if (role === 'estudio' && cnpj.trim()) {
       if (!isValidCNPJ(cnpj)) {
@@ -231,10 +208,6 @@ export function RegisterScreen() {
     }
     if (!termsAccepted) {
       setErro('Você precisa aceitar os termos para continuar.');
-      return;
-    }
-    if (role === 'artista' && selectedStyles.length === 0) {
-      setErro('Selecione pelo menos um estilo de tatuagem.');
       return;
     }
     if (role !== 'cliente') {
@@ -276,7 +249,6 @@ export function RegisterScreen() {
           bio: bio || undefined,
           instagram: instagram || undefined,
           endereco: enderecoFinal!,
-          estilos: selectedStyles.length ? selectedStyles : undefined,
           termosAceitos: termsAccepted,
         }));
       } else {
@@ -304,7 +276,7 @@ export function RegisterScreen() {
     }
   }, [
     role, nome, email, senha, confirmarSenha, telefone, dataNasc, cpf,
-    bio, instagram, endereco, cnpj, posicoes, selectedStyles, termsAccepted,
+    bio, instagram, endereco, cnpj, posicoes, termsAccepted,
     setToken, setUser, setRole,
   ]);
 
@@ -461,17 +433,9 @@ export function RegisterScreen() {
               onChangeText={setInstagram}
               editable={!loading}
             />
-            <Text className="font-body text-[12px] text-fg-2 mb-2 ml-1">Estilos</Text>
-            <View className="flex-row flex-wrap mb-4" style={{ gap: 8 }}>
-              {TATTOO_STYLES.map((style) => (
-                <PrefChip
-                  key={style}
-                  label={style}
-                  selected={selectedStyles.includes(style)}
-                  onPress={() => toggleStyle(style)}
-                />
-              ))}
-            </View>
+            <Text className="font-body text-[12px] text-fg-3 mb-4 ml-1 leading-[16px]">
+              Seus estilos aparecem a partir dos trabalhos que você publicar no portfólio.
+            </Text>
           </>
         )}
 

@@ -44,8 +44,6 @@ public class RegisterArtistaDTO {
 
     private String instagram;
 
-    private List<String> estilos;
-
     @AssertTrue(message = "Voce deve aceitar os termos de uso")
     private boolean termosAceitos;
 }
