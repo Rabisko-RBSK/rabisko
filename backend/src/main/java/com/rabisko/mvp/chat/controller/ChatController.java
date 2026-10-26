@@ -6,11 +6,13 @@ import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.rabisko.mvp.chat.domain.AbrirChatRequest;
 import com.rabisko.mvp.chat.domain.ChatDTO;
@@ -70,5 +72,19 @@ public class ChatController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "30") int size) {
         return chatService.listarMensagens(usuario, chatId, PageRequest.of(page, size));
+    }
+
+    /**
+     * POST /chats/{chatId}/imagens — envia uma imagem no chat.
+     * Multipart com campo `file` + `legenda` opcional. A mensagem criada
+     * tambem e entregue via WebSocket (/user/queue/messages) aos dois lados.
+     */
+    @PostMapping(value = "/{chatId}/imagens", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public MensagemDTO enviarImagem(
+            @AuthenticationPrincipal User usuario,
+            @PathVariable UUID chatId,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "legenda", required = false) String legenda) {
+        return chatService.enviarImagem(usuario, chatId, file, legenda);
     }
 }

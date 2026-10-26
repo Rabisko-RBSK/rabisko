@@ -107,6 +107,39 @@ INSERT INTO "public"."tatuador_estilos" ("tatuador_id", "estilo_id") VALUES
 ON CONFLICT ("tatuador_id", "estilo_id") DO NOTHING;
 
 -- ----------------------------------------------------------------------------
+-- horarios_atendimento: grade semanal de cada tatuador
+-- (dia_semana ISO: 1 = segunda ... 7 = domingo). Cobre os casos da regra:
+--   * Carla: um intervalo por dia (ter a sex) + sábado mais curto;
+--   * Diego: dois intervalos por dia (pausa para almoço);
+--   * Filipe: expediente que vai até a noite;
+--   * João: sem grade -> sem restrição de dia/horário no agendamento.
+-- ----------------------------------------------------------------------------
+INSERT INTO "public"."horarios_atendimento" ("horario_id", "tatuador_id", "dia_semana", "abre", "fecha") VALUES
+    -- Carla: ter a sex 13h-20h, sáb 10h-14h
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee01', '44444444-4444-4444-4444-444444444401', 2, '13:00', '20:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee02', '44444444-4444-4444-4444-444444444401', 3, '13:00', '20:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee03', '44444444-4444-4444-4444-444444444401', 4, '13:00', '20:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee04', '44444444-4444-4444-4444-444444444401', 5, '13:00', '20:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee05', '44444444-4444-4444-4444-444444444401', 6, '10:00', '14:00'),
+    -- Diego: seg a sex 10h-12h e 14h-19h
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee11', '44444444-4444-4444-4444-444444444402', 1, '10:00', '12:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee12', '44444444-4444-4444-4444-444444444402', 1, '14:00', '19:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee13', '44444444-4444-4444-4444-444444444402', 2, '10:00', '12:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee14', '44444444-4444-4444-4444-444444444402', 2, '14:00', '19:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee15', '44444444-4444-4444-4444-444444444402', 3, '10:00', '12:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee16', '44444444-4444-4444-4444-444444444402', 3, '14:00', '19:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee17', '44444444-4444-4444-4444-444444444402', 4, '10:00', '12:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee18', '44444444-4444-4444-4444-444444444402', 4, '14:00', '19:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee19', '44444444-4444-4444-4444-444444444402', 5, '10:00', '12:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee20', '44444444-4444-4444-4444-444444444402', 5, '14:00', '19:00'),
+    -- Filipe: qua a sáb 12h-22h
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee31', '44444444-4444-4444-4444-444444444403', 3, '12:00', '22:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee32', '44444444-4444-4444-4444-444444444403', 4, '12:00', '22:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee33', '44444444-4444-4444-4444-444444444403', 5, '12:00', '22:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee34', '44444444-4444-4444-4444-444444444403', 6, '12:00', '22:00')
+ON CONFLICT ("horario_id") DO NOTHING;
+
+-- ----------------------------------------------------------------------------
 -- enderecos: endereços polimórficos (cliente/estúdio) com lat/lng simples
 -- (PostGIS/geo_point foram removidos pela migration remove_postgis).
 -- ----------------------------------------------------------------------------
@@ -177,18 +210,18 @@ ON CONFLICT ("mensagem_id") DO NOTHING;
 -- servicos: propostas/orçamentos em negociação ou finalizados
 -- ----------------------------------------------------------------------------
 INSERT INTO "public"."servicos"
-    ("servico_id", "chat_id", "tatuador_id", "cliente_id", "descricao", "tamanho_cm", "local_corpo",
+    ("servico_id", "chat_id", "tatuador_id", "cliente_id", "estudio_id", "descricao", "tamanho_cm", "local_corpo",
      "valor_total", "valor_sinal", "finalizado", "data_finalizacao", "status") VALUES
     ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', '88888888-8888-8888-8888-888888888801',
-     '44444444-4444-4444-4444-444444444401', '22222222-2222-2222-2222-222222222201',
+     '44444444-4444-4444-4444-444444444401', '22222222-2222-2222-2222-222222222201', NULL,
      'Composição blackwork floral no antebraço', 15.0, 'Antebraço direito',
      900.00, 200.00, false, NULL, 'EM_NEGOCIACAO'),
     ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02', '88888888-8888-8888-8888-888888888802',
-     '44444444-4444-4444-4444-444444444402', '22222222-2222-2222-2222-222222222202',
+     '44444444-4444-4444-4444-444444444402', '22222222-2222-2222-2222-222222222202', '33333333-3333-3333-3333-333333333301',
      'Retrato realista em preto e cinza', 20.0, 'Panturrilha esquerda',
      1500.00, 300.00, true, '2026-08-20 18:00:00-03', 'FINALIZADO'),
     ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa03', '88888888-8888-8888-8888-888888888803',
-     '44444444-4444-4444-4444-444444444403', '22222222-2222-2222-2222-222222222201',
+     '44444444-4444-4444-4444-444444444403', '22222222-2222-2222-2222-222222222201', '33333333-3333-3333-3333-333333333301',
      'Fechamento de costas com tema oriental (dragão e ondas)', 45.0, 'Costas inteiras',
      4500.00, 900.00, true, NULL, 'ACEITO')
 ON CONFLICT ("servico_id") DO NOTHING;
@@ -324,10 +357,13 @@ novos AS (
         (3, 9,  7, 'cacc1353-c691-49b4-9a66-ce4a73891f3c', 1100)
     ) AS v(k, i, dia, tatuador_id, valor) ON v.k = ms.k
 )
+-- estudio_id: Diego, Filipe e João fizeram esses trabalhos no Tinta Negra
+-- (o dashboard do estúdio conta por servicos.estudio_id).
 INSERT INTO "public"."servicos"
-    ("servico_id", "tatuador_id", "cliente_id", "descricao", "valor_total", "status", "data_criacao")
+    ("servico_id", "tatuador_id", "cliente_id", "estudio_id", "descricao", "valor_total", "status", "data_criacao")
 SELECT ('aaaaaaaa-aaaa-aaaa-aaaa-' || lpad((s.k * 1000 + s.n)::text, 12, '0'))::uuid,
-       s.tatuador_id::uuid, s.cliente_id::uuid, 'Serviço do histórico do dashboard',
+       s.tatuador_id::uuid, s.cliente_id::uuid, '33333333-3333-3333-3333-333333333301'::uuid,
+       'Serviço do histórico do dashboard',
        s.valor, s.status, (s.dia + make_interval(hours => s.hora)) AT TIME ZONE 'America/Sao_Paulo'
 FROM (SELECT * FROM recorrentes UNION ALL SELECT * FROM novos) AS s
 ON CONFLICT ("servico_id") DO NOTHING;

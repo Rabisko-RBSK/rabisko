@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
-import { Heart, Star, MapPin, Mail } from 'lucide-react-native';
+import { Heart, Star, MapPin, Mail, Clock } from 'lucide-react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -11,6 +11,8 @@ import { HomeStackParamList } from '../../routes/home.stack';
 import { chatService } from '../../services/api';
 import { searchService, ArtistSearchResult } from '../../services/api/searchService';
 import { useFavoritesStore } from '../../store/favoritesStore';
+import { useHorarios } from '../../hooks/useHorarios';
+import { resumirGrade } from '../../utils/horario';
 
 type ProfileRoute = RouteProp<HomeStackParamList, 'EstablishmentProfile'>;
 
@@ -22,6 +24,8 @@ export function EstablishmentProfileScreen() {
   const [artistData, setArtistData] = useState<ArtistSearchResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [iniciandoConversa, setIniciandoConversa] = useState(false);
+  const { horarios } = useHorarios(artistId);
+  const linhasHorario = resumirGrade(horarios);
 
   const { isFavorite, toggleFavorite } = useFavoritesStore();
   const favorited = artistId ? isFavorite(artistId) : false;
@@ -162,22 +166,29 @@ export function EstablishmentProfileScreen() {
           ) : (
             <Text className="font-body text-[13px] text-fg-3">Atendimento na região de São Paulo/SP</Text>
           )}
+
+          {linhasHorario.length > 0 ? (
+            <View className="flex-row items-start mt-3">
+              <Clock size={16} color="#6B6B6B" style={{ marginRight: 8, marginTop: 2 }} />
+              <View className="flex-1">
+                <Text className="font-body-semibold text-[13px] text-ink mb-0.5">Horário de atendimento</Text>
+                {linhasHorario.map((linha) => (
+                  <Text key={linha} className="font-body text-[14px] text-fg-3">
+                    {linha}
+                  </Text>
+                ))}
+              </View>
+            </View>
+          ) : null}
         </View>
       </ScrollView>
 
       <View
-        className="absolute left-0 right-0 bottom-0 bg-background pt-3 px-6 flex-row"
-        style={{ paddingBottom: 24, gap: 10 }}
+        className="absolute left-0 right-0 bottom-0 bg-background pt-3 px-6"
+        style={{ paddingBottom: 24 }}
       >
         <Button
-          title="Reservar"
-          variant="outline"
-          className="flex-1 px-5"
-          onPress={() => artistId && navigation.navigate('BookingFlow', { id: artistId })}
-        />
-        <Button
-          title={iniciandoConversa ? 'Abrindo…' : 'Chat'}
-          className="flex-1 px-5"
+          title={iniciandoConversa ? 'Abrindo…' : 'Iniciar Conversa'}
           onPress={iniciarConversa}
         />
       </View>

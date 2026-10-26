@@ -4,10 +4,14 @@ import {
   ActivityIndicator, Alert,
 } from 'react-native';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { useFocusEffect } from '@react-navigation/native';
 
 import { Header } from '../../components/common/Header';
 import { SessionDetailModal } from './SessionDetailModal';
 import { appointmentService, SessaoListItemDTO } from '../../services/api';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { SessionsStackParamList } from '../../routes/sessions.stack';
 
 
 const GANTT_START  = 8;
@@ -79,6 +83,7 @@ function formatDataHora(dateStr: string, horario: string): string {
 
 
 export function CalendarScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<SessionsStackParamList>>();
   const [weekOffset, setWeekOffset] = React.useState(0);
   const [sessoes, setSessoes] = React.useState<SessaoListItemDTO[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -90,14 +95,29 @@ export function CalendarScreen() {
   const sunday = React.useMemo(() => addDays(monday, 6), [monday]);
   const days   = React.useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(monday, i)), [monday]);
 
-  React.useEffect(() => {
-    setLoading(true);
-    appointmentService
-      .listarSessoes({ de: formatDate(monday), ate: formatDate(sunday) })
-      .then(setSessoes)
-      .catch(() => Alert.alert('Erro', 'Não foi possível carregar a agenda.'))
-      .finally(() => setLoading(false));
-  }, [weekOffset, monday, sunday]);
+  // Recarrega a cada foco da aba: ela continua montada ao trocar de aba, então
+  // sem isso as sessões agendadas pelo chat depois da primeira abertura não
+  // apareciam. Spinner só na troca de semana; ao voltar pra aba, atualiza em
+  // silêncio (sem repetir o alerta de erro).
+  const semanaCarregada = React.useRef<string | null>(null);
+  useFocusEffect(
+    React.useCallback(() => {
+      const semana = formatDate(monday);
+      const trocouSemana = semanaCarregada.current !== semana;
+      let ativo = true;
+      if (trocouSemana) setLoading(true);
+      appointmentService
+        .listarSessoes({ de: semana, ate: formatDate(sunday) })
+        .then((lista) => {
+          if (!ativo) return;
+          setSessoes(lista);
+          semanaCarregada.current = semana;
+        })
+        .catch(() => { if (ativo && trocouSemana) Alert.alert('Erro', 'Não foi possível carregar a agenda.'); })
+        .finally(() => { if (ativo) setLoading(false); });
+      return () => { ativo = false; };
+    }, [monday, sunday]),
+  );
 
   React.useEffect(() => {
     if (weekOffset !== 0) { setNowX(null); return; }
@@ -135,10 +155,9 @@ export function CalendarScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
         <View className="flex-row items-center justify-center px-4 py-3" style={{ gap: 16 }}>
           <TouchableOpacity
-            onPress={() => setWeekOffset((w) => Math.max(0, w - 1))}
-            disabled={weekOffset === 0}
+            onPress={() => setWeekOffset((w) => w - 1)}
             hitSlop={8}
-            style={{ opacity: weekOffset === 0 ? 0.3 : 1 }}
+            accessibilityLabel="Semana anterior"
           >
             <ChevronLeft size={22} color="#1A1A1A" />
           </TouchableOpacity>
@@ -327,6 +346,11 @@ export function CalendarScreen() {
         visible={detalheVisivel}
         onClose={() => setDetalheVisivel(false)}
         sessao={selectedSessao}
+        onOpenAnamnese={() => {
+          if (!selectedSessao) return;
+          setDetalheVisivel(false);
+          navigation.navigate('Anamnese', { sessao: selectedSessao });
+        }}
       />
     </View>
   );

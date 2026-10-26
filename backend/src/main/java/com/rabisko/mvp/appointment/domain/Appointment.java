@@ -34,6 +34,9 @@ public class Appointment {
     @Column(name = "tatuador_id", nullable = false)
     private UUID tatuadorId;
 
+    @Column(name = "estudio_id", updatable = false) 
+    private UUID estudioId;
+
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(nullable = false, columnDefinition = "reserva_status")

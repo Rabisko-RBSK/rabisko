@@ -1,0 +1,1 @@
+alter type public.endereco_owner_type add value if not exists 'tatuador';
