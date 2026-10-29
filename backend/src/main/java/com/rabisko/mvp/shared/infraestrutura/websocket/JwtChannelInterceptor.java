@@ -1,7 +1,6 @@
 package com.rabisko.mvp.shared.infraestrutura.websocket;
 
-import com.rabisko.mvp.shared.infraestrutura.security.TokenService;
-import com.rabisko.mvp.user.repository.UserRepository;
+import com.rabisko.mvp.shared.infraestrutura.security.SupabaseJwtConverter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -9,19 +8,20 @@ import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.stereotype.Component;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 
 @Component
 public class JwtChannelInterceptor implements ChannelInterceptor {
 
     @Autowired
-    private TokenService tokenService;
+    private JwtDecoder jwtDecoder;
 
     @Autowired
-    private UserRepository userRepository;
+    private SupabaseJwtConverter converter;
 
     /**
      * preSend roda ANTES de cada mensagem ser entregue ao destino.
@@ -50,32 +50,30 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
     }
 
     /**
-     * Valida o JWT que veio no STOMP CONNECT, carrega o User e marca
-     * a sessao como autenticada. Lanca excecao se token ausente/invalido,
-     * o que faz o frame CONNECT ser rejeitado.
+     * Valida o JWT do Supabase que veio no STOMP CONNECT (assinatura pelo
+     * JWKS, expiracao e audience) e marca a sessao com o UsuarioLogado.
+     * O nome do principal e o authId, usado pelo convertAndSendToUser.
+     * Lanca excecao se token ausente/invalido, o que faz o frame CONNECT
+     * ser rejeitado.
      */
     private void autenticarConexao(StompHeaderAccessor accessor) {
+
         String authHeader = accessor.getFirstNativeHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             throw new IllegalArgumentException("WebSocket sem token de autenticacao");
         }
 
-        String token = authHeader.replace("Bearer ", "");
-        String email = tokenService.validateToken(token);
+        String token = authHeader.substring(7);
 
-        if (email.isEmpty()) {
+        Jwt jwt;
+        try {
+            jwt = jwtDecoder.decode(token);
+        } catch (JwtException e) {
             throw new IllegalArgumentException("Token JWT invalido ou expirado");
         }
 
-        UserDetails user = userRepository.findByEmail(email);
-        if (user == null) {
-            throw new IllegalArgumentException("Usuario nao encontrado");
-        }
+        accessor.setUser(converter.convert(jwt));
 
-        var auth = new UsernamePasswordAuthenticationToken(
-                user, null, user.getAuthorities()
-        );
-        accessor.setUser(auth);
     }
 
     /**

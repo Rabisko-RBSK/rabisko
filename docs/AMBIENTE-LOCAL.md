@@ -135,7 +135,6 @@ O `supabase-up.sh` chama `.devcontainer/scripts/gen-backend-env.sh` (que você t
 |---|---|
 | `SUPABASE_URL` | `http://127.0.0.1:54321` (`API_URL` do `supabase status`) |
 | `SUPABASE_SERVICE_ROLE_KEY` | `SERVICE_ROLE_KEY` do `supabase status` (JWT `eyJ...`) |
-| `JWT_SECRET` | aleatório (`openssl rand -hex 32`), usado para assinar os tokens da API do backend |
 
 Não são gerados, porque o profile `local` já tem defaults que funcionam:
 
@@ -145,7 +144,6 @@ Não são gerados, porque o profile `local` já tem defaults que funcionam:
 Atenção:
 
 - O Storage precisa da **`SERVICE_ROLE_KEY`** (JWT). A chave `sb_secret_...` (`SECRET_KEY`) é rejeitada pelo Storage local com `403 Invalid Compact JWS`.
-- O `JWT_SECRET` que aparece no `supabase status` é o do Supabase, **não** o do backend.
 - Se o seu `backend/.env` veio do guia antigo, com `host.docker.internal`, o script mostra um aviso. Apague as linhas `DB_URL` e `SUPABASE_URL` e rode `npm run env:backend` de novo.
 
 Para regenerar tudo do zero: apague `backend/.env` e rode `npm run env:backend`.

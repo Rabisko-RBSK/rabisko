@@ -54,8 +54,6 @@ set_if_missing() {
 echo "==> Atualizando backend/.env"
 set_if_missing SUPABASE_URL "$API_URL"
 set_if_missing SUPABASE_SERVICE_ROLE_KEY "$SERVICE_ROLE_KEY"
-# JWT do backend (assinatura dos tokens da API) — não é o JWT_SECRET do Supabase.
-set_if_missing JWT_SECRET "$(openssl rand -hex 32)"
 
 if grep -qE '^(DB_URL|SUPABASE_URL)=.*host\.docker\.internal' "$ENV_FILE"; then
   echo "    AVISO: backend/.env usa host.docker.internal (guia antigo). No Dev Container" >&2
