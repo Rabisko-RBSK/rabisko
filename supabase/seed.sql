@@ -5,11 +5,39 @@
 -- desenvolvimento/local (executado automaticamente por `supabase db reset`,
 -- conforme configurado em supabase/config.toml -> [db.seed]).
 --
--- Baseado no schema definido em migrations/20260815161135_remote_schema.sql,
--- já considerando as migrations subsequentes 20260906125711_remove_postgis.sql
--- (remoção do PostGIS/geo_point) e 20260906144829_remove_unused_tables.sql
--- (remoção de controle_etapas, pagamentos e simulacoes, e de colunas não
--- utilizadas em avaliacoes/chats/clientes/estudios/portfolio_imagens/tatuadores).
+-- Segue o schema após todas as migrations, incluindo a etapa 1 da
+-- reestruturação (20261026160729_reestruturacao_etapa1.sql):
+--   * estilos do tatuador vêm do portfólio (portfolio.estilo_id); a tabela
+--     tatuador_estilos não existe mais;
+--   * portfolio_imagens virou portfolio;
+--   * reservas.orcamento_id virou reservas.servico_id;
+--   * a avaliação do cliente fica no próprio serviço (servicos.avaliacao_*);
+--     a tabela avaliacoes não existe mais.
+-- a etapa 2 (20261029201015_reestruturacao_etapa2_auth.sql):
+--   * a tabela users não existe mais: as contas ficam no Supabase Auth
+--     (auth.users + auth.identities) e o papel em app_metadata.role;
+--   * nome, telefone, data_nasc, cpf e termos ficam no perfil
+--     (clientes/tatuadores/estudios), ligado à conta por auth_id;
+--   * mensagens.remetente_id/destinatario_id são ids de auth.users.
+-- e a etapa 3 (20261101013257_reestruturacao_etapa3.sql):
+--   * o tatuador se liga ao estúdio só por contrato: colaborador ou "dono"
+--     (estúdio próprio, sem conta de estúdio: o tatuador gerencia);
+--   * endereço e horários são do estúdio;
+--   * reservas se ligam ao estúdio (com a posição) e ao serviço; cliente e
+--     tatuador vêm do serviço, que tem estilo e não tem mais estúdio;
+--   * a tabela qrcodes não existe mais.
+--
+-- Casos cobertos:
+--   * Tinta Negra Studio (login e@e.com, 3 posições): Diego, Filipe e João
+--     como colaboradores, cada um com um modelo de contrato;
+--   * Carla: dona do próprio estúdio (Ateliê Carla Mendes, 1 posição) e com
+--     convite pendente do Tinta Negra;
+--   * Rita: tatuadora sem estúdio — não aparece na busca do cliente e não
+--     agenda, mas pode ser convidada.
+--
+-- Todas as contas usam a mesma senha do seed antigo (mesmo hash bcrypt, que
+-- o Supabase Auth aceita). CPFs e CNPJs são válidos; CPFs só com dígitos,
+-- como o app envia.
 --
 -- Todos os IDs são fixos (não gerados via uuid_generate_v4) para que as
 -- referências entre tabelas fiquem legíveis e o seed seja idempotente:
@@ -17,11 +45,11 @@
 -- de uma vez não duplica nem quebra dados.
 --
 -- Convenção de IDs fixos (somente para leitura humana, sem significado real):
---   1xxx.. usuários       2xxx.. clientes        3xxx.. estúdios
+--   1xxx.. contas (auth)  2xxx.. clientes       3xxx.. estúdios
 --   4xxx.. tatuadores     5xxx.. estilos         6xxx.. endereços
 --   7xxx.. portfólio      8xxx.. chats           9xxx.. mensagens
---   axxx.. serviços       bxxx.. reservas        dxxx.. qrcodes
---   exxx.. avaliações
+--   axxx.. serviços       bxxx.. reservas        cxxx.. convites
+--   dxxx.. contratos      exxx.. horários de atendimento
 -- ============================================================================
 
 BEGIN;
@@ -41,134 +69,232 @@ INSERT INTO "public"."estilos" ("estilo_id", "nome", "descricao") VALUES
 ON CONFLICT ("estilo_id") DO NOTHING;
 
 -- ----------------------------------------------------------------------------
--- users: base de autenticação (clientes, tatuadores e admin)
+-- contas: Supabase Auth (auth.users + auth.identities)
 -- ----------------------------------------------------------------------------
-INSERT INTO "public"."users"
-    ("user_id", "nome", "email", "senha_hash", "telefone", "data_nasc", "cpf", "role", "status_ativo", "termos_aceitos") VALUES
-    ('11111111-1111-1111-1111-111111111101', 'Administrador Rabisko', 'admin@rabisko.com',            '$2a$10$ulN5jQ9YJacE3Ym9i4hmsO31TaVkdrvbrQgIaAXAU9j4gn29sBHLS', '11999990000', '1990-01-01', '000.000.000-00', 'admin',    true, true),
-    ('11111111-1111-1111-1111-111111111102', 'Ana Beatriz Souza',     'ana.souza@example.com',         '$2a$10$ulN5jQ9YJacE3Ym9i4hmsO31TaVkdrvbrQgIaAXAU9j4gn29sBHLS', '11988880001', '1996-04-12', '111.111.111-11', 'cliente',  true, true),
-    ('11111111-1111-1111-1111-111111111103', 'Bruno Carvalho Lima',   'bruno.lima@example.com',        '$2a$10$ulN5jQ9YJacE3Ym9i4hmsO31TaVkdrvbrQgIaAXAU9j4gn29sBHLS', '11988880002', '1993-09-23', '222.222.222-22', 'cliente',  true, true),
-    ('11111111-1111-1111-1111-111111111104', 'Carla Mendes',          'carla.mendes@example.com',      '$2a$10$ulN5jQ9YJacE3Ym9i4hmsO31TaVkdrvbrQgIaAXAU9j4gn29sBHLS', '11977770001', '1988-02-15', '333.333.333-33', 'tatuador', true, true),
-    ('11111111-1111-1111-1111-111111111105', 'Diego Fernandes',       'diego.fernandes@example.com',   '$2a$10$ulN5jQ9YJacE3Ym9i4hmsO31TaVkdrvbrQgIaAXAU9j4gn29sBHLS', '11977770002', '1991-07-30', '444.444.444-44', 'tatuador', true, true),
-    ('11111111-1111-1111-1111-111111111106', 'Filipe Ribeiro',        'filipe.ribeiro@example.com',    '$2a$10$ulN5jQ9YJacE3Ym9i4hmsO31TaVkdrvbrQgIaAXAU9j4gn29sBHLS', '11977770003', '1994-11-05', '555.555.555-55', 'tatuador', true, true),
-    ('11111111-1111-1111-1111-111111111107', 'Estúdio Tinta Negra',   'contato@tintanegra.example.com','$2a$10$ulN5jQ9YJacE3Ym9i4hmsO31TaVkdrvbrQgIaAXAU9j4gn29sBHLS', '11966660000', '1985-03-20', '666.666.666-66', 'tatuador', true, true),
-    ('cacc1353-c691-49b4-9a66-ce4a73891f3c', 'João Santos',   'j@j.com','$2a$10$ulN5jQ9YJacE3Ym9i4hmsO31TaVkdrvbrQgIaAXAU9j4gn29sBHLS', '11966660001', '1985-03-20', '777.777.777-77', 'tatuador', true, true),
-    ('996892ee-8209-4874-832d-58077badb2f1', 'Teste',   't@t.com','$2a$10$ulN5jQ9YJacE3Ym9i4hmsO31TaVkdrvbrQgIaAXAU9j4gn29sBHLS', '11966660002', '2000-08-25', '123.456.789-12', 'cliente', true, true),
-    ('996892ee-8209-4874-832d-58077badb2f2', 'Estudio teste',   'e@e.com','$2a$10$ulN5jQ9YJacE3Ym9i4hmsO31TaVkdrvbrQgIaAXAU9j4gn29sBHLS', '11966660003', '2000-08-25', '123.456.789-13', 'estudio', true, true)
-ON CONFLICT ("user_id") DO NOTHING;
+-- O backend cria as contas pelo Admin API, que preenche as duas tabelas; aqui
+-- fazemos o mesmo direto no banco. Detalhes que o login exige:
+--   * instance_id/aud/role fixos, como o Supabase Auth grava;
+--   * colunas de token como '' (NULL quebra o login no Supabase Auth);
+--   * email_confirmed_at preenchido (conta já confirmada);
+--   * uma identidade "email" por conta (provider_id = id da conta).
+-- Inclui as contas dos clientes do dashboard (mais abaixo).
+CREATE TEMP TABLE seed_contas (id uuid PRIMARY KEY, email text NOT NULL, papel text NOT NULL) ON COMMIT DROP;
+
+INSERT INTO seed_contas (id, email, papel) VALUES
+    ('11111111-1111-1111-1111-111111111101', 'admin@rabisko.com',           'admin'),
+    ('11111111-1111-1111-1111-111111111102', 'ana.souza@example.com',       'cliente'),
+    ('11111111-1111-1111-1111-111111111103', 'bruno.lima@example.com',      'cliente'),
+    ('11111111-1111-1111-1111-111111111104', 'carla.mendes@example.com',    'tatuador'),
+    ('11111111-1111-1111-1111-111111111105', 'diego.fernandes@example.com', 'tatuador'),
+    ('11111111-1111-1111-1111-111111111106', 'filipe.ribeiro@example.com',  'tatuador'),
+    ('11111111-1111-1111-1111-111111111108', 'rita.alves@example.com',      'tatuador'),
+    ('cacc1353-c691-49b4-9a66-ce4a73891f3c', 'j@j.com',                     'tatuador'),
+    ('996892ee-8209-4874-832d-58077badb2f1', 't@t.com',                     'cliente'),
+    ('996892ee-8209-4874-832d-58077badb2f2', 'e@e.com',                     'estudio');
+
+INSERT INTO seed_contas (id, email, papel)
+SELECT ('11111111-1111-1111-1111-0000000001' || lpad(c.i::text, 2, '0'))::uuid, c.email, 'cliente'
+FROM (VALUES
+    (1, 'camila.mendes@example.com'),
+    (2, 'rafael.lima@example.com'),
+    (3, 'juliana.rocha@example.com'),
+    (4, 'marcos.teixeira@example.com'),
+    (5, 'patricia.alves@example.com'),
+    (6, 'lucas.martins@example.com'),
+    (7, 'fernanda.costa@example.com'),
+    (8, 'gabriel.nunes@example.com'),
+    (9, 'beatriz.ramos@example.com')
+) AS c(i, email);
+
+INSERT INTO "auth"."users"
+    ("instance_id", "id", "aud", "role", "email", "encrypted_password", "email_confirmed_at",
+     "raw_app_meta_data", "raw_user_meta_data", "created_at", "updated_at",
+     "confirmation_token", "recovery_token", "email_change_token_new", "email_change")
+SELECT '00000000-0000-0000-0000-000000000000', c.id, 'authenticated', 'authenticated', c.email,
+       '$2a$10$ulN5jQ9YJacE3Ym9i4hmsO31TaVkdrvbrQgIaAXAU9j4gn29sBHLS', now(),
+       jsonb_build_object('provider', 'email', 'providers', jsonb_build_array('email'), 'role', c.papel),
+       '{}'::jsonb, now(), now(),
+       '', '', '', ''
+FROM seed_contas c
+ON CONFLICT ("id") DO NOTHING;
+
+INSERT INTO "auth"."identities"
+    ("provider_id", "user_id", "provider", "identity_data", "last_sign_in_at", "created_at", "updated_at")
+SELECT c.id::text, c.id, 'email',
+       jsonb_build_object('sub', c.id::text, 'email', c.email, 'email_verified', true, 'phone_verified', false),
+       now(), now(), now()
+FROM seed_contas c
+ON CONFLICT ("provider_id", "provider") DO NOTHING;
 
 -- ----------------------------------------------------------------------------
 -- clientes: perfil de quem contrata tatuagens
 -- ----------------------------------------------------------------------------
-INSERT INTO "public"."clientes" ("cliente_id", "user_id") VALUES
-    ('22222222-2222-2222-2222-222222222201', '11111111-1111-1111-1111-111111111102'), -- Ana
-    ('22222222-2222-2222-2222-222222222202', '11111111-1111-1111-1111-111111111103'),  -- Bruno
-    ('22222222-2222-2222-2222-222222222203', '996892ee-8209-4874-832d-58077badb2f1')  -- Teste
+INSERT INTO "public"."clientes"
+    ("cliente_id", "auth_id", "nome", "telefone", "data_nasc", "cpf", "termos_aceitos") VALUES
+    ('22222222-2222-2222-2222-222222222201', '11111111-1111-1111-1111-111111111102',
+     'Ana Beatriz Souza',   '11988880001', '1996-04-12', '12345000198', true),
+    ('22222222-2222-2222-2222-222222222202', '11111111-1111-1111-1111-111111111103',
+     'Bruno Carvalho Lima', '11988880002', '1993-09-23', '12345000279', true),
+    ('22222222-2222-2222-2222-222222222203', '996892ee-8209-4874-832d-58077badb2f1',
+     'Teste',               '11966660002', '2000-08-25', '12345000350', true)
 ON CONFLICT ("cliente_id") DO NOTHING;
 
 -- ----------------------------------------------------------------------------
--- estudios: estabelecimento físico de tatuagem
+-- enderecos: só de estúdios, ligados por estudios.endereco_id (lat/lng simples;
+-- PostGIS/geo_point foram removidos pela migration remove_postgis).
 -- ----------------------------------------------------------------------------
-INSERT INTO "public"."estudios" ("estudio_id", "nome", "cnpj", "telefone", "email", "user_id") VALUES
-    ('33333333-3333-3333-3333-333333333301', 'Tinta Negra Studio', '12.345.678/0001-90', '1133330000',
-     'contato@tintanegra.example.com', '996892ee-8209-4874-832d-58077badb2f2')
+INSERT INTO "public"."enderecos"
+    ("endereco_id", "cep", "logradouro", "numero", "complemento", "bairro", "cidade", "uf", "latitude", "longitude") VALUES
+    ('66666666-6666-6666-6666-666666666603', '01305-000',
+     'Rua Augusta', '500', 'Loja 2', 'Consolação', 'São Paulo', 'SP', -23.5537000, -46.6614900),
+    ('66666666-6666-6666-6666-666666666604', '05416-001',
+     'Rua Fradique Coutinho', '800', NULL, 'Vila Madalena', 'São Paulo', 'SP', -23.5580000, -46.6890000)
+ON CONFLICT ("endereco_id") DO NOTHING;
+
+-- ----------------------------------------------------------------------------
+-- estudios: estabelecimento físico de tatuagem
+--   * Tinta Negra: conta própria de estúdio (login e@e.com), 3 posições;
+--   * Ateliê Carla Mendes: estúdio próprio da Carla, sem conta de estúdio
+--     (auth_id nulo) — ela gerencia pelo login de tatuadora (contrato "dono").
+-- ----------------------------------------------------------------------------
+INSERT INTO "public"."estudios"
+    ("estudio_id", "auth_id", "nome", "cnpj", "telefone", "posicoes", "endereco_id", "termos_aceitos") VALUES
+    ('33333333-3333-3333-3333-333333333301', '996892ee-8209-4874-832d-58077badb2f2',
+     'Tinta Negra Studio', '12.345.678/0001-95', '1133330000', 3,
+     '66666666-6666-6666-6666-666666666603', true),
+    ('33333333-3333-3333-3333-333333333302', NULL,
+     'Ateliê Carla Mendes', '23.456.789/0001-95', '11977770001', 1,
+     '66666666-6666-6666-6666-666666666604', true)
 ON CONFLICT ("estudio_id") DO NOTHING;
 
 -- ----------------------------------------------------------------------------
--- tatuadores: perfil profissional (independente ou vinculado a estúdio)
+-- tatuadores: perfil profissional (o estúdio vem do contrato)
 -- ----------------------------------------------------------------------------
 INSERT INTO "public"."tatuadores"
-    ("tatuador_id", "user_id", "estudio_id", "bio", "instagram", "vinculado_estudio") VALUES
-    ('44444444-4444-4444-4444-444444444401', '11111111-1111-1111-1111-111111111104', NULL,
-     'Tatuadora independente especializada em blackwork e fineline. Atendo em estúdio próprio na Vila Madalena.',
-     '@carla.tattoo', false),
-    ('44444444-4444-4444-4444-444444444402', '11111111-1111-1111-1111-111111111105', '33333333-3333-3333-3333-333333333301',
+    ("tatuador_id", "auth_id", "nome", "telefone", "data_nasc", "cpf", "termos_aceitos",
+     "bio", "instagram") VALUES
+    ('44444444-4444-4444-4444-444444444401', '11111111-1111-1111-1111-111111111104',
+     'Carla Mendes',    '11977770001', '1988-02-15', '23456000120', true,
+     'Tatuadora especializada em blackwork e fineline. Atendo no meu ateliê na Vila Madalena.',
+     '@carla.tattoo'),
+    ('44444444-4444-4444-4444-444444444402', '11111111-1111-1111-1111-111111111105',
+     'Diego Fernandes', '11977770002', '1991-07-30', '23456000200', true,
      'Tatuador residente do Tinta Negra Studio, focado em realismo e old school.',
-     '@diego.ink', true),
-    ('44444444-4444-4444-4444-444444444403', '11111111-1111-1111-1111-111111111106', '33333333-3333-3333-3333-333333333301',
+     '@diego.ink'),
+    ('44444444-4444-4444-4444-444444444403', '11111111-1111-1111-1111-111111111106',
+     'Filipe Ribeiro',  '11977770003', '1994-11-05', '23456000391', true,
      'Especialista em tatuagem oriental de grande porte, também atuo com aquarela e tribal.',
-     '@filipe.oriental', true),
-    ('cacc1353-c691-49b4-9a66-ce4a73891f3c', 'cacc1353-c691-49b4-9a66-ce4a73891f3c', '33333333-3333-3333-3333-333333333301',
+     '@filipe.oriental'),
+    ('cacc1353-c691-49b4-9a66-ce4a73891f3c', 'cacc1353-c691-49b4-9a66-ce4a73891f3c',
+     'João Santos',     '11966660001', '1985-03-20', '23456000472', true,
      'Tatuador profissional, com trabalhos que transitam entre o minimalismo e o traço mais pesado.',
-     '@joão.santos', true)
+     '@joão.santos'),
+    ('44444444-4444-4444-4444-444444444404', '11111111-1111-1111-1111-111111111108',
+     'Rita Alves',      '11977770004', '1999-06-18', '23456000553', true,
+     'Tatuadora de fineline procurando um estúdio para atender.',
+     '@rita.fineline')
 ON CONFLICT ("tatuador_id") DO NOTHING;
 
 -- ----------------------------------------------------------------------------
--- tatuador_estilos: estilos praticados por cada tatuador
--- ----------------------------------------------------------------------------
-INSERT INTO "public"."tatuador_estilos" ("tatuador_id", "estilo_id") VALUES
-    ('44444444-4444-4444-4444-444444444401', '55555555-5555-5555-5555-555555555504'), -- Carla: Blackwork
-    ('44444444-4444-4444-4444-444444444401', '55555555-5555-5555-5555-555555555505'), -- Carla: Fineline
-    ('44444444-4444-4444-4444-444444444402', '55555555-5555-5555-5555-555555555503'), -- Diego: Realismo
-    ('44444444-4444-4444-4444-444444444402', '55555555-5555-5555-5555-555555555501'), -- Diego: Old School
-    ('44444444-4444-4444-4444-444444444403', '55555555-5555-5555-5555-555555555508'), -- Filipe: Oriental/Japonês
-    ('44444444-4444-4444-4444-444444444403', '55555555-5555-5555-5555-555555555506'), -- Filipe: Aquarela
-    ('44444444-4444-4444-4444-444444444403', '55555555-5555-5555-5555-555555555507')  -- Filipe: Tribal
-ON CONFLICT ("tatuador_id", "estilo_id") DO NOTHING;
-
--- ----------------------------------------------------------------------------
--- horarios_atendimento: grade semanal de cada tatuador
+-- horarios_atendimento: grade semanal de cada estúdio
 -- (dia_semana ISO: 1 = segunda ... 7 = domingo). Cobre os casos da regra:
---   * Carla: um intervalo por dia (ter a sex) + sábado mais curto;
---   * Diego: dois intervalos por dia (pausa para almoço);
---   * Filipe: expediente que vai até a noite;
---   * João: sem grade -> sem restrição de dia/horário no agendamento.
+--   * Tinta Negra: dois intervalos por dia (pausa para almoço) + sábado até
+--     a noite;
+--   * Ateliê Carla Mendes: um intervalo por dia (ter a sex) + sábado curto.
 -- ----------------------------------------------------------------------------
-INSERT INTO "public"."horarios_atendimento" ("horario_id", "tatuador_id", "dia_semana", "abre", "fecha") VALUES
-    -- Carla: ter a sex 13h-20h, sáb 10h-14h
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee01', '44444444-4444-4444-4444-444444444401', 2, '13:00', '20:00'),
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee02', '44444444-4444-4444-4444-444444444401', 3, '13:00', '20:00'),
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee03', '44444444-4444-4444-4444-444444444401', 4, '13:00', '20:00'),
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee04', '44444444-4444-4444-4444-444444444401', 5, '13:00', '20:00'),
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee05', '44444444-4444-4444-4444-444444444401', 6, '10:00', '14:00'),
-    -- Diego: seg a sex 10h-12h e 14h-19h
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee11', '44444444-4444-4444-4444-444444444402', 1, '10:00', '12:00'),
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee12', '44444444-4444-4444-4444-444444444402', 1, '14:00', '19:00'),
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee13', '44444444-4444-4444-4444-444444444402', 2, '10:00', '12:00'),
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee14', '44444444-4444-4444-4444-444444444402', 2, '14:00', '19:00'),
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee15', '44444444-4444-4444-4444-444444444402', 3, '10:00', '12:00'),
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee16', '44444444-4444-4444-4444-444444444402', 3, '14:00', '19:00'),
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee17', '44444444-4444-4444-4444-444444444402', 4, '10:00', '12:00'),
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee18', '44444444-4444-4444-4444-444444444402', 4, '14:00', '19:00'),
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee19', '44444444-4444-4444-4444-444444444402', 5, '10:00', '12:00'),
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee20', '44444444-4444-4444-4444-444444444402', 5, '14:00', '19:00'),
-    -- Filipe: qua a sáb 12h-22h
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee31', '44444444-4444-4444-4444-444444444403', 3, '12:00', '22:00'),
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee32', '44444444-4444-4444-4444-444444444403', 4, '12:00', '22:00'),
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee33', '44444444-4444-4444-4444-444444444403', 5, '12:00', '22:00'),
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee34', '44444444-4444-4444-4444-444444444403', 6, '12:00', '22:00')
+INSERT INTO "public"."horarios_atendimento" ("horario_id", "estudio_id", "dia_semana", "abre", "fecha") VALUES
+    -- Tinta Negra: seg a sex 10h-12h e 14h-20h, sáb 12h-22h
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee11', '33333333-3333-3333-3333-333333333301', 1, '10:00', '12:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee12', '33333333-3333-3333-3333-333333333301', 1, '14:00', '20:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee13', '33333333-3333-3333-3333-333333333301', 2, '10:00', '12:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee14', '33333333-3333-3333-3333-333333333301', 2, '14:00', '20:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee15', '33333333-3333-3333-3333-333333333301', 3, '10:00', '12:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee16', '33333333-3333-3333-3333-333333333301', 3, '14:00', '20:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee17', '33333333-3333-3333-3333-333333333301', 4, '10:00', '12:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee18', '33333333-3333-3333-3333-333333333301', 4, '14:00', '20:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee19', '33333333-3333-3333-3333-333333333301', 5, '10:00', '12:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee20', '33333333-3333-3333-3333-333333333301', 5, '14:00', '20:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee21', '33333333-3333-3333-3333-333333333301', 6, '12:00', '22:00'),
+    -- Ateliê Carla Mendes: ter a sex 13h-20h, sáb 10h-14h
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee01', '33333333-3333-3333-3333-333333333302', 2, '13:00', '20:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee02', '33333333-3333-3333-3333-333333333302', 3, '13:00', '20:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee03', '33333333-3333-3333-3333-333333333302', 4, '13:00', '20:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee04', '33333333-3333-3333-3333-333333333302', 5, '13:00', '20:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee05', '33333333-3333-3333-3333-333333333302', 6, '10:00', '14:00')
 ON CONFLICT ("horario_id") DO NOTHING;
 
 -- ----------------------------------------------------------------------------
--- enderecos: endereços polimórficos (cliente/estúdio) com lat/lng simples
--- (PostGIS/geo_point foram removidos pela migration remove_postgis).
+-- convites_estudio: convites de estúdios para tatuadores entrarem na equipe
 -- ----------------------------------------------------------------------------
-INSERT INTO "public"."enderecos"
-    ("endereco_id", "owner_id", "owner_type", "cep", "logradouro", "numero", "complemento", "bairro", "cidade", "uf", "latitude", "longitude") VALUES
-    ('66666666-6666-6666-6666-666666666601', '22222222-2222-2222-2222-222222222201', 'cliente', '05435-000',
-     'Rua Harmonia', '200', 'Apto 12', 'Vila Madalena', 'São Paulo', 'SP', -23.5560000, -46.6900000),
-    ('66666666-6666-6666-6666-666666666602', '22222222-2222-2222-2222-222222222202', 'cliente', '04538-000',
-     'Av. Brigadeiro Faria Lima', '1500', NULL, 'Itaim Bibi', 'São Paulo', 'SP', -23.5750000, -46.6850000),
-    ('66666666-6666-6666-6666-666666666603', '33333333-3333-3333-3333-333333333301', 'estudio', '01305-000',
-     'Rua Augusta', '500', 'Loja 2', 'Consolação', 'São Paulo', 'SP', -23.5537000, -46.6614900)
-ON CONFLICT ("endereco_id") DO NOTHING;
+INSERT INTO "public"."convites_estudio"
+    ("convite_id", "estudio_id", "tatuador_id", "status", "data_criacao", "data_resposta") VALUES
+    -- Tinta Negra -> Carla (dona do próprio estúdio): convite ainda aguardando resposta
+    ('cccccccc-cccc-cccc-cccc-cccccccccc01',
+    '33333333-3333-3333-3333-333333333301', '44444444-4444-4444-4444-444444444401',
+    'pendente', now() - interval '1 day', NULL),
 
--- liga o estúdio ao seu endereço (FK estudios.endereco_id; o INSERT de
--- estudios roda antes de enderecos existir, por isso o UPDATE aqui)
-UPDATE "public"."estudios"
-   SET "endereco_id" = '66666666-6666-6666-6666-666666666603'
- WHERE "estudio_id" = '33333333-3333-3333-3333-333333333301';
+    -- Tinta Negra -> Diego: convite aceito (origem do contrato ativo)
+    ('cccccccc-cccc-cccc-cccc-cccccccccc02',
+    '33333333-3333-3333-3333-333333333301', '44444444-4444-4444-4444-444444444402',
+    'aceito', now() - interval '120 days', now() - interval '119 days'),
+
+    -- Tinta Negra -> Filipe: convite aceito (origem do contrato ativo)
+    ('cccccccc-cccc-cccc-cccc-cccccccccc03',
+    '33333333-3333-3333-3333-333333333301', '44444444-4444-4444-4444-444444444403',
+    'aceito', now() - interval '110 days', now() - interval '109 days')
+
+ON CONFLICT ("convite_id") DO NOTHING;
 
 -- ----------------------------------------------------------------------------
--- portfolio_imagens: galeria de trabalhos de cada tatuador
+-- contratos_colaborador: como cada tatuador se liga a um estúdio
+--   * Carla: "dono" do Ateliê Carla Mendes (sem valores) + proposta de
+--     comissão no convite pendente do Tinta Negra;
+--   * Diego: comissão de 30% (veio do convite);
+--   * Filipe: aluguel mensal da posição (veio do convite);
+--   * João: salário mensal (contrato sem convite);
+--   * Rita: nenhum -> sem estúdio, não atende.
 -- ----------------------------------------------------------------------------
-INSERT INTO "public"."portfolio_imagens" ("imagem_id", "tatuador_id", "url") VALUES
-    ('77777777-7777-7777-7777-777777777701', '44444444-4444-4444-4444-444444444401', 'https://picsum.photos/seed/carla1/600/800'),
-    ('77777777-7777-7777-7777-777777777702', '44444444-4444-4444-4444-444444444401', 'https://picsum.photos/seed/carla2/600/800'),
-    ('77777777-7777-7777-7777-777777777703', '44444444-4444-4444-4444-444444444402', 'https://picsum.photos/seed/diego1/600/800'),
-    ('77777777-7777-7777-7777-777777777704', '44444444-4444-4444-4444-444444444402', 'https://picsum.photos/seed/diego2/600/800'),
-    ('77777777-7777-7777-7777-777777777705', '44444444-4444-4444-4444-444444444403', 'https://picsum.photos/seed/filipe1/600/800'),
-    ('77777777-7777-7777-7777-777777777706', '44444444-4444-4444-4444-444444444403', 'https://picsum.photos/seed/filipe2/600/800')
+INSERT INTO "public"."contratos_colaborador"
+    ("contrato_id", "estudio_id", "tatuador_id", "convite_id", "modelo",
+     "percentual_estudio", "valor_fixo", "periodicidade", "status", "data_criacao", "data_resposta") VALUES
+    ('dddddddd-dddd-dddd-dddd-dddddddddd01', '33333333-3333-3333-3333-333333333302', '44444444-4444-4444-4444-444444444401',
+     NULL, 'dono', NULL, NULL, NULL, 'ativo', now() - interval '200 days', now() - interval '200 days'),
+    ('dddddddd-dddd-dddd-dddd-dddddddddd02', '33333333-3333-3333-3333-333333333301', '44444444-4444-4444-4444-444444444401',
+     'cccccccc-cccc-cccc-cccc-cccccccccc01', 'comissao', 25.00, NULL, NULL, 'proposto', now() - interval '1 day', NULL),
+    ('dddddddd-dddd-dddd-dddd-dddddddddd03', '33333333-3333-3333-3333-333333333301', '44444444-4444-4444-4444-444444444402',
+     'cccccccc-cccc-cccc-cccc-cccccccccc02', 'comissao', 30.00, NULL, NULL, 'ativo', now() - interval '120 days', now() - interval '119 days'),
+    ('dddddddd-dddd-dddd-dddd-dddddddddd04', '33333333-3333-3333-3333-333333333301', '44444444-4444-4444-4444-444444444403',
+     'cccccccc-cccc-cccc-cccc-cccccccccc03', 'aluguel', NULL, 1500.00, 'mensal', 'ativo', now() - interval '110 days', now() - interval '109 days'),
+    ('dddddddd-dddd-dddd-dddd-dddddddddd05', '33333333-3333-3333-3333-333333333301', 'cacc1353-c691-49b4-9a66-ce4a73891f3c',
+     NULL, 'salario', NULL, 4000.00, 'mensal', 'ativo', now() - interval '100 days', now() - interval '100 days')
+ON CONFLICT ("contrato_id") DO NOTHING;
+
+-- ----------------------------------------------------------------------------
+-- portfolio: galeria de trabalhos de cada tatuador. Cada imagem tem um estilo,
+-- e os estilos do tatuador (perfil e busca) são os do portfólio dele:
+--   * Carla: Blackwork e Fineline;
+--   * Diego: Realismo e Old School;
+--   * Filipe: Oriental/Japonês, Aquarela e Tribal;
+--   * João: sem portfólio -> não aparece na busca por estilo;
+--   * Rita: Fineline, mas sem estúdio -> não aparece na busca do cliente.
+-- ----------------------------------------------------------------------------
+INSERT INTO "public"."portfolio" ("imagem_id", "tatuador_id", "estilo_id", "url") VALUES
+    ('77777777-7777-7777-7777-777777777701', '44444444-4444-4444-4444-444444444401',
+     '55555555-5555-5555-5555-555555555504', 'https://picsum.photos/seed/carla1/600/800'),   -- Blackwork
+    ('77777777-7777-7777-7777-777777777702', '44444444-4444-4444-4444-444444444401',
+     '55555555-5555-5555-5555-555555555505', 'https://picsum.photos/seed/carla2/600/800'),   -- Fineline
+    ('77777777-7777-7777-7777-777777777703', '44444444-4444-4444-4444-444444444402',
+     '55555555-5555-5555-5555-555555555503', 'https://picsum.photos/seed/diego1/600/800'),   -- Realismo
+    ('77777777-7777-7777-7777-777777777704', '44444444-4444-4444-4444-444444444402',
+     '55555555-5555-5555-5555-555555555501', 'https://picsum.photos/seed/diego2/600/800'),   -- Old School
+    ('77777777-7777-7777-7777-777777777705', '44444444-4444-4444-4444-444444444403',
+     '55555555-5555-5555-5555-555555555508', 'https://picsum.photos/seed/filipe1/600/800'),  -- Oriental/Japonês
+    ('77777777-7777-7777-7777-777777777706', '44444444-4444-4444-4444-444444444403',
+     '55555555-5555-5555-5555-555555555506', 'https://picsum.photos/seed/filipe2/600/800'),  -- Aquarela
+    ('77777777-7777-7777-7777-777777777707', '44444444-4444-4444-4444-444444444403',
+     '55555555-5555-5555-5555-555555555507', 'https://picsum.photos/seed/filipe3/600/800'),  -- Tribal
+    ('77777777-7777-7777-7777-777777777708', '44444444-4444-4444-4444-444444444404',
+     '55555555-5555-5555-5555-555555555505', 'https://picsum.photos/seed/rita1/600/800')     -- Fineline
 ON CONFLICT ("imagem_id") DO NOTHING;
 
 -- ----------------------------------------------------------------------------
@@ -207,72 +333,53 @@ INSERT INTO "public"."mensagens" ("mensagem_id", "chat_id", "remetente_id", "des
 ON CONFLICT ("mensagem_id") DO NOTHING;
 
 -- ----------------------------------------------------------------------------
--- servicos: propostas/orçamentos em negociação ou finalizados
+-- servicos: propostas/orçamentos em negociação ou finalizados (cada um com estilo;
+-- o estúdio é o das reservas)
 -- ----------------------------------------------------------------------------
 INSERT INTO "public"."servicos"
-    ("servico_id", "chat_id", "tatuador_id", "cliente_id", "estudio_id", "descricao", "tamanho_cm", "local_corpo",
+    ("servico_id", "chat_id", "tatuador_id", "cliente_id", "estilo_id", "descricao", "tamanho_cm", "local_corpo",
      "valor_total", "valor_sinal", "finalizado", "data_finalizacao", "status") VALUES
     ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', '88888888-8888-8888-8888-888888888801',
-     '44444444-4444-4444-4444-444444444401', '22222222-2222-2222-2222-222222222201', NULL,
+     '44444444-4444-4444-4444-444444444401', '22222222-2222-2222-2222-222222222201', '55555555-5555-5555-5555-555555555504',
      'Composição blackwork floral no antebraço', 15.0, 'Antebraço direito',
-     900.00, 200.00, false, NULL, 'EM_NEGOCIACAO'),
+     900.00, 200.00, false, NULL, 'agendada'),
     ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02', '88888888-8888-8888-8888-888888888802',
-     '44444444-4444-4444-4444-444444444402', '22222222-2222-2222-2222-222222222202', '33333333-3333-3333-3333-333333333301',
+     '44444444-4444-4444-4444-444444444402', '22222222-2222-2222-2222-222222222202', '55555555-5555-5555-5555-555555555503',
      'Retrato realista em preto e cinza', 20.0, 'Panturrilha esquerda',
-     1500.00, 300.00, true, '2026-08-20 18:00:00-03', 'FINALIZADO'),
+     1500.00, 300.00, true, '2026-08-20 18:00:00-03', 'concluida'),
     ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa03', '88888888-8888-8888-8888-888888888803',
-     '44444444-4444-4444-4444-444444444403', '22222222-2222-2222-2222-222222222201', '33333333-3333-3333-3333-333333333301',
+     '44444444-4444-4444-4444-444444444403', '22222222-2222-2222-2222-222222222201', '55555555-5555-5555-5555-555555555508',
      'Fechamento de costas com tema oriental (dragão e ondas)', 45.0, 'Costas inteiras',
-     4500.00, 900.00, true, NULL, 'ACEITO')
+     4500.00, 900.00, true, NULL, 'confirmada'),
+    ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa04', '88888888-8888-8888-8888-888888888801',
+     '44444444-4444-4444-4444-444444444401', '22222222-2222-2222-2222-222222222201', '55555555-5555-5555-5555-555555555505',
+     'Fineline minimalista no pulso', 5.0, 'Pulso esquerdo',
+     450.00, 100.00, false, NULL, 'confirmada')
 ON CONFLICT ("servico_id") DO NOTHING;
 
+-- Avaliação do cliente sobre o serviço finalizado do Diego (nota e data andam
+-- juntas: chk_servicos_avaliacao_completa).
+UPDATE "public"."servicos"
+   SET "avaliacao_nota" = 5,
+       "avaliacao_comentario" = 'Retrato ficou idêntico à foto, atendimento impecável.',
+       "avaliacao_data" = '2026-08-22 10:00:00-03'
+ WHERE "servico_id" = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02';
+
 -- ----------------------------------------------------------------------------
--- reservas: sessões agendadas a partir de um serviço/orçamento
+-- reservas: sessões agendadas a partir de um serviço, num estúdio e posição
 -- ----------------------------------------------------------------------------
 INSERT INTO "public"."reservas"
-    ("reserva_id", "orcamento_id", "tatuador_id", "cliente_id", "data_criacao", "data_sessao", "duracao_min", "status", "observacoes") VALUES
+    ("reserva_id", "servico_id", "estudio_id", "posicao", "data_criacao", "data_sessao", "duracao_min", "status", "observacoes") VALUES
     ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02',
-     '44444444-4444-4444-4444-444444444402', '22222222-2222-2222-2222-222222222202',
+     '33333333-3333-3333-3333-333333333301', 1,
      '2026-08-10 09:30:00-03', '2026-08-20 15:00:00-03', 180, 'concluida', 'Sessão realizada sem intercorrências.'),
     ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa03',
-     '44444444-4444-4444-4444-444444444403', '22222222-2222-2222-2222-222222222201',
-     now() - interval '1 day', now() + interval '5 days', 240, 'confirmada', 'Primeira sessão do fechamento de costas.')
+     '33333333-3333-3333-3333-333333333301', 2,
+     now() - interval '1 day', now() + interval '5 days', 240, 'confirmada', 'Primeira sessão do fechamento de costas.'),
+    ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa04',
+     '33333333-3333-3333-3333-333333333302', 1,
+     now() - interval '2 days', now() + interval '3 days', 60, 'confirmada', 'Sessão no ateliê da Carla.')
 ON CONFLICT ("reserva_id") DO NOTHING;
-
--- ----------------------------------------------------------------------------
--- qrcodes: check-in presencial das reservas
--- ----------------------------------------------------------------------------
-INSERT INTO "public"."qrcodes"
-    ("qrcode_id", "reserva_id", "token", "utilizado", "data_uso", "data_expiracao", "data_criacao") VALUES
-    ('dddddddd-dddd-dddd-dddd-dddddddddd01', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01',
-     'seedtoken0000000000000000000000000000000000000000000000000001', true,
-     '2026-08-20 14:50:00-03', '2026-08-20 20:00:00-03', '2026-08-19 09:00:00-03'),
-    ('dddddddd-dddd-dddd-dddd-dddddddddd02', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02',
-     'seedtoken0000000000000000000000000000000000000000000000000002', false,
-     NULL, now() + interval '6 days', now())
-ON CONFLICT ("qrcode_id") DO NOTHING;
-
--- ----------------------------------------------------------------------------
--- convites_estudio: convites de estúdios para tatuadores entrarem na equipe
--- ----------------------------------------------------------------------------
-INSERT INTO "public"."convites_estudio"
-    ("convite_id", "estudio_id", "tatuador_id", "status", "data_criacao", "data_resposta") VALUES
-    -- Tinta Negra -> Carla (independente): convite ainda aguardando resposta
-    ('cccccccc-cccc-cccc-cccc-cccccccccc01',
-    '33333333-3333-3333-3333-333333333301', '44444444-4444-4444-4444-444444444401',
-    'pendente', now() - interval '1 day', NULL),
-
-    -- Tinta Negra -> Diego: convite aceito (histórico do vínculo que já existe)
-    ('cccccccc-cccc-cccc-cccc-cccccccccc02',
-    '33333333-3333-3333-3333-333333333301', '44444444-4444-4444-4444-444444444402',
-    'aceito', now() - interval '30 days', now() - interval '29 days'),
-
-    -- Tinta Negra -> Filipe: convite aceito (histórico do vínculo que já existe)
-    ('cccccccc-cccc-cccc-cccc-cccccccccc03',
-    '33333333-3333-3333-3333-333333333301', '44444444-4444-4444-4444-444444444403',
-    'aceito', now() - interval '20 days', now() - interval '19 days')
-
-ON CONFLICT ("convite_id") DO NOTHING;
 
 -- ----------------------------------------------------------------------------
 -- Dashboard do estúdio: histórico de serviços/sessões da Tinta Negra Studio
@@ -284,30 +391,36 @@ ON CONFLICT ("convite_id") DO NOTHING;
 --   clientes novos, entre os dias 1 e 10 (limitado ao dia de hoje).
 -- Um a cada 9 serviços é cancelado (fica fora do dashboard). Cada serviço tem
 -- uma sessão em reservas, 3 a 17 dias depois (10 dias para os clientes novos).
--- IDs: usuários 11111111-...-0000000001NN, clientes 22222222-...-0000000001NN,
--- serviços aaaaaaaa-...-00000000KNNN e reservas bbbbbbbb-...-00000000KNNN.
+-- IDs: contas 11111111-...-0000000001NN (criadas lá em cima, com as demais
+-- contas), clientes 22222222-...-0000000001NN, serviços
+-- aaaaaaaa-...-00000000KNNN e reservas bbbbbbbb-...-00000000KNNN.
 
-INSERT INTO "public"."users" ("user_id", "nome", "email", "senha_hash", "role", "status_ativo", "termos_aceitos")
-SELECT ('11111111-1111-1111-1111-0000000001' || lpad(c.i::text, 2, '0'))::uuid, c.nome, c.email,
-       '$2a$10$ulN5jQ9YJacE3Ym9i4hmsO31TaVkdrvbrQgIaAXAU9j4gn29sBHLS', 'cliente', true, true
+INSERT INTO "public"."clientes" ("cliente_id", "auth_id", "nome", "cpf", "termos_aceitos")
+SELECT ('22222222-2222-2222-2222-0000000001' || lpad(c.i::text, 2, '0'))::uuid,
+       ('11111111-1111-1111-1111-0000000001' || lpad(c.i::text, 2, '0'))::uuid,
+       c.nome, c.cpf, true
 FROM (VALUES
-    (1, 'Camila Mendes',   'camila.mendes@example.com'),
-    (2, 'Rafael Lima',     'rafael.lima@example.com'),
-    (3, 'Juliana Rocha',   'juliana.rocha@example.com'),
-    (4, 'Marcos Teixeira', 'marcos.teixeira@example.com'),
-    (5, 'Patricia Alves',  'patricia.alves@example.com'),
-    (6, 'Lucas Martins',   'lucas.martins@example.com'),
-    (7, 'Fernanda Costa',  'fernanda.costa@example.com'),
-    (8, 'Gabriel Nunes',   'gabriel.nunes@example.com'),
-    (9, 'Beatriz Ramos',   'beatriz.ramos@example.com')
-) AS c(i, nome, email)
-ON CONFLICT ("user_id") DO NOTHING;
-
-INSERT INTO "public"."clientes" ("cliente_id", "user_id")
-SELECT ('22222222-2222-2222-2222-0000000001' || lpad(i::text, 2, '0'))::uuid,
-       ('11111111-1111-1111-1111-0000000001' || lpad(i::text, 2, '0'))::uuid
-FROM generate_series(1, 9) AS i
+    (1, 'Camila Mendes',   '34567000161'),
+    (2, 'Rafael Lima',     '34567000242'),
+    (3, 'Juliana Rocha',   '34567000323'),
+    (4, 'Marcos Teixeira', '34567000404'),
+    (5, 'Patricia Alves',  '34567000595'),
+    (6, 'Lucas Martins',   '34567000676'),
+    (7, 'Fernanda Costa',  '34567000757'),
+    (8, 'Gabriel Nunes',   '34567000838'),
+    (9, 'Beatriz Ramos',   '34567000919')
+) AS c(i, nome, cpf)
 ON CONFLICT ("cliente_id") DO NOTHING;
+
+-- Estilo e posição de cada tatuador da equipe nesses serviços: Diego faz
+-- realismo na posição 1, Filipe oriental na 2 e João blackwork na 3 (João não
+-- tem portfólio, então o estilo do serviço não o coloca na busca).
+CREATE TEMP TABLE seed_equipe (tatuador_id uuid PRIMARY KEY, estilo_id uuid NOT NULL, posicao int NOT NULL) ON COMMIT DROP;
+
+INSERT INTO seed_equipe (tatuador_id, estilo_id, posicao) VALUES
+    ('44444444-4444-4444-4444-444444444402', '55555555-5555-5555-5555-555555555503', 1),
+    ('44444444-4444-4444-4444-444444444403', '55555555-5555-5555-5555-555555555508', 2),
+    ('cacc1353-c691-49b4-9a66-ce4a73891f3c', '55555555-5555-5555-5555-555555555504', 3);
 
 WITH hoje AS (
     SELECT (now() AT TIME ZONE 'America/Sao_Paulo')::date AS dia
@@ -357,26 +470,29 @@ novos AS (
         (3, 9,  7, 'cacc1353-c691-49b4-9a66-ce4a73891f3c', 1100)
     ) AS v(k, i, dia, tatuador_id, valor) ON v.k = ms.k
 )
--- estudio_id: Diego, Filipe e João fizeram esses trabalhos no Tinta Negra
--- (o dashboard do estúdio conta por servicos.estudio_id).
 INSERT INTO "public"."servicos"
-    ("servico_id", "tatuador_id", "cliente_id", "estudio_id", "descricao", "valor_total", "status", "data_criacao")
+    ("servico_id", "tatuador_id", "cliente_id", "estilo_id", "descricao", "valor_total", "status", "data_criacao")
 SELECT ('aaaaaaaa-aaaa-aaaa-aaaa-' || lpad((s.k * 1000 + s.n)::text, 12, '0'))::uuid,
-       s.tatuador_id::uuid, s.cliente_id::uuid, '33333333-3333-3333-3333-333333333301'::uuid,
+       s.tatuador_id::uuid, s.cliente_id::uuid, e.estilo_id,
        'Serviço do histórico do dashboard',
        s.valor, s.status, (s.dia + make_interval(hours => s.hora)) AT TIME ZONE 'America/Sao_Paulo'
 FROM (SELECT * FROM recorrentes UNION ALL SELECT * FROM novos) AS s
+JOIN seed_equipe e ON e.tatuador_id = s.tatuador_id::uuid
 ON CONFLICT ("servico_id") DO NOTHING;
 
+-- Diego, Filipe e João fizeram esses trabalhos no Tinta Negra: o dashboard do
+-- estúdio conta pelo estúdio das reservas.
 INSERT INTO "public"."reservas"
-    ("reserva_id", "orcamento_id", "tatuador_id", "cliente_id", "data_criacao", "data_sessao", "duracao_min", "status")
+    ("reserva_id", "servico_id", "estudio_id", "posicao", "data_criacao", "data_sessao", "duracao_min", "status")
 SELECT ('bbbbbbbb-bbbb-bbbb-bbbb-' || right(s.servico_id::text, 12))::uuid,
-       s.servico_id, s.tatuador_id, s.cliente_id, s.data_criacao, x.data_sessao,
+       s.servico_id, '33333333-3333-3333-3333-333333333301'::uuid, e.posicao,
+       s.data_criacao, x.data_sessao,
        120 + (x.n % 3) * 60,
        (CASE WHEN s.status = 'cancelada' THEN 'cancelada'
              WHEN x.data_sessao < now() THEN 'concluida'
              ELSE 'confirmada' END)::"public"."reserva_status"
 FROM "public"."servicos" s
+JOIN seed_equipe e ON e.tatuador_id = s.tatuador_id
 CROSS JOIN LATERAL (
     SELECT right(s.servico_id::text, 3)::int AS n,
            s.data_criacao + CASE WHEN right(s.servico_id::text, 3)::int > 50

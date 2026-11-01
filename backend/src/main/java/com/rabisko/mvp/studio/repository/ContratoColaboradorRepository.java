@@ -31,6 +31,8 @@ public interface ContratoColaboradorRepository extends JpaRepository<ContratoCol
 
     List<ContratoColaborador> findByTatuadorIdOrderByDataCriacaoDesc(UUID tatuadorId);
 
+    List<ContratoColaborador> findByTatuadorIdAndStatus(UUID tatuadorId, ContratoStatus status);
+
     @Modifying
     @Query("""
         UPDATE ContratoColaborador c

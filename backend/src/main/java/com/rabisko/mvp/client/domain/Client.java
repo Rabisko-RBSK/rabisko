@@ -9,6 +9,7 @@ import jakarta.persistence.Table;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -28,15 +29,33 @@ public class Client {
     @Column(name = "cliente_id", updatable = false, nullable = false)
     private UUID clientId;
 
-    /**
-     * Chave estrangeira (FK) que liga este perfil ao User dono.
-     * UNIQUE: cada usuario do tipo "cliente" tem APENAS 1 perfil
-     * cliente (relacao 1-pra-1).
-     */
-    @Column(name = "user_id", nullable = false, unique = true)
-    private UUID userId;
+    @Column(name = "auth_id", nullable = false, unique = true)
+    private UUID authId;
+
+    @Column(name = "nome", nullable = false)
+    private String nome;
+
+    @Column(name = "telefone")
+    private String telefone;
+
+
+    @Column(name = "data_nasc")
+    private LocalDate dataNasc;
+
+    @Column(name = "cpf", unique = true)
+    private String cpf;
+
+    @Column(name = "termos_aceitos")
+    private boolean termosAceitos;
+
+    @Column(name = "status_ativo", nullable = false)
+    @Builder.Default
+    private boolean statusAtivo = true;
 
     @CreationTimestamp
     @Column(name = "data_criacao", updatable = false, nullable = false)
     private LocalDateTime dataCriacao;
+
+    @Column(name = "data_modificacao", updatable = false, insertable = false)
+    private LocalDateTime dataModificacao;
 }

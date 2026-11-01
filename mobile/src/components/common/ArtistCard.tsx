@@ -15,7 +15,8 @@ import { Heart, Star } from 'lucide-react-native';
  */
 interface ArtistCardProps {
   name: string;
-  rating: string | number;
+  /** Nota já formatada; null/ausente = tatuador ainda sem avaliações ("Novo"). */
+  rating?: string | number | null;
   tags?: string[];
   photo?: string;
   favorited?: boolean;
@@ -67,8 +68,14 @@ export function ArtistCard({
         </Text>
 
         <View className="flex-row items-center justify-center mt-1" style={{ gap: 4 }}>
-          <Star size={14} color="#FFFFFF" fill="#FFFFFF" />
-          <Text className="font-body text-[13px] text-white">{rating}</Text>
+          {rating != null ? (
+            <>
+              <Star size={14} color="#FFFFFF" fill="#FFFFFF" />
+              <Text className="font-body text-[13px] text-white">{rating}</Text>
+            </>
+          ) : (
+            <Text className="font-body text-[13px] text-white">Novo</Text>
+          )}
         </View>
 
         {tags.length > 0 && (

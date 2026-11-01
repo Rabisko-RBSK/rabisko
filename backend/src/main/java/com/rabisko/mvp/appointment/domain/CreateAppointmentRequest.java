@@ -11,6 +11,7 @@ import java.util.UUID;
 
 public record CreateAppointmentRequest(
     @NotNull UUID chatId,
+    @NotNull UUID estiloId,
     @NotEmpty @Valid List<SessionInput> sessoes,
     @NotNull @Positive BigDecimal valorTotal
 ) {}

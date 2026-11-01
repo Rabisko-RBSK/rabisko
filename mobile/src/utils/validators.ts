@@ -52,3 +52,52 @@ export function isValidCNPJ(cnpj: string): boolean {
 
   return true;
 }
+
+/**
+ * Valida se uma string é um CPF válido de acordo com o algoritmo oficial:
+ * 1. Remove caracteres não numéricos.
+ * 2. Verifica se possui exatamente 11 dígitos.
+ * 3. Rejeita sequências de dígitos todos iguais (ex: 00000000000, 11111111111, etc.).
+ * 4. Calcula e compara o 1º dígito verificador (pesos 10 a 2).
+ * 5. Calcula e compara o 2º dígito verificador (pesos 11 a 2).
+ */
+export function isValidCPF(cpf: string): boolean {
+  if (!cpf) return false;
+
+  const digits = cpf.replace(/\D/g, '');
+
+  if (digits.length !== 11) {
+    return false;
+  }
+
+  // Rejeita sequências com todos os dígitos iguais (ex.: 000.000.000-00, 111.111.111-11)
+  if (/^(\d)\1{10}$/.test(digits)) {
+    return false;
+  }
+
+  // 1º Dígito Verificador
+  let sum1 = 0;
+  for (let i = 0; i < 9; i++) {
+    sum1 += Number(digits[i]) * (10 - i);
+  }
+  const mod1 = sum1 % 11;
+  const dv1 = mod1 < 2 ? 0 : 11 - mod1;
+
+  if (dv1 !== Number(digits[9])) {
+    return false;
+  }
+
+  // 2º Dígito Verificador
+  let sum2 = 0;
+  for (let i = 0; i < 10; i++) {
+    sum2 += Number(digits[i]) * (11 - i);
+  }
+  const mod2 = sum2 % 11;
+  const dv2 = mod2 < 2 ? 0 : 11 - mod2;
+
+  if (dv2 !== Number(digits[10])) {
+    return false;
+  }
+
+  return true;
+}

@@ -14,14 +14,14 @@ import java.util.UUID;
 
 
 @Entity
-@Table(name = "portfolio_imagens")
+@Table(name = "portfolio")
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 @EqualsAndHashCode(of = "imagemId")
-public class PortfolioImagem {
+public class Portfolio {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -35,6 +35,9 @@ public class PortfolioImagem {
     /** URL publica da imagem no Supabase Storage. */
     @Column(nullable = false)
     private String url;
+
+    @Column(name = "estilo_id", nullable = false)
+    private UUID estiloId;
 
     /** Momento do upload — define a ordem de exibicao (mais recentes primeiro). */
     @CreationTimestamp

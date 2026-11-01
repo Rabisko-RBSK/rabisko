@@ -25,14 +25,11 @@ public class AppointmentSession {
     private UUID sessionId;
 
     /** FK para `servicos.servico_id` — o agendamento pai. */
-    @Column(name = "orcamento_id", nullable = false)
+    @Column(name = "servico_id", nullable = false)
     private UUID appointmentId;
 
-    @Column(name = "tatuador_id", nullable = false)
-    private UUID tatuadorId;
-
-    @Column(name = "cliente_id", nullable = false)
-    private UUID clienteId;
+    @Column(name = "estudio_id", nullable = false)
+    private UUID estudioId;
 
     /** Data + horário combinados, gravados em UTC. */
     @Column(name = "data_sessao", nullable = false)

@@ -8,7 +8,7 @@ import com.rabisko.mvp.appointment.domain.ConflitoAgendaException;
 import com.rabisko.mvp.appointment.domain.CreateAppointmentRequest;
 import com.rabisko.mvp.appointment.domain.SessaoListItemDTO;
 import com.rabisko.mvp.appointment.service.AppointmentService;
-import com.rabisko.mvp.user.domain.User;
+import com.rabisko.mvp.shared.infraestrutura.security.UsuarioLogado;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -32,7 +32,7 @@ public class AppointmentController {
     @PostMapping("/appointments")
     @ResponseStatus(HttpStatus.CREATED)
     public AppointmentDTO criar(
-            @AuthenticationPrincipal User usuario,
+            @AuthenticationPrincipal UsuarioLogado usuario,
             @RequestBody @Valid CreateAppointmentRequest request) {
         return appointmentService.criarAgendamento(usuario, request);
     }
@@ -40,7 +40,7 @@ public class AppointmentController {
     /** GET /appointments/{id} — detalhe de um agendamento (participante do chat). */
     @GetMapping("/appointments/{id}")
     public AppointmentDTO obter(
-            @AuthenticationPrincipal User usuario,
+            @AuthenticationPrincipal UsuarioLogado usuario,
             @PathVariable UUID id) {
         return appointmentService.obterAgendamento(usuario, id);
     }
@@ -52,7 +52,7 @@ public class AppointmentController {
      */
     @GetMapping("/appointments/busy-slots")
     public List<BusySlotDTO> busySlots(
-            @AuthenticationPrincipal User usuario,
+            @AuthenticationPrincipal UsuarioLogado usuario,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return appointmentService.obterHorariosOcupados(usuario, date);
     }
@@ -65,7 +65,7 @@ public class AppointmentController {
      */
     @GetMapping("/appointments/minhas-sessoes")
     public List<SessaoListItemDTO> minhasSessoes(
-            @AuthenticationPrincipal User usuario,
+            @AuthenticationPrincipal UsuarioLogado usuario,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate de,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate ate) {
         return appointmentService.listarSessoes(usuario, de, ate);
@@ -79,7 +79,7 @@ public class AppointmentController {
      */
     @GetMapping("/appointments/agenda-estudio")
     public AgendaEstudioDTO agendaEstudio(
-            @AuthenticationPrincipal User usuario,
+            @AuthenticationPrincipal UsuarioLogado usuario,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return appointmentService.obterAgendaDoEstudio(usuario, date);
     }

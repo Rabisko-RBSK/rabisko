@@ -1,4 +1,4 @@
-import api, { type EnderecoInput } from './index';
+import api from './index';
 import { multipartImage } from '../../utils/multipart';
 
 /**
@@ -8,8 +8,10 @@ import { multipartImage } from '../../utils/multipart';
 export interface PortfolioImage {
   imagemId: string;
   url: string;
-  descricao: string | null;
-  ordem: number | null;
+  /** Estilo do trabalho (obrigatório no upload); define os estilos do tatuador na busca. */
+  estiloId: string | null;
+  descricao?: string | null;
+  ordem?: number | null;
 }
 
 /**
@@ -34,11 +36,14 @@ export interface ArtistProfile {
   /** Selo de nível (Bronze/Prata/Ouro); o backend ainda manda sempre null. */
   tier: string | null;
 
-  /** Estúdio ao qual o tatuador está vinculado; null quando é autônomo. */
+  /**
+   * Estúdio onde o tatuador atende: o do contrato de colaborador ativo ou, sem
+   * ele, o estúdio próprio. null = sem estúdio (não atende).
+   */
   estudioId: string | null;
-  /** estudios.nome — null quando é autônomo. */
+  /** estudios.nome — null quando não atende em estúdio. */
   nomeEstudio: string | null;
-  /** estudios.foto_perfil_url — null quando é autônomo ou o estúdio não tem foto. */
+  /** estudios.foto_perfil_url — null sem estúdio ou quando o estúdio não tem foto. */
   fotoEstudioUrl: string | null;
 
   /** Galeria de trabalhos (portfolio_imagens), já ordenada por `ordem`. */
@@ -51,7 +56,7 @@ export interface ArtistProfile {
 }
 
 /**
- * Um intervalo de atendimento do tatuador. diaSemana: 1 = segunda ... 7 = domingo.
+ * Um intervalo de atendimento do estúdio. diaSemana: 1 = segunda ... 7 = domingo.
  * Horários em "HH:mm" (o backend pode devolver "HH:mm:ss"; use normalizarHora).
  */
 export interface HorarioDTO {
@@ -108,14 +113,18 @@ export interface ConviteDetalheDTO {
   contrato: ContratoDTO | null;
 }
 
-export type ContratoModelo = 'comissao' | 'aluguel' | 'salario';
+/** "dono" é o estúdio próprio do tatuador: não tem valores e não é proposto pelo app. */
+export type ContratoModelo = 'comissao' | 'aluguel' | 'salario' | 'dono';
+
+/** Modelos que um estúdio pode propor a um colaborador. */
+export type ModeloProposto = Exclude<ContratoModelo, 'dono'>;
 
 export type ContratoPeriodicidade = 'diaria' | 'semanal' | 'mensal';
 
 export type ContratoStatus = 'proposto' | 'ativo' | 'recusado' | 'cancelado' | 'encerrado';
 
 export interface ContratoInput {
-  modelo: ContratoModelo;
+  modelo: ModeloProposto;
   percentualEstudio?: number;
   valorFixo?: number;
   periodicidade?: ContratoPeriodicidade;
@@ -162,25 +171,10 @@ export const artistService = {
     return data;
   },
 
-  /** Cria ou atualiza o endereço próprio do tatuador (PUT /artist/me/endereco). */
-  async atualizarEndereco(dto: EnderecoInput): Promise<EnderecoDTO> {
-    const { data } = await api.put<EnderecoDTO>('/artist/me/endereco', dto);
-    return data;
-  },
-
-  /** Grade de atendimento do tatuador logado. Lista vazia = sem restrição. */
-  async meusHorarios(): Promise<HorarioDTO[]> {
-    const { data } = await api.get<HorarioDTO[]>('/artist/me/horarios');
-    return data;
-  },
-
-  /** Substitui a semana inteira; lista vazia remove a grade. */
-  async atualizarHorarios(horarios: HorarioDTO[]): Promise<HorarioDTO[]> {
-    const { data } = await api.put<HorarioDTO[]>('/artist/me/horarios', horarios);
-    return data;
-  },
-
-  /** Grade de qualquer tatuador (perfil público). */
+  /**
+   * Grade do estúdio onde o tatuador atende (perfil público e agendamento).
+   * Lista vazia = sem restrição, ou tatuador sem estúdio.
+   */
   async horariosDoTatuador(tatuadorId: string): Promise<HorarioDTO[]> {
     const { data } = await api.get<HorarioDTO[]>(`/artist/${tatuadorId}/horarios`);
     return data;
@@ -211,9 +205,10 @@ export const artistService = {
    */
   async adicionarImagemPortfolio(
     localUri: string,
+    estiloId: string,
     descricao?: string,
   ): Promise<PortfolioImage> {
-    const form = multipartImage(localUri, 'file', { descricao });
+    const form = multipartImage(localUri, 'file', { estiloId, descricao });
     const { data } = await api.post<PortfolioImage>('/artist/me/portfolio', form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });

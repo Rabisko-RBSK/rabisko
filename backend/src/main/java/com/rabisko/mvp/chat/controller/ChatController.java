@@ -18,7 +18,7 @@ import com.rabisko.mvp.chat.domain.AbrirChatRequest;
 import com.rabisko.mvp.chat.domain.ChatDTO;
 import com.rabisko.mvp.chat.domain.MensagemDTO;
 import com.rabisko.mvp.chat.service.ChatService;
-import com.rabisko.mvp.user.domain.User;
+import com.rabisko.mvp.shared.infraestrutura.security.UsuarioLogado;
 
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -39,7 +39,7 @@ public class ChatController {
      */
     @PostMapping
     public ChatDTO abrirOuObterChat(
-            @AuthenticationPrincipal User usuario,
+            @AuthenticationPrincipal UsuarioLogado usuario,
             @RequestBody @Valid AbrirChatRequest request) {
         return chatService.abrirOuObterChat(usuario, request);
     }
@@ -50,7 +50,7 @@ public class ChatController {
      * (igual a tela inicial do WhatsApp).
      */
     @GetMapping
-    public List<ChatDTO> listarChatsDoUsuario(@AuthenticationPrincipal User usuario) {
+    public List<ChatDTO> listarChatsDoUsuario(@AuthenticationPrincipal UsuarioLogado usuario) {
         return chatService.listarChatsDoUsuario(usuario);
     }
 
@@ -67,7 +67,7 @@ public class ChatController {
      */
     @GetMapping("/{chatId}/mensagens")
     public Page<MensagemDTO> historicoChat(
-            @AuthenticationPrincipal User usuario,
+            @AuthenticationPrincipal UsuarioLogado usuario,
             @PathVariable UUID chatId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "30") int size) {
@@ -81,7 +81,7 @@ public class ChatController {
      */
     @PostMapping(value = "/{chatId}/imagens", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public MensagemDTO enviarImagem(
-            @AuthenticationPrincipal User usuario,
+            @AuthenticationPrincipal UsuarioLogado usuario,
             @PathVariable UUID chatId,
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "legenda", required = false) String legenda) {

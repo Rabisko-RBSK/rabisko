@@ -36,6 +36,7 @@ import { searchService, ArtistSearchResult } from '../../services/api/searchServ
 import { flashService, FlashItem } from '../../services/api/flashService';
 import { normalize } from '../../utils/normalize';
 import { levenshtein } from '../../utils/levenshtein';
+import { notaParaExibir } from '../../utils/nota';
 
 /** Quantidade máxima de sugestões mostradas no dropdown da Home. */
 const MAX_SUGGESTIONS = 5;
@@ -59,32 +60,7 @@ function getStylePhoto(nome: string): string {
   return STYLE_PHOTOS[key] || 'https://images.unsplash.com/photo-1565058379802-bbe93b2f703a?q=80&w=400&auto=format&fit=crop';
 }
 
-/** Fotos de perfil dos artistas */
-const ARTIST_PHOTOS: Record<string, string> = {
-  'Carla Mendes': 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400&auto=format&fit=crop',
-  'Diego Fernandes': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=400&auto=format&fit=crop',
-  'Filipe Ribeiro': 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=400&auto=format&fit=crop',
-  'João Santos': 'https://images.unsplash.com/photo-1682406593404-99578759c260?q=80&w=400&auto=format&fit=crop',
-  'Marina': 'https://images.unsplash.com/photo-1523783419860-28486a354a3b?q=80&w=400&auto=format&fit=crop',
-  'Estúdio Fênix': 'https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=400&auto=format&fit=crop',
-  'Pedro': 'https://images.unsplash.com/photo-1753259789341-808371092e19?q=80&w=400&auto=format&fit=crop',
-};
 
-function getArtistPhoto(name: string): string {
-  return ARTIST_PHOTOS[name] || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=400&auto=format&fit=crop';
-}
-
-/** Foto de capa para o destaque */
-const FEATURED_COVERS: Record<string, string> = {
-  'Carla Mendes': 'https://images.unsplash.com/photo-1611501275019-9b5cda994e8d?q=80&w=800&auto=format&fit=crop',
-  'Diego Fernandes': 'https://images.unsplash.com/photo-1590246814883-57c511e7afde?q=80&w=800&auto=format&fit=crop',
-  'Filipe Ribeiro': 'https://images.unsplash.com/photo-1598371839696-5c5bb00bdc28?q=80&w=800&auto=format&fit=crop',
-  'João Santos': 'https://images.unsplash.com/photo-1682406593404-99578759c260?q=80&w=800&auto=format&fit=crop',
-};
-
-function getFeaturedCover(name: string): string {
-  return FEATURED_COVERS[name] || 'https://images.unsplash.com/photo-1682406593404-99578759c260?q=80&w=800&auto=format&fit=crop';
-}
 
 function SectionHeader({
   title,
@@ -158,14 +134,22 @@ function FavoriteTile({
   onPress,
 }: {
   name: string;
-  photo: string;
+  /** Foto de perfil do tatuador; sem ela, mostra a inicial do nome. */
+  photo: string | null;
   onPress: () => void;
 }) {
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.85} className="mr-3 items-center" style={{ width: 72 }}>
       <View className="relative">
-        <View className="rounded-rd-pill overflow-hidden bg-surface" style={{ width: 72, height: 72 }}>
-          <Image source={{ uri: photo }} className="w-full h-full" />
+        <View
+          className="rounded-rd-pill overflow-hidden bg-surface items-center justify-center"
+          style={{ width: 72, height: 72 }}
+        >
+          {photo ? (
+            <Image source={{ uri: photo }} className="w-full h-full" />
+          ) : (
+            <Text className="font-display text-[28px] text-ink">{name.charAt(0).toUpperCase()}</Text>
+          )}
         </View>
         <View className="absolute -top-1 -right-1 w-6 h-6 rounded-rd-pill bg-paper items-center justify-center">
           <Heart size={12} color="#602C66" fill="#602C66" />
@@ -399,10 +383,12 @@ export function HomeScreen() {
                 className="rounded-rd-xl overflow-hidden bg-ink"
                 style={{ aspectRatio: 16 / 11 }}
               >
-                <Image
-                  source={{ uri: getFeaturedCover(featuredArtist.nome) }}
-                  className="w-full h-full opacity-80"
-                />
+                {featuredArtist.fotoPerfilUrl ? (
+                  <Image
+                    source={{ uri: featuredArtist.fotoPerfilUrl }}
+                    className="w-full h-full opacity-80"
+                  />
+                ) : null}
                 <View className="absolute inset-0 p-5 justify-between">
                   <View className="self-start">
                     <StatusPill label="BOOST" tone="plum" />
@@ -454,7 +440,7 @@ export function HomeScreen() {
               <FavoriteTile
                 key={fav.id}
                 name={fav.name}
-                photo={fav.photo || getArtistPhoto(fav.name)}
+                photo={fav.photo ?? null}
                 onPress={() => navigation.navigate('EstablishmentProfile', { id: fav.id })}
               />
             ))}
@@ -615,15 +601,17 @@ export function HomeScreen() {
                 >
                   <ArtistCard
                     name={a.nome}
-                    rating="5,0"
-                    photo={getArtistPhoto(a.nome)}
-                    tags={a.endereco ? [a.endereco.split(',')[0]] : []}
+                    rating={notaParaExibir(a.notaMedia, a.totalAvaliacoes)}
+                    photo={a.fotoPerfilUrl ?? undefined}
+                    tags={a.estilos.slice(0, 2)}
                     favorited={isFavorite(a.tatuadorId)}
                     onToggleFavorite={() =>
                       toggleFavorite({
                         id: a.tatuadorId,
                         name: a.nome,
-                        photo: getArtistPhoto(a.nome),
+                        photo: a.fotoPerfilUrl,
+                        rating: notaParaExibir(a.notaMedia, a.totalAvaliacoes) ?? undefined,
+                        tags: a.estilos.slice(0, 2),
                         endereco: a.endereco,
                       })
                     }

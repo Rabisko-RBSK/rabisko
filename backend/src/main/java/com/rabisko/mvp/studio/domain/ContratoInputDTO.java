@@ -12,12 +12,13 @@ public record ContratoInputDTO(
         ContratoPeriodicidade periodicidade,
         @Size(max = 500) String observacoes
 ) {
-    @AssertTrue(message = "Comissao exige apenas percentualEstudio; aluguel e salario exigem apenas valorFixo e periodicidade")
+    @AssertTrue(message = "Comissao exige apenas percentualEstudio; aluguel e salario exigem apenas valorFixo e periodicidade; dono não pode ser proposto")
     public boolean isCamposCompativeis() {
         if (modelo == null) return true;
         return switch (modelo) {
             case comissao -> percentualEstudio != null && valorFixo == null && periodicidade == null;
             case aluguel, salario -> valorFixo != null && periodicidade != null && percentualEstudio == null;
+            case dono -> false;
         };
     }
 

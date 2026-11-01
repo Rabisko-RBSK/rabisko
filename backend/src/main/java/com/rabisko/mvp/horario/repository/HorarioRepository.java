@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.rabisko.mvp.horario.domain.HorarioAtendimento;
 
 public interface HorarioRepository extends JpaRepository<HorarioAtendimento, UUID>{
-    List<HorarioAtendimento> findByTatuadorIdOrderByDiaSemanaAscAbreAsc(UUID tatuadorId);
+    List<HorarioAtendimento> findByEstudioIdOrderByDiaSemanaAscAbreAsc(UUID estudioId);
 
-    void deleteByTatuadorId(UUID tatuadorId);
+    void deleteByEstudioId(UUID estudioId);
 }

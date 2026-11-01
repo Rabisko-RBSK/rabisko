@@ -21,7 +21,7 @@ export function FavoritesScreen() {
     <View style={{ width: '47.5%', marginBottom: 12 }}>
       <ArtistCard
         name={item.name}
-        rating={item.rating ?? '5,0'}
+        rating={item.rating}
         tags={item.tags ?? []}
         photo={item.photo ?? undefined}
         favorited={isFavorite(item.id)}

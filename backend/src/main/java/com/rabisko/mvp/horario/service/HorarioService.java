@@ -22,8 +22,8 @@ import jakarta.transaction.Transactional;
 public class HorarioService {
     @Autowired private HorarioRepository horarioRepository;
 
-    public List<HorarioDTO> listar(UUID tatuadorId){
-        List<HorarioAtendimento> listaHorarios = horarioRepository.findByTatuadorIdOrderByDiaSemanaAscAbreAsc(tatuadorId);
+    public List<HorarioDTO> listar(UUID estudioId){
+        List<HorarioAtendimento> listaHorarios = horarioRepository.findByEstudioIdOrderByDiaSemanaAscAbreAsc(estudioId);
         List<HorarioDTO> listaHorarioDTO = new ArrayList<>();
 
         for(HorarioAtendimento h : listaHorarios){
@@ -34,7 +34,7 @@ public class HorarioService {
     }
 
     @Transactional
-    public void substituir(UUID tatuadorId, List<HorarioDTO> listaHorarios) {
+    public void substituir(UUID estudioId, List<HorarioDTO> listaHorarios) {
 
         List<HorarioDTO> ordenada = listaHorarios.stream()
                 .sorted(Comparator.comparingInt(HorarioDTO::diaSemana)
@@ -54,11 +54,11 @@ public class HorarioService {
             }
         }
 
-        horarioRepository.deleteByTatuadorId(tatuadorId);
+        horarioRepository.deleteByEstudioId(estudioId);
 
         for (HorarioDTO h : ordenada) {
             horarioRepository.save(HorarioAtendimento.builder()
-                    .tatuadorId(tatuadorId)
+                    .estudioId(estudioId)
                     .diaSemana((short) h.diaSemana())
                     .abre(h.abre())
                     .fecha(h.fecha())
@@ -67,8 +67,8 @@ public class HorarioService {
     }
 
 
-    public boolean atende(UUID tatuadorId, LocalDateTime inicio, int duracaoMinutos){
-        List<HorarioDTO> listaHorarios = listar(tatuadorId);
+    public boolean atende(UUID estudioId, LocalDateTime inicio, int duracaoMinutos){
+        List<HorarioDTO> listaHorarios = listar(estudioId);
 
         if(listaHorarios.size() == 0){
             return true;

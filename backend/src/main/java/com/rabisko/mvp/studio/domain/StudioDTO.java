@@ -5,7 +5,6 @@ import java.util.UUID;
 public record StudioDTO(
     UUID estudioId,
     String nome,
-    String email,
     String cnpj,
     String telefone,
     UUID enderecoId,
@@ -16,7 +15,6 @@ public record StudioDTO(
         return new StudioDTO(
             s.getEstudioId(),
             s.getNome(),
-            s.getEmail(),
             s.getCnpj(),
             s.getTelefone(),
             s.getEnderecoId(),

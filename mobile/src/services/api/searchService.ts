@@ -9,6 +9,12 @@ export interface ArtistSearchResult {
   nome: string;
   email: string;
   endereco: string | null;
+  fotoPerfilUrl: string | null;
+  /** Média das avaliações dos serviços (1 casa); null sem avaliações. */
+  notaMedia: number | null;
+  totalAvaliacoes: number;
+  /** Estilos do portfólio, em ordem alfabética. */
+  estilos: string[];
 }
 
 export interface ArtistSearchParams {

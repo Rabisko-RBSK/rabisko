@@ -9,6 +9,7 @@ export const MODELO_LABELS: Record<ContratoModelo, string> = {
   comissao: 'Comissão',
   aluguel: 'Aluguel',
   salario: 'Salário',
+  dono: 'Estúdio próprio',
 };
 
 export const PERIODICIDADE_LABELS: Record<ContratoPeriodicidade, string> = {

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Image } from 'react-native';
 import { Heart, Star, MapPin, Mail, Clock } from 'lucide-react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -12,9 +12,17 @@ import { chatService } from '../../services/api';
 import { searchService, ArtistSearchResult } from '../../services/api/searchService';
 import { useFavoritesStore } from '../../store/favoritesStore';
 import { useHorarios } from '../../hooks/useHorarios';
+import { useAvaliacoes } from '../../hooks/useAvaliacoes';
 import { resumirGrade } from '../../utils/horario';
+import { notaParaExibir } from '../../utils/nota';
 
 type ProfileRoute = RouteProp<HomeStackParamList, 'EstablishmentProfile'>;
+
+/**
+ * Perfil público do tatuador, visto pelo cliente. Os dados vêm da busca (não
+ * há rota de perfil por id): quem não aparece nela — tatuador sem estúdio,
+ * inativo ou removido — é mostrado como indisponível, sem conversa nova.
+ */
 
 export function EstablishmentProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
@@ -23,9 +31,12 @@ export function EstablishmentProfileScreen() {
 
   const [artistData, setArtistData] = useState<ArtistSearchResult | null>(null);
   const [loading, setLoading] = useState(true);
+  const [falhou, setFalhou] = useState(false);
   const [iniciandoConversa, setIniciandoConversa] = useState(false);
   const { horarios } = useHorarios(artistId);
   const linhasHorario = resumirGrade(horarios);
+  const { notaMedia, total: totalAvaliacoes } = useAvaliacoes(artistId);
+  const notaTexto = notaParaExibir(notaMedia, totalAvaliacoes);
 
   const { isFavorite, toggleFavorite } = useFavoritesStore();
   const favorited = artistId ? isFavorite(artistId) : false;
@@ -40,20 +51,10 @@ export function EstablishmentProfileScreen() {
       try {
         const list = await searchService.buscarArtistas({});
         if (!active) return;
-        const found = list.find((a) => a.tatuadorId === artistId);
-        if (found) {
-          setArtistData(found);
-        } else {
-          // Se não encontrou na lista padrão, monta o dado com o id recebido
-          setArtistData({
-            tatuadorId: artistId,
-            nome: 'Tatuador',
-            email: '',
-            endereco: null,
-          });
-        }
+        setArtistData(list.find((a) => a.tatuadorId === artistId) ?? null);
       } catch (err) {
         console.warn('[EstablishmentProfile] erro ao carregar artista', err);
+        if (active) setFalhou(true);
       } finally {
         if (active) setLoading(false);
       }
@@ -64,7 +65,7 @@ export function EstablishmentProfileScreen() {
     };
   }, [artistId]);
 
-  const displayName = artistData?.nome ?? 'Tatuador';
+  const displayName = artistData?.nome ?? '';
 
   async function iniciarConversa() {
     if (!artistId || iniciandoConversa) return;
@@ -89,7 +90,9 @@ export function EstablishmentProfileScreen() {
     toggleFavorite({
       id: artistId,
       name: displayName,
-      rating: '5,0',
+      photo: artistData?.fotoPerfilUrl,
+      rating: notaTexto ?? undefined,
+      tags: artistData?.estilos.slice(0, 2),
       endereco: artistData?.endereco,
     });
   };
@@ -98,6 +101,24 @@ export function EstablishmentProfileScreen() {
     return (
       <View className="flex-1 bg-background items-center justify-center">
         <ActivityIndicator size="large" color="#602C66" />
+      </View>
+    );
+  }
+
+  if (!artistData) {
+    return (
+      <View className="flex-1 bg-background">
+        <Header onBack={() => navigation.goBack()} />
+        <View className="mx-6 mt-4 bg-surface rounded-rd-lg p-5">
+          <Text className="font-aux-bold text-[16px] text-ink mb-2">
+            {falhou ? 'Não foi possível carregar o perfil' : 'Tatuador indisponível'}
+          </Text>
+          <Text className="font-body text-[13px] text-fg-2 leading-[18px]">
+            {falhou
+              ? 'Confira sua conexão e tente de novo.'
+              : 'Este tatuador não está atendendo no momento. Conversas que você já tem com ele continuam no chat.'}
+          </Text>
+        </View>
       </View>
     );
   }
@@ -128,43 +149,66 @@ export function EstablishmentProfileScreen() {
       >
         <View className="items-center mt-2 mb-6">
           <View
-            className="rounded-rd-pill bg-ink items-center justify-center mb-3"
+            className="rounded-rd-pill bg-ink items-center justify-center mb-3 overflow-hidden"
             style={{ width: 110, height: 110 }}
           >
-            <Text className="font-display text-[44px] text-white">
-              {displayName.charAt(0).toUpperCase()}
-            </Text>
+            {artistData.fotoPerfilUrl ? (
+              <Image source={{ uri: artistData.fotoPerfilUrl }} className="w-full h-full" />
+            ) : (
+              <Text className="font-display text-[44px] text-white">
+                {displayName.charAt(0).toUpperCase()}
+              </Text>
+            )}
           </View>
 
           <StatusPill label="TATUADOR" tone="ink" />
 
           <View className="flex-row items-center mt-2">
-            <Text className="font-body-semibold text-[14px] text-ink mr-1">5,0</Text>
-            <Star size={14} color="#000000" fill="#000000" />
+            {notaTexto ? (
+              <>
+                <Text className="font-body-semibold text-[14px] text-ink mr-1">{notaTexto}</Text>
+                <Star size={14} color="#000000" fill="#000000" />
+                <Text className="font-body text-[13px] text-fg-3 ml-1">
+                  ({totalAvaliacoes} {totalAvaliacoes === 1 ? 'avaliação' : 'avaliações'})
+                </Text>
+              </>
+            ) : (
+              <Text className="font-body text-[13px] text-fg-3">Sem avaliações ainda</Text>
+            )}
           </View>
 
           <Text className="font-aux-bold text-[32px] leading-[36px] text-ink mt-2 text-center">
             {displayName}
           </Text>
+
+          {artistData.estilos.length > 0 ? (
+            <View className="flex-row flex-wrap justify-center mt-3" style={{ gap: 8 }}>
+              {artistData.estilos.map((e) => (
+                <View key={e} className="rounded-rd-pill border border-ink px-3 py-1">
+                  <Text className="font-body text-[12px] text-ink">{e}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
         </View>
 
         <View className="bg-surface rounded-rd-lg p-5 mb-8">
           <Text className="font-aux-bold text-[16px] text-ink mb-2">Informações</Text>
 
-          {artistData?.email ? (
+          {artistData.email ? (
             <View className="flex-row items-center mb-2">
               <Mail size={16} color="#404040" style={{ marginRight: 8 }} />
               <Text className="font-body text-[14px] text-fg-2">{artistData.email}</Text>
             </View>
           ) : null}
 
-          {artistData?.endereco ? (
+          {artistData.endereco ? (
             <View className="flex-row items-start">
               <MapPin size={16} color="#6B6B6B" style={{ marginRight: 8, marginTop: 2 }} />
               <Text className="font-body text-[14px] text-fg-3 flex-1">{artistData.endereco}</Text>
             </View>
           ) : (
-            <Text className="font-body text-[13px] text-fg-3">Atendimento na região de São Paulo/SP</Text>
+            <Text className="font-body text-[13px] text-fg-3">Endereço não informado</Text>
           )}
 
           {linhasHorario.length > 0 ? (

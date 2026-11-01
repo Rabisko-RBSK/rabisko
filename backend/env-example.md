@@ -2,11 +2,6 @@
 # Crie um arquivo backend/.env com estas chaves preenchidas.
 # O Spring Boot importa esse arquivo automaticamente via spring.config.import.
 
-# Chave usada para assinar e validar os tokens JWT (HMAC256).
-# Qualquer string longa e aleatória serve para desenvolvimento local.
-# Se ausente, o backend usa o fallback inseguro "my-secret-key".
-JWT_SECRET=
-
 # Supabase Storage — necessário para upload de imagens (perfil e portfólio).
 # Após rodar `supabase start` na raiz do repositório, use os valores exibidos:
 #   SUPABASE_URL             -> "API URL"          (ex.: http://127.0.0.1:54321)

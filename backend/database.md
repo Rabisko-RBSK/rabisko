@@ -1,22 +1,6 @@
-## Table `avaliacoes`
-
-Avaliações mútuas entre cliente e tatuador após o serviço
-
-### Columns
-
-| Name | Type | Constraints |
-|------|------|-------------|
-| `avaliacao_id` | `uuid` | Primary |
-| `reserva_id` | `uuid` |  |
-| `remetente_id` | `uuid` |  |
-| `destinatario_id` | `uuid` |  |
-| `nota` | `int2` |  |
-| `comentario` | `text` |  Nullable |
-| `data_criacao` | `timestamptz` |  |
-
 ## Table `chats`
 
-Conversas entre cliente e tatuador
+Conversas entre cliente e tatuador.
 
 ### Columns
 
@@ -27,19 +11,18 @@ Conversas entre cliente e tatuador
 | `tatuador_id` | `uuid` |  |
 | `data_criacao` | `timestamptz` |  |
 | `ativo` | `bool` |  |
-| `ultima_mensagem_em` | `timestamptz` |  Nullable |
+| `ultima_mensagem_em` | `timestamptz` | Nullable |
 
 ## Table `clientes`
 
-Perfil específico de usuários que contratam tatuagens
+Perfil de quem contrata tatuagens. Os dados de login ficam em `users`.
 
 ### Columns
 
 | Name | Type | Constraints |
 |------|------|-------------|
 | `cliente_id` | `uuid` | Primary |
-| `user_id` | `uuid` |  Unique |
-| `dados_pagamento_token` | `varchar` |  Nullable |
+| `user_id` | `uuid` | Unique |
 | `data_criacao` | `timestamptz` |  |
 
 ## Table `contratos_colaborador`
@@ -53,30 +36,35 @@ Condições de contrato entre estúdio e tatuador (comissão, aluguel de bancada
 | `contrato_id` | `uuid` | Primary |
 | `estudio_id` | `uuid` |  |
 | `tatuador_id` | `uuid` |  |
-| `convite_id` | `uuid` |  Nullable, Unique |
+| `convite_id` | `uuid` | Nullable, Unique |
 | `modelo` | `contrato_modelo` |  |
-| `percentual_estudio` | `numeric` |  Nullable |
-| `valor_fixo` | `numeric` |  Nullable |
-| `periodicidade` | `contrato_periodicidade` |  Nullable |
-| `observacoes` | `varchar` |  Nullable |
+| `percentual_estudio` | `numeric` | Nullable |
+| `valor_fixo` | `numeric` | Nullable |
+| `periodicidade` | `contrato_periodicidade` | Nullable |
+| `observacoes` | `varchar` | Nullable |
 | `status` | `contrato_status` |  |
 | `data_criacao` | `timestamptz` |  |
-| `data_resposta` | `timestamptz` |  Nullable |
-| `data_encerramento` | `timestamptz` |  Nullable |
+| `data_resposta` | `timestamptz` | Nullable |
+| `data_encerramento` | `timestamptz` | Nullable |
 
-## Table `controle_etapas`
+## Table `convites_estudio`
+
+Convites de um estúdio para um tatuador entrar na equipe. No máximo 1 convite `pendente` por par estúdio–tatuador. O convite carrega o contrato proposto (`contratos_colaborador.convite_id`): aceitar vincula o tatuador ao estúdio, ativa esse contrato e cancela os outros convites pendentes dele.
 
 ### Columns
 
 | Name | Type | Constraints |
 |------|------|-------------|
-| `chat_id` | `uuid` | Primary |
-| `created_at` | `timestamptz` |  |
-| `status` | `varchar` |  Nullable |
+| `convite_id` | `uuid` | Primary |
+| `estudio_id` | `uuid` |  |
+| `tatuador_id` | `uuid` |  |
+| `status` | `convite_status` |  |
+| `data_criacao` | `timestamptz` |  |
+| `data_resposta` | `timestamptz` | Nullable |
 
 ## Table `enderecos`
 
-Endereços polimórficos com geolocalização (PostGIS)
+Endereços polimórficos (`owner_type` + `owner_id`: cliente, estúdio ou tatuador) com latitude/longitude simples, usadas na busca por proximidade (fórmula de Haversine no `ArtistRepository`). Sem PostGIS (removido pela migration `remove_postgis`). O CEP é gravado como `00000-000` e a UF em maiúsculas. Na busca, o tatuador de estúdio usa o endereço do estúdio; o autônomo, o próprio. Latitude e longitude vêm juntas ou nenhuma (`chk_lat_lng`).
 
 ### Columns
 
@@ -87,32 +75,31 @@ Endereços polimórficos com geolocalização (PostGIS)
 | `owner_type` | `endereco_owner_type` |  |
 | `cep` | `varchar` |  |
 | `logradouro` | `varchar` |  |
-| `numero` | `varchar` |  Nullable |
-| `complemento` | `varchar` |  Nullable |
-| `bairro` | `varchar` |  Nullable |
+| `numero` | `varchar` | Nullable |
+| `complemento` | `varchar` | Nullable |
+| `bairro` | `varchar` | Nullable |
 | `cidade` | `varchar` |  |
 | `uf` | `bpchar` |  |
-| `latitude` | `numeric` |  Nullable |
-| `longitude` | `numeric` |  Nullable |
-| `geo_point` | `geography` |  Nullable |
+| `latitude` | `numeric` | Nullable |
+| `longitude` | `numeric` | Nullable |
 | `data_criacao` | `timestamptz` |  |
 
 ## Table `estilos`
 
-Catálogo controlado de estilos de tatuagem
+Catálogo controlado de estilos de tatuagem. Não é limpo pelas migrations: a seed só roda no ambiente local, então os bancos remotos dependem do catálogo existente.
 
 ### Columns
 
 | Name | Type | Constraints |
 |------|------|-------------|
 | `estilo_id` | `uuid` | Primary |
-| `nome` | `varchar` |  Unique |
-| `descricao` | `text` |  Nullable |
+| `nome` | `varchar` | Unique |
+| `descricao` | `text` | Nullable |
 | `data_criacao` | `timestamptz` |  |
 
 ## Table `estudios`
 
-Estabelecimentos físicos de tatuagem
+Estabelecimentos de tatuagem. `posicoes` é a quantidade de macas/bancadas (1 a 50), usada na agenda do estúdio por posição.
 
 ### Columns
 
@@ -120,14 +107,14 @@ Estabelecimentos físicos de tatuagem
 |------|------|-------------|
 | `estudio_id` | `uuid` | Primary |
 | `nome` | `varchar` |  |
-| `cnpj` | `varchar` |  Nullable Unique |
-| `telefone` | `varchar` |  Nullable |
+| `cnpj` | `varchar` | Nullable, Unique |
+| `telefone` | `varchar` | Nullable |
 | `data_criacao` | `timestamptz` |  |
-| `termos_aceitos` | `bool` |  |
 | `email` | `varchar` |  |
 | `user_id` | `uuid` |  |
-| `endereco` | `text` |  Nullable |
-| `posicoes` | `int4` |  Default 1, entre 1 e 50 |
+| `endereco_id` | `uuid` | Nullable |
+| `foto_perfil_url` | `text` | Nullable |
+| `posicoes` | `int4` |  |
 
 ## Table `horarios_atendimento`
 
@@ -138,16 +125,16 @@ Grade semanal de atendimento. Cada linha é um intervalo de um dia da semana; um
 | Name | Type | Constraints |
 |------|------|-------------|
 | `horario_id` | `uuid` | Primary |
-| `tatuador_id` | `uuid` |  Nullable |
-| `estudio_id` | `uuid` |  Nullable |
-| `dia_semana` | `smallint` |  |
+| `tatuador_id` | `uuid` | Nullable |
+| `estudio_id` | `uuid` | Nullable |
+| `dia_semana` | `int2` |  |
 | `abre` | `time` |  |
 | `fecha` | `time` |  |
 | `data_criacao` | `timestamptz` |  |
 
 ## Table `mensagens`
 
-Mensagens trocadas dentro de um chat
+Mensagens de um chat. Cada mensagem tem texto, imagem (`imagem_url`, bucket `chat_images`) ou os dois — nunca nenhum (`chk_mensagens_conteudo_ou_imagem`).
 
 ### Columns
 
@@ -156,33 +143,14 @@ Mensagens trocadas dentro de um chat
 | `mensagem_id` | `uuid` | Primary |
 | `chat_id` | `uuid` |  |
 | `remetente_id` | `uuid` |  |
-| `conteudo` | `text` |  Nullable |
+| `conteudo` | `text` | Nullable |
 | `data_envio` | `timestamptz` |  |
 | `destinatario_id` | `uuid` |  |
+| `imagem_url` | `text` | Nullable |
 
-## Table `pagamentos`
+## Table `portfolio`
 
-Transações financeiras integradas com Mercado Pago
-
-### Columns
-
-| Name | Type | Constraints |
-|------|------|-------------|
-| `pagamento_id` | `uuid` | Primary |
-| `reserva_id` | `uuid` |  |
-| `cliente_id` | `uuid` |  |
-| `valor` | `numeric` |  |
-| `metodo` | `pagamento_metodo` |  |
-| `status` | `pagamento_status` |  |
-| `tipo` | `pagamento_tipo` |  |
-| `mp_transaction_id` | `varchar` |  Nullable |
-| `mp_payment_url` | `varchar` |  Nullable |
-| `data_pagamento` | `timestamptz` |  Nullable |
-| `data_criacao` | `timestamptz` |  |
-
-## Table `portfolio_imagens`
-
-Galeria de trabalhos realizados pelo tatuador
+Galeria de trabalhos do tatuador (antes `portfolio_imagens`). Toda imagem tem um `estilo_id`: os estilos do tatuador, no perfil e na busca por estilo, são os do portfólio dele — quem não tem portfólio não aparece na busca por estilo. As imagens ficam no bucket `portfolio_images`.
 
 ### Columns
 
@@ -191,132 +159,92 @@ Galeria de trabalhos realizados pelo tatuador
 | `imagem_id` | `uuid` | Primary |
 | `tatuador_id` | `uuid` |  |
 | `url` | `varchar` |  |
-| `descricao` | `text` |  Nullable |
-| `ordem` | `int4` |  Nullable |
 | `data_upload` | `timestamptz` |  |
+| `estilo_id` | `uuid` |  |
 
 ## Table `qrcodes`
 
-Tokens únicos para check-in presencial no estúdio
+Tokens únicos para check-in presencial. Ainda não usados pelo backend; mantidos até a decisão sobre o check-in por QR Code.
 
 ### Columns
 
 | Name | Type | Constraints |
 |------|------|-------------|
 | `qrcode_id` | `uuid` | Primary |
-| `reserva_id` | `uuid` |  Unique |
-| `token` | `varchar` |  Unique |
+| `reserva_id` | `uuid` | Unique |
+| `token` | `varchar` | Unique |
 | `utilizado` | `bool` |  |
-| `data_uso` | `timestamptz` |  Nullable |
+| `data_uso` | `timestamptz` | Nullable |
 | `data_expiracao` | `timestamptz` |  |
 | `data_criacao` | `timestamptz` |  |
 
 ## Table `reservas`
 
-Sessões de tatuagem agendadas
+Sessões agendadas de um serviço (`servico_id`, antes `orcamento_id`). `posicao` só é usada quando o tatuador é de um estúdio, e não pode colidir com outra reserva da equipe na mesma posição.
 
 ### Columns
 
 | Name | Type | Constraints |
 |------|------|-------------|
 | `reserva_id` | `uuid` | Primary |
-| `orcamento_id` | `uuid` |  Unique |
+| `servico_id` | `uuid` |  |
 | `tatuador_id` | `uuid` |  |
 | `cliente_id` | `uuid` |  |
 | `data_sessao` | `timestamptz` |  |
 | `duracao_min` | `int4` |  |
 | `status` | `reserva_status` |  |
-| `observacoes` | `text` |  Nullable |
+| `observacoes` | `text` | Nullable |
 | `data_criacao` | `timestamptz` |  |
-| `posicao` | `int4` |  Nullable, >= 1 (posição do estúdio ocupada) |
+| `posicao` | `int4` | Nullable |
 
 ## Table `servicos`
 
-Propostas de tatuagem em negociação ou finalizadas
+Trabalhos fechados entre cliente e tatuador; cada um tem uma ou mais sessões em `reservas`. `estudio_id` é o estúdio em que o tatuador estava ao fechar o trabalho: não muda depois e é a base do dashboard do estúdio (nulo para autônomo). A avaliação do cliente fica no próprio serviço: `avaliacao_nota` (1 a 5), `avaliacao_comentario` e `avaliacao_data` — nota e data andam juntas.
 
 ### Columns
 
 | Name | Type | Constraints |
 |------|------|-------------|
 | `servico_id` | `uuid` | Primary |
-| `chat_id` | `uuid` |  Nullable |
+| `chat_id` | `uuid` | Nullable |
 | `tatuador_id` | `uuid` |  |
 | `cliente_id` | `uuid` |  |
-| `descricao` | `text` |  Nullable |
-| `tamanho_cm` | `numeric` |  Nullable |
-| `local_corpo` | `varchar` |  Nullable |
-| `arte_final_url` | `varchar` |  Nullable |
+| `descricao` | `text` | Nullable |
+| `tamanho_cm` | `numeric` | Nullable |
+| `local_corpo` | `varchar` | Nullable |
+| `arte_final_url` | `varchar` | Nullable |
 | `valor_total` | `numeric` |  |
 | `valor_sinal` | `numeric` |  |
 | `finalizado` | `bool` |  |
 | `data_criacao` | `timestamptz` |  |
-| `data_finalizacao` | `timestamptz` |  Nullable |
-
-## Table `simulacoes`
-
-Simulações de tatuagem aplicadas em foto do cliente
-
-### Columns
-
-| Name | Type | Constraints |
-|------|------|-------------|
-| `simulacao_id` | `uuid` | Primary |
-| `cliente_id` | `uuid` |  |
-| `orcamento_id` | `uuid` |  Nullable |
-| `url_foto_corpo` | `varchar` |  |
-| `url_tatuagem` | `varchar` |  |
-| `url_resultado` | `varchar` |  Nullable |
-| `pos_x` | `numeric` |  |
-| `pos_y` | `numeric` |  |
-| `escala` | `numeric` |  |
-| `rotacao` | `numeric` |  |
-| `data_criacao` | `timestamptz` |  |
-
-## Table `spatial_ref_sys`
-
-### Columns
-
-| Name | Type | Constraints |
-|------|------|-------------|
-| `srid` | `int4` | Primary |
-| `auth_name` | `varchar` |  Nullable |
-| `auth_srid` | `int4` |  Nullable |
-| `srtext` | `varchar` |  Nullable |
-| `proj4text` | `varchar` |  Nullable |
-
-## Table `tatuador_estilos`
-
-### Columns
-
-| Name | Type | Constraints |
-|------|------|-------------|
-| `tatuador_id` | `uuid` | Primary |
-| `estilo_id` | `uuid` | Primary |
-| `data_criacao` | `timestamptz` |  |
+| `data_finalizacao` | `timestamptz` | Nullable |
+| `status` | `varchar` |  |
+| `estudio_id` | `uuid` | Nullable |
+| `avaliacao_nota` | `int2` | Nullable |
+| `avaliacao_comentario` | `text` | Nullable |
+| `avaliacao_data` | `timestamptz` | Nullable |
 
 ## Table `tatuadores`
 
-Perfil profissional de tatuadores, vinculados ou não a estúdios
+Perfil profissional do tatuador. `estudio_id` é o estúdio atual (nulo para autônomo) e `endereco_id` o endereço próprio.
 
 ### Columns
 
 | Name | Type | Constraints |
 |------|------|-------------|
 | `tatuador_id` | `uuid` | Primary |
-| `user_id` | `uuid` |  Unique |
-| `estudio_id` | `uuid` |  Nullable |
-| `bio` | `text` |  Nullable |
-| `instagram` | `varchar` |  Nullable |
+| `user_id` | `uuid` | Unique |
+| `estudio_id` | `uuid` | Nullable |
+| `bio` | `text` | Nullable |
+| `instagram` | `varchar` | Nullable |
 | `vinculado_estudio` | `bool` |  |
 | `data_criacao` | `timestamptz` |  |
-| `endereco` | `varchar` |  Nullable |
-| `latitude` | `numeric` |  Nullable |
-| `longitude` | `numeric` |  Nullable |
-| `foto_perfil_url` | `varchar` |  Nullable |
+| `foto_perfil_url` | `varchar` | Nullable |
+| `endereco_id` | `uuid` | Nullable |
 
 ## Table `users`
 
-Tabela base de autenticação para clientes, tatuadores e admins
+Base de autenticação de clientes, tatuadores, estúdios e admins. Será substituída pelo Supabase Auth na etapa 2 da reestruturação do banco.
 
 ### Columns
 
@@ -324,14 +252,13 @@ Tabela base de autenticação para clientes, tatuadores e admins
 |------|------|-------------|
 | `user_id` | `uuid` | Primary |
 | `nome` | `varchar` |  |
-| `email` | `varchar` |  Unique |
+| `email` | `varchar` | Unique |
 | `senha_hash` | `varchar` |  |
-| `telefone` | `varchar` |  Nullable |
-| `data_nasc` | `date` |  Nullable |
-| `cpf` | `varchar` |  Nullable Unique |
+| `telefone` | `varchar` | Nullable |
+| `data_nasc` | `date` | Nullable |
+| `cpf` | `varchar` | Nullable, Unique |
 | `role` | `user_role` |  |
 | `status_ativo` | `bool` |  |
 | `data_criacao` | `timestamptz` |  |
 | `data_modificacao` | `timestamptz` |  |
 | `termos_aceitos` | `bool` |  |
-

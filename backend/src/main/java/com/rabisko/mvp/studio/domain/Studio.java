@@ -32,14 +32,11 @@ public class Studio {
      * FK pro User dono. UNIQUE = no MVP, cada usuario "estudio" pode
      * gerenciar APENAS 1 estudio. Suporte a multi-estudio fica pra dps.
      */
-    @Column(name = "user_id", nullable = false, unique = true)
-    private UUID userId;
+    @Column(name = "auth_id", unique = true)
+    private UUID authId;
 
     @Column(nullable = false)
     private String nome;
-
-    @Column(name = "email", nullable = false)
-    private String email;
 
     @Column(unique = true)
     private String cnpj;
@@ -69,4 +66,14 @@ public class Studio {
     @CreationTimestamp
     @Column(name = "data_criacao", updatable = false, nullable = false)
     private LocalDateTime dataCriacao;
+
+    @Column(name = "termos_aceitos")
+    private boolean termosAceitos;
+
+    @Column(name = "status_ativo", nullable = false)
+    @Builder.Default
+    private boolean statusAtivo = true;
+
+    @Column(name = "data_modificacao", updatable = false, insertable = false)
+    private LocalDateTime dataModificacao;
 }

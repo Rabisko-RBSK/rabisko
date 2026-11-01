@@ -33,14 +33,6 @@ public class Endereco {
     @Column(name = "endereco_id", updatable = false, nullable = false)
     private UUID enderecoId;
 
-    @Column(name = "owner_id", nullable = false)
-    private UUID ownerId;
-
-    @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "owner_type", nullable = false, columnDefinition = "endereco_owner_type")
-    private EnderecoOwnerType ownerType;
-
     @Column(name = "cep", nullable = false)
     private String cep;
 
