@@ -7,13 +7,11 @@ import com.rabisko.mvp.artist.repository.PortfolioImagemRepository;
 import com.rabisko.mvp.appointment.repository.AppointmentRepository;
 import com.rabisko.mvp.chat.repository.ChatRepository;
 import com.rabisko.mvp.endereco.domain.Endereco;
-import com.rabisko.mvp.endereco.domain.EnderecoDTO;
-import com.rabisko.mvp.endereco.domain.EnderecoOwnerType;
 import com.rabisko.mvp.endereco.service.EnderecoService;
-import com.rabisko.mvp.estilo.domain.Estilo;
 import com.rabisko.mvp.estilo.repository.EstiloRepository;
 import com.rabisko.mvp.horario.domain.HorarioDTO;
 import com.rabisko.mvp.horario.service.HorarioService;
+import com.rabisko.mvp.shared.infraestrutura.security.UsuarioLogado;
 import com.rabisko.mvp.shared.storage.StorageService;
 import com.rabisko.mvp.studio.domain.ContratoDTO;
 import com.rabisko.mvp.studio.domain.ConviteDTO;
@@ -23,9 +21,6 @@ import com.rabisko.mvp.studio.domain.Studio;
 import com.rabisko.mvp.studio.repository.ConviteEstudioRepository;
 import com.rabisko.mvp.studio.repository.StudioRepository;
 import com.rabisko.mvp.studio.service.ContratoService;
-import com.rabisko.mvp.user.domain.User;
-import com.rabisko.mvp.user.domain.UserRole;
-import com.rabisko.mvp.user.repository.UserRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 
@@ -78,26 +73,38 @@ public class ArtistService {
     @Autowired private ContratoService contratoService;
     @Autowired private EnderecoService enderecoService;
     @Autowired private HorarioService horarioService;
-    @Autowired private UserRepository userRepository;
 
     /**
-     * Cria o perfil tatuador apos o User ja ter sido salvo.
+     * Cria o perfil tatuador apos o UsuarioLogado ja ter sido salvo.
      * Os estilos vem como lista de nomes — a gente RESOLVE cada nome
      * pra um Estilo do catalogo via resolverEstilos().
      */
-    public Artist cadastrarArtista(User user, RegisterArtistaDTO body) {
+    @Transactional
+    public Artist cadastrarArtista(UUID authId, RegisterArtistaDTO body) {
         Artist novoArtist = Artist.builder()
-                .userId(user.getUserId())
+                .authId(authId)
+                .nome(body.getNome())
+                .cpf(body.getCpf())
+                .dataNasc(body.getDataNasc())
+                .telefone(body.getTelefone())
+                .termosAceitos(body.isTermosAceitos())
                 .bio(body.getBio())
                 .instagram(body.getInstagram())
-                .vinculadoEstudio(false)
                 .build();
 
         Artist a = artistRepository.save(novoArtist);
 
-        if(body.getEndereco() != null){
-            Endereco e = enderecoService.salvar(a.getTatuadorId(), EnderecoOwnerType.tatuador, body.getEndereco(), null);
-            a.setEnderecoId(e.getEnderecoId());
+        if (body.getEstudioSolo() != null) {
+            EstudioSoloDTO solo = body.getEstudioSolo();
+            Endereco e = enderecoService.salvar(solo.endereco(), null);
+            Studio estudio = studioRepository.save(Studio.builder()
+                    .nome(solo.nome().trim())
+                    .cnpj(solo.cnpj())
+                    .telefone(body.getTelefone())
+                    .enderecoId(e.getEnderecoId())
+                    .termosAceitos(body.isTermosAceitos())
+                    .build());
+            contratoService.criarDono(estudio.getEstudioId(), a.getTatuadorId());
         }
 
         return a;
@@ -153,29 +160,17 @@ public class ArtistService {
                 .collect(Collectors.toList());
     }
 
-    public List<HorarioDTO> meusHorarios(User user){
-        Artist artist = exigirArtistDoUser(user);
-
-        return horarioService.listar(artist.getTatuadorId());
-    }
-
-    public List<HorarioDTO> atualizarHorarios(User user, List<HorarioDTO> horariosNovos){
-        Artist artist = exigirArtistDoUser(user);
-
-        horarioService.substituir(artist.getTatuadorId(), horariosNovos);
-        return horarioService.listar(artist.getTatuadorId());
-    }
-
     public List<HorarioDTO> horariosDoTatuador(UUID idTatuador){
-        return horarioService.listar(idTatuador);
+        return contratoService.estudioDeAtendimento(idTatuador)
+                .map(horarioService::listar)
+                .orElse(List.of());
     }
-
 
     /**
-     * Retorna o perfil do tatuador logado (nome do User, foto, bio, instagram
+     * Retorna o perfil do tatuador logado (nome, foto, bio, instagram
      * e portfolio). Usado pelo GET /artist/me.
      */
-    public ArtistProfileDTO obterPerfil(User user) {
+    public ArtistProfileDTO obterPerfil(UsuarioLogado user) {
         Artist artist = exigirArtistDoUser(user);
         List<PortfolioImagemDTO> portfolio = portfolioImagemRepository
                 .listarPorTatuador(artist.getTatuadorId())
@@ -183,23 +178,24 @@ public class ArtistService {
                 .map(PortfolioImagemDTO::fromEntity)
                 .collect(Collectors.toList());
 
-        Studio estudio = artist.getEstudioId() == null
-                ? null
-                : studioRepository.findById(artist.getEstudioId()).orElse(null);
+        Studio estudio = contratoService.estudioDeAtendimento(artist.getTatuadorId())
+        .flatMap(studioRepository::findById)
+        .orElse(null);
+
 
         return new ArtistProfileDTO(
                 artist.getTatuadorId(),
-                user.getNome(),
+                artist.getNome(),
                 artist.getFotoPerfilUrl(),
                 artist.getBio(),
                 artist.getInstagram(),
                 null,
-                artist.getEstudioId(),
+                estudio != null ? estudio.getEstudioId() : null,
                 estudio != null ? estudio.getNome() : null,
                 estudio != null ? estudio.getFotoPerfilUrl() : null,
                 portfolio,
-                user.getTelefone(),
-                enderecoService.buscar(artist.getEnderecoId())
+                artist.getTelefone(),
+                enderecoService.buscar(estudio != null ? estudio.getEnderecoId() : null)
         );
     }
 
@@ -212,7 +208,7 @@ public class ArtistService {
      * Chaves aceitas: `bio` (String|null) e `fotoUrl` (String|null).
      */
     @Transactional
-    public ArtistProfileDTO atualizarPerfil(User user, Map<String, Object> payload) {
+    public ArtistProfileDTO atualizarPerfil(UsuarioLogado user, Map<String, Object> payload) {
         Artist artist = exigirArtistDoUser(user);
         if (payload == null) payload = Collections.emptyMap();
 
@@ -263,8 +259,7 @@ public class ArtistService {
                 }
                 String t = s.trim();
                 if (t.length() > 150) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "nome não pode ter mais de 150 caracteres");
-                user.setNome(t);
-                userRepository.save(user);
+                artist.setNome(t);
             } else {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "nome deve ser string");
             }
@@ -273,17 +268,16 @@ public class ArtistService {
         if (payload.containsKey("telefone")) {
             Object raw = payload.get("telefone");
             if (raw == null || (raw instanceof String s0 && s0.isBlank())) {
-                user.setTelefone(null);                       
+                artist.setTelefone(null);
             } else if (raw instanceof String s) {
                 String digitos = s.replaceAll("\\D", "");
                 if (digitos.length() != 10 && digitos.length() != 11) {
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "telefone deve ter 10 ou 11 digitos");
                 }
-                user.setTelefone(digitos);
+                artist.setTelefone(digitos);
             } else {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "telefone deve ser string");
             }
-            userRepository.save(user);
         }
 
 
@@ -297,13 +291,13 @@ public class ArtistService {
      * seguir via PATCH /artist/me com a URL retornada (assim a UI pode
      * mostrar a foto local enquanto decide se vai persistir).
      */
-    public String uploadFotoPerfil(User user, MultipartFile file) {
+    public String uploadFotoPerfil(UsuarioLogado user, MultipartFile file) {
         exigirArtistDoUser(user);
         return storageService.uploadFotoPerfil(file);
     }
 
 
-    public PortfolioImagemDTO adicionarImagemPortfolio(User user, MultipartFile file, UUID estiloId) {
+    public PortfolioImagemDTO adicionarImagemPortfolio(UsuarioLogado user, MultipartFile file, UUID estiloId) {
         Artist artist = exigirArtistDoUser(user);
         if (!estiloRepository.existsById(estiloId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Estilo inválido");
@@ -320,7 +314,7 @@ public class ArtistService {
         return PortfolioImagemDTO.fromEntity(nova);
     }
 
-    public void removerImagemPortfolio(User user, UUID imagemId) {
+    public void removerImagemPortfolio(UsuarioLogado user, UUID imagemId) {
         Artist artist = exigirArtistDoUser(user);
         Portfolio img = portfolioImagemRepository
                 .findByImagemIdAndTatuadorId(imagemId, artist.getTatuadorId())
@@ -341,12 +335,12 @@ public class ArtistService {
     }
 
 
-    /** Resolve o Artist do User logado; 404 se o user nao for um tatuador. */
-    private Artist exigirArtistDoUser(User user) {
+    /** Resolve o Artist do UsuarioLogado logado; 404 se o user nao for um tatuador. */
+    private Artist exigirArtistDoUser(UsuarioLogado user) {
         if (user == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sem usuario autenticado");
         }
-        return artistRepository.findByUserId(user.getUserId())
+        return artistRepository.findByAuthId(user.authId())
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Usuario nao possui perfil de tatuador"
                 ));
@@ -357,7 +351,7 @@ public class ArtistService {
      *
      * Etapas:
      *   1) Bloqueia chamadas de outros papeis (cliente/estudio/admin) com 403.
-     *   2) Resolve o perfil tatuador a partir do User logado.
+     *   2) Resolve o perfil tatuador a partir do UsuarioLogado logado.
      *   3) Consulta o ChatRepository pra contar chats ativos.
      *   4) Empacota tudo num ArtistDashboardDTO.
      *
@@ -366,12 +360,12 @@ public class ArtistService {
      * DTO e calculos aqui — nem o controller nem o front precisam saber
      * detalhe nenhum.
      */
-    public ArtistDashboardDTO dashboard(User logado) {
-            if (logado.getRole() != UserRole.tatuador) {
+    public ArtistDashboardDTO dashboard(UsuarioLogado logado) {
+            if (!"tatuador".equals(logado.papel())) {
                     throw new AccessDeniedException("Apenas tatuadores podem acessar o dashboard");
             }
 
-            Artist meuPerfil = artistRepository.findByUserId(logado.getUserId())
+            Artist meuPerfil = artistRepository.findByAuthId(logado.authId())
                     .orElseThrow(() -> new EntityNotFoundException("Perfil tatuador não encontrado"));
 
             UUID tatuadorId = meuPerfil.getTatuadorId();
@@ -398,14 +392,14 @@ public class ArtistService {
             return new ArtistDashboardDTO(chatsAbertos, valorTotalMes, totalAgendamentosMes, valorMedioServicoMes);
     }
 
-    public List<ConviteDetalheDTO> encontrarConvitesPendentes(User logado) {
+    public List<ConviteDetalheDTO> encontrarConvitesPendentes(UsuarioLogado logado) {
         Artist artist = exigirArtistDoUser(logado);
         return contratoService.comContratos(
                 conviteEstudioRepository.listarDetalhesDoTatuador(artist.getTatuadorId(), pendente));
     }
 
     @Transactional
-    public ConviteDTO aceitarConvite(User logado, UUID conviteId) {
+    public ConviteDTO aceitarConvite(UsuarioLogado logado, UUID conviteId) {
         Artist artist = exigirArtistDoUser(logado);
 
         UUID tatuadorId = artist.getTatuadorId();
@@ -413,16 +407,14 @@ public class ArtistService {
         ConviteEstudio convite = conviteEstudioRepository.findByConviteIdAndTatuadorId(conviteId, tatuadorId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Convite não encontrado"));
 
+        if (contratoService.estudioColaborador(tatuadorId).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Você já é colaborador de um estúdio. Saia dele antes de aceitar outro convite.");
+        }
+
         if(convite.getStatus() != pendente){
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Convite nao esta mais pendente");
         }
-
-        if(artist.getEstudioId() != null){
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Tatuador já possui estúdio vinculado");
-        }
-
-        artist.setEstudioId(convite.getEstudioId());
-        artist.setVinculadoEstudio(true);
 
         LocalDateTime agora = LocalDateTime.now();
         convite.setStatus(aceito);
@@ -435,20 +427,7 @@ public class ArtistService {
     }
 
     @Transactional
-    public EnderecoDTO atualizarEndereco(User logado, EnderecoDTO body){
-        Artist artist = exigirArtistDoUser(logado);
-
-        Endereco e = enderecoService.salvar(artist.getTatuadorId(), EnderecoOwnerType.tatuador, body, artist.getEnderecoId());
-    
-        artist.setEnderecoId(e.getEnderecoId());
-
-        artistRepository.save(artist);
-
-        return EnderecoDTO.from(e);
-    }
-
-    @Transactional
-    public ConviteDTO recusarConvite(User logado, UUID conviteId) {
+    public ConviteDTO recusarConvite(UsuarioLogado logado, UUID conviteId) {
         Artist artist = exigirArtistDoUser(logado);
 
         UUID tatuadorId = artist.getTatuadorId();
@@ -469,38 +448,36 @@ public class ArtistService {
     }
 
     @Transactional
-    public void sairEstudio(User logado) {
+    public void sairEstudio(UsuarioLogado logado) {
         Artist artist = exigirArtistDoUser(logado);
 
-        if(artist.getEstudioId() == null){
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Artista não pertence a nenhum estúdio");
-        }
-
-        contratoService.encerrarVinculo(artist.getEstudioId(), artist.getTatuadorId());
-        artist.setEstudioId(null);
-        artist.setVinculadoEstudio(false);
+        UUID estudioId = contratoService.estudioColaborador(artist.getTatuadorId())
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+                "Artista não é colaborador de nenhum estúdio"));
+        
+        contratoService.encerrarVinculo(estudioId, artist.getTatuadorId());
     }
 
-    public List<ContratoDTO> meusContratos(User logado) {
+    public List<ContratoDTO> meusContratos(UsuarioLogado logado) {
         Artist artist = exigirArtistDoUser(logado);
         return contratoService.historicoDoTatuador(artist.getTatuadorId());
     }
 
-    public ContratoDTO aceitarPropostaContrato(User logado) {
-        Artist artist = exigirArtistComEstudio(logado);
-        return ContratoDTO.from(contratoService.aceitarRenegociacao(artist.getEstudioId(), artist.getTatuadorId()));
-    }
-
-    public ContratoDTO recusarPropostaContrato(User logado) {
-        Artist artist = exigirArtistComEstudio(logado);
-        return ContratoDTO.from(contratoService.recusarRenegociacao(artist.getEstudioId(), artist.getTatuadorId()));
-    }
-
-    private Artist exigirArtistComEstudio(User logado) {
+    public ContratoDTO recusarPropostaContrato(UsuarioLogado logado) {
         Artist artist = exigirArtistDoUser(logado);
-        if (artist.getEstudioId() == null) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Artista não pertence a nenhum estúdio");
-        }
-        return artist;
+        return ContratoDTO.from(contratoService.recusarRenegociacao(
+            exigirEstudioColaborador(artist), artist.getTatuadorId()));
+    }
+
+    private UUID exigirEstudioColaborador(Artist artist) {
+        return contratoService.estudioColaborador(artist.getTatuadorId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Artista não é colaborador de nenhum estúdio"));
+    }
+
+    public ContratoDTO aceitarPropostaContrato(UsuarioLogado logado) {
+        Artist artist = exigirArtistDoUser(logado);
+        return ContratoDTO.from(contratoService.aceitarRenegociacao(
+                exigirEstudioColaborador(artist), artist.getTatuadorId()));
     }
 }

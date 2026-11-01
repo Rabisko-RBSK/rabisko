@@ -2,7 +2,6 @@ package com.rabisko.mvp.artist.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -10,8 +9,8 @@ import jakarta.persistence.Table;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.HashSet;
 import java.util.UUID;
 
 
@@ -31,25 +30,20 @@ public class Artist {
     private UUID tatuadorId;
 
     /** FK pro User dono. UNIQUE = cada usuario "tatuador" tem 1 perfil. */
-    @Column(name = "user_id", nullable = false, unique = true)
-    private UUID userId;
+    @Column(name = "auth_id", nullable = false, unique = true)
+    private UUID authId;
 
-    /**
-     * Vinculo opcional com um estudio. Nullable porque o tatuador pode ser
-     * AUTONOMO (trabalha por conta propria, sem casa de tatuagem). Quando
-     * tem estudio, o app mostra o endereco do estudio; quando nao tem,
-     * mostra o endereco proprio (`enderecoId` abaixo).
-     */
-    @Column(name = "estudio_id")
-    private UUID estudioId;
+    @Column(name = "nome", nullable = false)
+    private String nome;
 
-    /**
-     * FK pra tabela `enderecos` — endereco de quem trabalha autonomo.
-     * Nullable. As coordenadas (latitude/longitude) usadas na busca por
-     * distancia ficam la, nao aqui.
-     */
-    @Column(name = "endereco_id")
-    private UUID enderecoId;
+    @Column(name = "cpf", unique = true)
+    private String cpf;
+
+    @Column(name = "data_nasc")
+    private LocalDate dataNasc;
+
+    @Column(name = "telefone")
+    private String telefone;
 
     private String bio;
 
@@ -63,12 +57,15 @@ public class Artist {
     @Column(name = "foto_perfil_url")
     private String fotoPerfilUrl;
 
-    /**
-     * Atalho booleano que espelha "estudioId != null". Existe pra permitir
-     * filtros do tipo "so tatuadores de estudio" sem ter que fazer JOIN.
-     */
-    @Column(name = "vinculado_estudio", nullable = false)
-    private boolean vinculadoEstudio;
+    @Column(name = "termos_aceitos")
+    private boolean termosAceitos;
+
+    @Column(name = "status_ativo", nullable = false)
+    @Builder.Default
+    private boolean statusAtivo = true;
+
+    @Column(name = "data_modificacao", updatable = false, insertable = false)
+    private LocalDateTime dataModificacao;
 
     @CreationTimestamp
     @Column(name = "data_criacao", updatable = false, nullable = false)

@@ -14,7 +14,9 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://rabisko-homol.up.railway.app"
+        "EXPO_PUBLIC_API_URL": "https://rabisko-homol.up.railway.app",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://qxeljipzewaeikmwmlcx.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF4ZWxqaXB6ZXdhZWlrbXdtbGN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2NTI1OTAsImV4cCI6MjEwMjIyODU5MH0.uxbBXwopBvv879Jf6NwgKa_NTJWHf_jrRzz7EtbXmys"
       }
     },
     "production": {

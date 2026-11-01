@@ -1,6 +1,7 @@
 import { Client, IMessage } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { MensagemDTO } from '../api';
+import { supabase } from '../supabase';
 
 type Listener = (msg: MensagemDTO) => void;
 
@@ -20,6 +21,13 @@ export const stompClient = {
     client = new Client({
       webSocketFactory: () => new SockJS(SOCKJS_URL) as any,
       connectHeaders: { Authorization: `Bearer ${token}` },
+      // Cada (re)conexão usa o token atual: o do Supabase vence em 1h e é
+      // renovado; sem isso a reconexão automática mandaria o token vencido.
+      beforeConnect: async () => {
+        const { data } = await supabase.auth.getSession();
+        const atual = data.session?.access_token;
+        if (atual && client) client.connectHeaders = { Authorization: `Bearer ${atual}` };
+      },
       reconnectDelay: 5000,
       debug: (msg) => console.log('[stomp debug]', msg),
       onConnect: () => {

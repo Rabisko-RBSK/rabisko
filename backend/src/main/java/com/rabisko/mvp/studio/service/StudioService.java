@@ -6,12 +6,13 @@ import com.rabisko.mvp.artist.domain.Artist;
 import com.rabisko.mvp.artist.domain.ArtistStudioSearchResultDTO;
 import com.rabisko.mvp.artist.repository.ArtistRepository;
 import com.rabisko.mvp.endereco.domain.Endereco;
-import com.rabisko.mvp.endereco.domain.EnderecoOwnerType;
 import com.rabisko.mvp.endereco.service.EnderecoService;
+import com.rabisko.mvp.horario.domain.HorarioDTO;
+import com.rabisko.mvp.horario.service.HorarioService;
 import com.rabisko.mvp.studio.domain.*;
 import com.rabisko.mvp.studio.repository.ConviteEstudioRepository;
 import com.rabisko.mvp.studio.repository.StudioRepository;
-import com.rabisko.mvp.user.domain.User;
+import com.rabisko.mvp.shared.infraestrutura.security.UsuarioLogado;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -43,35 +44,40 @@ public class StudioService {
 
     @Autowired
     private AppointmentSessionRepository sessionRepository;
+
     @Autowired 
     private EnderecoService enderecoService;
 
-    public Studio cadastrarEstudio(User user, RegisterEstudioDTO body) {
+    @Autowired 
+    private HorarioService horarioService;
+
+    @Transactional
+    public Studio cadastrarEstudio(UUID authId, RegisterEstudioDTO body) {
         Studio novoStudio = Studio.builder()
-                .userId(user.getUserId())
-                .nome(user.getNome())
-                .email(user.getEmail())
+                .authId(authId)
+                .nome(body.getNome())
                 .cnpj(body.getCnpj())
                 .telefone(body.getTelefone())
                 .posicoes(body.getPosicoes() != null ? body.getPosicoes() : 1)
+                .termosAceitos(body.isTermosAceitos())
                 .build();
 
         Studio s = studioRepository.save(novoStudio);
 
         if(body.getEndereco() != null){
-            Endereco e = enderecoService.salvar(s.getEstudioId(), EnderecoOwnerType.estudio, body.getEndereco(), null);
+            Endereco e = enderecoService.salvar(body.getEndereco(), null);
             s.setEnderecoId(e.getEnderecoId());
         }
 
         return s;
     }
 
-    public StudioDTO meuEstudio(User logado) {
+    public StudioDTO meuEstudio(UsuarioLogado logado) {
         return StudioDTO.from(exigirEstudioDoUser(logado));
     }
 
     @Transactional
-    public StudioDTO atualizarEstudio(User logado, AtualizarEstudioDTO body) {
+    public StudioDTO atualizarEstudio(UsuarioLogado logado, AtualizarEstudioDTO body) {
         Studio estudio = exigirEstudioDoUser(logado);
 
         // Mesma quantidade: nada muda (nem escrita no banco).
@@ -91,15 +97,20 @@ public class StudioService {
     }
 
     @Transactional
-    public ConviteDTO convidarTatuador(User logado, UUID tatuadorId, ContratoInputDTO contrato) {
+    public ConviteDTO convidarTatuador(UsuarioLogado logado, UUID tatuadorId, ContratoInputDTO contrato) {
         Studio estudio = exigirEstudioDoUser(logado);
 
         Artist tatuador = artistRepository.findById(tatuadorId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tatuador nao encontrado"));
 
-        if (tatuador.getEstudioId() != null) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Tatuador ja esta vinculado a um estudio");
+        if (contratoService.estudioColaborador(tatuadorId).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Tatuador ja é colaborador de um estudio");
         }
+
+        if (contratoService.estudioProprio(tatuadorId).filter(estudio.getEstudioId()::equals).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Voce ja é o dono deste estudio");
+        }
+
 
         if (conviteEstudioRepository.existsByEstudioIdAndTatuadorIdAndStatus(
                 estudio.getEstudioId(), tatuadorId, ConviteStatus.pendente)) {
@@ -122,7 +133,7 @@ public class StudioService {
     }
 
     @Transactional
-    public ConviteDTO cancelarConvite(User logado, UUID conviteId) {
+    public ConviteDTO cancelarConvite(UsuarioLogado logado, UUID conviteId) {
         Studio estudio = exigirEstudioDoUser(logado);
 
         ConviteEstudio convite = conviteEstudioRepository.findById(conviteId)
@@ -140,15 +151,15 @@ public class StudioService {
         return ConviteDTO.from(convite);
     }
 
-    public List<ConviteDetalheDTO> listarConvitesPendentes(User logado) {
+    public List<ConviteDetalheDTO> listarConvitesPendentes(UsuarioLogado logado) {
         Studio estudio = exigirEstudioDoUser(logado);
         return contratoService.comContratos(
                 conviteEstudioRepository.listarDetalhesDoEstudio(estudio.getEstudioId(), ConviteStatus.pendente));
     }
 
-    public List<ColaboradorDTO> listarColaboradores(User logado) {
+    public List<ColaboradorDTO> listarColaboradores(UsuarioLogado logado) {
         Studio estudio = exigirEstudioDoUser(logado);
-        List<ColaboradorDTO> colaboradores = artistRepository.listarColaboradores(estudio.getEstudioId());
+        List<ColaboradorDTO> colaboradores = artistRepository.listarColaboradores(estudio.getEstudioId(), ContratoStatus.ativo);
 
         Map<UUID, ContratoService.ContratosVigentes> contratos = contratoService.contratosVigentes(
                 estudio.getEstudioId(), colaboradores.stream().map(ColaboradorDTO::tatuadorId).toList());
@@ -162,53 +173,63 @@ public class StudioService {
     }
 
     @Transactional
-    public void removerColaborador(User logado, UUID tatuadorId) {
+    public void removerColaborador(UsuarioLogado logado, UUID tatuadorId) {
         Studio estudio = exigirEstudioDoUser(logado);
 
-        Artist tatuador = artistRepository.findById(tatuadorId)
-                .filter(a -> Objects.equals(a.getEstudioId(), estudio.getEstudioId()))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Colaborador nao encontrado"));
+        if (contratoService.estudioProprio(tatuadorId).filter(estudio.getEstudioId()::equals).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "O dono nao pode ser removido do proprio estudio");
+        }
 
-        tatuador.setEstudioId(null);
-        tatuador.setVinculadoEstudio(false);
+        exigirColaborador(estudio, tatuadorId);
         contratoService.encerrarVinculo(estudio.getEstudioId(), tatuadorId);
     }
 
-    public ContratoDTO proporContrato(User logado, UUID tatuadorId, ContratoInputDTO contrato) {
+
+    public ContratoDTO proporContrato(UsuarioLogado logado, UUID tatuadorId, ContratoInputDTO contrato) {
         Studio estudio = exigirEstudioDoUser(logado);
         exigirColaborador(estudio, tatuadorId);
         return ContratoDTO.from(contratoService.proporRenegociacao(estudio.getEstudioId(), tatuadorId, contrato));
     }
 
-    public ContratoDTO cancelarPropostaContrato(User logado, UUID tatuadorId) {
+    public ContratoDTO cancelarPropostaContrato(UsuarioLogado logado, UUID tatuadorId) {
         Studio estudio = exigirEstudioDoUser(logado);
         exigirColaborador(estudio, tatuadorId);
         return ContratoDTO.from(contratoService.cancelarRenegociacao(estudio.getEstudioId(), tatuadorId));
     }
 
-    public List<ContratoDTO> historicoContratos(User logado, UUID tatuadorId) {
+    public List<ContratoDTO> historicoContratos(UsuarioLogado logado, UUID tatuadorId) {
         Studio estudio = exigirEstudioDoUser(logado);
         return contratoService.historico(estudio.getEstudioId(), tatuadorId);
     }
 
     // Garante que a proposta e de renegociacao: quem nao e da equipe so recebe contrato via convite
-    private Artist exigirColaborador(Studio estudio, UUID tatuadorId) {
-        return artistRepository.findById(tatuadorId)
-                .filter(a -> Objects.equals(a.getEstudioId(), estudio.getEstudioId()))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Colaborador nao encontrado"));
+    private void exigirColaborador(Studio estudio, UUID tatuadorId) {
+        boolean colaborador = contratoService.estudioColaborador(tatuadorId)
+                .filter(estudio.getEstudioId()::equals)
+                .isPresent();
+        if (!colaborador) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Colaborador nao encontrado");
+        }
     }
 
-    private Studio exigirEstudioDoUser(User user) {
+
+    public Studio exigirEstudioDoUser(UsuarioLogado user) {
         if (user == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sem usuario autenticado");
         }
-        return studioRepository.findByUserId(user.getUserId())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Usuario nao possui perfil de estudio"
-                ));
+        if ("tatuador".equals(user.papel())) {
+            Artist artist = artistRepository.findByAuthId(user.authId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Perfil tatuador nao encontrado"));
+            return contratoService.estudioProprio(artist.getTatuadorId())
+                    .flatMap(studioRepository::findById)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Voce nao tem estudio proprio"));
+        }
+        return studioRepository.findByAuthId(user.authId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario nao possui perfil de estudio"));
     }
 
-    public List<ArtistStudioSearchResultDTO> buscarTatuadores(User logado, String termo) {
+
+    public List<ArtistStudioSearchResultDTO> buscarTatuadores(UsuarioLogado logado, String termo) {
         exigirEstudioDoUser(logado);
         String t = termo == null ? "" : termo.trim().replaceFirst("^@", "");
         if (t.length() < 2) {
@@ -218,4 +239,16 @@ public class StudioService {
                 .map(ArtistStudioSearchResultDTO::fromProjection)
                 .toList();
     }
+
+    public List<HorarioDTO> meusHorarios(UsuarioLogado logado) {
+        return horarioService.listar(exigirEstudioDoUser(logado).getEstudioId());
+    }
+
+    @Transactional
+    public List<HorarioDTO> atualizarHorarios(UsuarioLogado logado, List<HorarioDTO> horarios) {
+        UUID estudioId = exigirEstudioDoUser(logado).getEstudioId();
+        horarioService.substituir(estudioId, horarios);
+        return horarioService.listar(estudioId);
+    }
+
 }

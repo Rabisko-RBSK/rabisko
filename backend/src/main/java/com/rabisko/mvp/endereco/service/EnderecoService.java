@@ -8,7 +8,6 @@ import org.springframework.stereotype.Service;
 
 import com.rabisko.mvp.endereco.domain.Endereco;
 import com.rabisko.mvp.endereco.domain.EnderecoDTO;
-import com.rabisko.mvp.endereco.domain.EnderecoOwnerType;
 import com.rabisko.mvp.endereco.repository.EnderecoRepository;
 
 import jakarta.transaction.Transactional;
@@ -19,15 +18,15 @@ public class EnderecoService {
     @Autowired private EnderecoRepository enderecoRepository;
 
     @Transactional
-    public Endereco salvar(UUID ownerId, EnderecoOwnerType ownerType, EnderecoDTO dto, UUID enderecoIdAtual){
+    public Endereco salvar(EnderecoDTO dto, UUID enderecoIdAtual){
         if(enderecoIdAtual == null){
-            return enderecoRepository.save(dto.toEntity(ownerId, ownerType));
+            return enderecoRepository.save(dto.toEntity());
         }
 
         Endereco atual = enderecoRepository.findById(enderecoIdAtual).orElse(null);
 
         if(atual == null){
-            return enderecoRepository.save(dto.toEntity(ownerId, ownerType));
+            return enderecoRepository.save(dto.toEntity());
         }
 
         dto.aplicarEm(atual);

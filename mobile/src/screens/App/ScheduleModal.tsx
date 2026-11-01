@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Modal,
   ScrollView,
@@ -11,22 +12,24 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronRight, X } from 'lucide-react-native';
 
-import { appointmentService, BusySlotDTO } from '../../services/api';
+import { appointmentService } from '../../services/api';
 import { HorarioDTO, artistService } from '../../services/api/artistService';
-import { BlocoAgenda, minutosAgoraSeHoje, paraHorario, paraMinutos } from '../../utils/agendaEstudio';
+import { useEstilos } from '../../hooks/useEstilos';
+import { FilterChip } from '../../components/common/Chip';
+import { BlocoAgenda, paraHorario, paraMinutos } from '../../utils/agendaEstudio';
 import { PosicaoSelecionada, StudioPositionsModal } from './StudioPositionsModal';
-import { atende, intervalosDoDia } from '../../utils/horario';
+import { intervalosDoDia } from '../../utils/horario';
 
 
 interface Session {
   data: Date;
   horario: string | null;
   duracaoMinutos: number;
-  /** Posição do estúdio; só usada quando o tatuador é vinculado a um estúdio. */
+  /** Posição do estúdio escolhida na tela de posições. */
   posicao: number | null;
 }
 
-/** Estúdio do tatuador (null = tatuador independente, usa a grade de horários). */
+/** Estúdio onde o tatuador atende (colaborador ou estúdio próprio). */
 interface EstudioInfo {
   nome: string | null;
   posicoes: number;
@@ -41,17 +44,7 @@ interface Props {
 }
 
 
-const FIXED_SLOTS = [
-  '09:00', '10:00', '11:00', '12:00', '13:00',
-  '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00',
-];
-
 const DURATIONS_H = [1, 2, 3, 4, 5, 6];
-
-function toMinutes(hhmm: string): number {
-  const [h, m] = hhmm.split(':').map(Number);
-  return h * 60 + m;
-}
 
 /** Retorna os primeiros 28 dias a partir de hoje. */
 function generateDays(): Date[] {
@@ -87,53 +80,52 @@ function formatBRL(raw: string): string {
 }
 
 
+/**
+ * Proposta de agendamento enviada pelo tatuador no chat. Toda sessão acontece
+ * no estúdio onde ele atende: horário e posição são escolhidos na tela de
+ * posições (StudioPositionsModal), dentro do horário de atendimento do
+ * estúdio. Tatuador sem estúdio não agenda — o modal explica e não deixa enviar.
+ */
 export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: Props) {
   const insets = useSafeAreaInsets();
+  const { estilos, loading: estilosLoading, error: estilosError, reload: reloadEstilos } = useEstilos();
 
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeIdx, setActiveIdx] = useState<number>(0);
   const [selectedDate, setSelectedDate] = useState<Date>(DAYS[0]);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [selectedDuration, setSelectedDuration] = useState<number>(1);
+  const [estiloId, setEstiloId] = useState<string | null>(null);
   const [valorTotal, setValorTotal] = useState<string>('');
   const [enviando, setEnviando] = useState(false);
-  const [busySlots, setBusySlots] = useState<BusySlotDTO[]>([]);
-  /** Grade de atendimento do tatuador; vazia = sem restrição de dia/horário. */
+  /** Horário de atendimento do estúdio; vazio = sem restrição de dia/horário. */
   const [horarios, setHorarios] = useState<HorarioDTO[]>([]);
   const [estudio, setEstudio] = useState<EstudioInfo | null>(null);
+  const [carregandoEstudio, setCarregandoEstudio] = useState(true);
   const [selectedPosicao, setSelectedPosicao] = useState<number | null>(null);
   const [posicoesVisible, setPosicoesVisible] = useState(false);
   /** Incrementa a cada abertura: remonta a tela de posições com a seleção atual. */
   const [aberturaPosicoes, setAberturaPosicoes] = useState(0);
 
-  const [customTimeActive, setCustomTimeActive] = useState(false);
-  const [customTimeInput, setCustomTimeInput] = useState('');
-  const customTimeRef = useRef<TextInput>(null);
-
+  // Estúdio onde o tatuador atende: sem ele, não há agendamento.
   useEffect(() => {
     if (!visible) return;
-    appointmentService
-      .busySlots(formatDate(selectedDate))
-      .then(setBusySlots)
-      .catch(() => setBusySlots([]));
-  }, [selectedDate, selectedDuration, visible]);
-
-  // Grade de atendimento: limita os dias e horários oferecidos (o backend também valida).
-  useEffect(() => {
-    if (!visible) return;
-    artistService
-      .meusHorarios()
-      .then(setHorarios)
-      .catch(() => setHorarios([]));
-  }, [visible]);
-
-  // Tatuador de estúdio escolhe horário + posição na tela de posições.
-  useEffect(() => {
-    if (!visible) return;
+    setCarregandoEstudio(true);
     appointmentService
       .agendaEstudio(formatDate(DAYS[0]))
       .then((a) => setEstudio(a.vinculadoEstudio ? { nome: a.nomeEstudio, posicoes: a.posicoes } : null))
-      .catch(() => setEstudio(null));
+      .catch(() => setEstudio(null))
+      .finally(() => setCarregandoEstudio(false));
+  }, [visible]);
+
+  // Horário do estúdio: limita os dias oferecidos (o backend também valida).
+  useEffect(() => {
+    if (!visible) return;
+    artistService
+      .obterMeuPerfil()
+      .then((p) => artistService.horariosDoTatuador(p.tatuadorId))
+      .then(setHorarios)
+      .catch(() => setHorarios([]));
   }, [visible]);
 
   useEffect(() => {
@@ -143,13 +135,6 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
     setSelectedTime(s.horario);
     setSelectedPosicao(s.posicao);
     setSelectedDuration(s.duracaoMinutos / 60);
-    if (s.horario && !FIXED_SLOTS.includes(s.horario)) {
-      setCustomTimeActive(true);
-      setCustomTimeInput(s.horario);
-    } else {
-      setCustomTimeActive(false);
-      setCustomTimeInput('');
-    }
   }, [activeIdx]);
 
   const updateActive = useCallback(
@@ -162,12 +147,12 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
     [activeIdx],
   );
 
-  /** Com grade definida, só dias com algum intervalo aceitam sessões. */
+  /** Com horário definido, só dias com algum intervalo aceitam sessões. */
   function diaAberto(day: Date): boolean {
     return horarios.length === 0 || intervalosDoDia(horarios, day).length > 0;
   }
 
-  /** Primeiro dia dos próximos 28 em que o tatuador atende (ou hoje, sem grade). */
+  /** Primeiro dia dos próximos 28 em que o estúdio atende (ou hoje, sem horário). */
   function primeiroDiaAberto(): Date {
     return DAYS.find(diaAberto) ?? DAYS[0];
   }
@@ -201,82 +186,12 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
       : [],
   );
 
-  function handleTimeSelect(slot: string) {
-    setSelectedTime(slot);
-    setCustomTimeActive(false);
-    setCustomTimeInput('');
-    updateActive({ horario: slot });
-  }
-
   function handleDurationSelect(h: number) {
     setSelectedDuration(h);
-    if (estudio) {
-      // A nova duração pode colidir com outra reserva: escolhe o horário de novo.
-      setSelectedTime(null);
-      setSelectedPosicao(null);
-      updateActive({ duracaoMinutos: h * 60, horario: null, posicao: null });
-    } else if (selectedTime && !atende(horarios, selectedDate, selectedTime, h * 60)) {
-      // A nova duração ultrapassa o fechamento: escolhe o horário de novo.
-      setSelectedTime(null);
-      updateActive({ duracaoMinutos: h * 60, horario: null });
-    } else {
-      updateActive({ duracaoMinutos: h * 60 });
-    }
-  }
-
-  function handleCustomTimeActivate() {
-    setCustomTimeActive(true);
+    // A nova duração pode colidir com outra reserva: escolhe o horário de novo.
     setSelectedTime(null);
-    setTimeout(() => customTimeRef.current?.focus(), 50);
-  }
-
-  function handleCustomTimeBlur() {
-    const cleaned = customTimeInput.replace(/[^0-9:]/g, '');
-    const match = cleaned.match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
-    if (match) {
-      const normalized = `${match[1].padStart(2, '0')}:${match[2]}`;
-      if (jaPassou(normalized)) {
-        Alert.alert('Horário indisponível', 'Esse horário já passou. Escolha um horário mais tarde.');
-        setCustomTimeInput('');
-        setCustomTimeActive(false);
-        return;
-      }
-      if (!atende(horarios, selectedDate, normalized, selectedDuration * 60)) {
-        Alert.alert('Fora do seu horário', 'Esse horário não cabe no seu horário de atendimento deste dia.');
-        setCustomTimeInput('');
-        setCustomTimeActive(false);
-        return;
-      }
-      if (FIXED_SLOTS.includes(normalized)) {
-        setCustomTimeActive(false);
-        setCustomTimeInput('');
-        setSelectedTime(normalized);
-        updateActive({ horario: normalized });
-      } else {
-        setSelectedTime(normalized);
-        updateActive({ horario: normalized });
-      }
-    } else {
-      setCustomTimeInput('');
-      setCustomTimeActive(false);
-    }
-  }
-
-  /** Hoje, horários até agora não podem ser reservados (o backend também recusa). */
-  function jaPassou(slot: string): boolean {
-    const agoraMin = minutosAgoraSeHoje(selectedDate);
-    return agoraMin !== null && toMinutes(slot) <= agoraMin;
-  }
-
-  function isSlotBlocked(slot: string): boolean {
-    if (jaPassou(slot)) return true;
-    if (!atende(horarios, selectedDate, slot, selectedDuration * 60)) return true;
-    const slotMin = toMinutes(slot);
-    const durMin = selectedDuration * 60;
-    return busySlots.some((b) => {
-      const bMin = toMinutes(b.horario);
-      return slotMin < bMin + b.duracaoMinutos && slotMin + durMin > bMin;
-    });
+    setSelectedPosicao(null);
+    updateActive({ duracaoMinutos: h * 60, horario: null, posicao: null });
   }
 
   function addSession() {
@@ -312,25 +227,25 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
       Alert.alert('Valor inválido', 'Informe o valor total da tatuagem.');
       return;
     }
-    const incomplete = sessions.some((s) => !s.horario || (estudio && !s.posicao));
+    if (!estiloId) {
+      Alert.alert('Estilo', 'Escolha o estilo da tatuagem.');
+      return;
+    }
+    const incomplete = sessions.some((s) => !s.horario || !s.posicao);
     if (incomplete) {
-      Alert.alert(
-        'Sessão incompleta',
-        estudio
-          ? 'Escolha o horário e a posição do estúdio para todas as sessões.'
-          : 'Selecione data e horário para todas as sessões.',
-      );
+      Alert.alert('Sessão incompleta', 'Escolha o horário e a posição do estúdio para todas as sessões.');
       return;
     }
     setEnviando(true);
     try {
       await appointmentService.criar({
         chatId,
+        estiloId,
         sessoes: sessions.map((s) => ({
           data: formatDate(s.data),
           horario: s.horario!,
           duracaoMinutos: s.duracaoMinutos,
-          ...(estudio && s.posicao ? { posicao: s.posicao } : {}),
+          posicao: s.posicao!,
         })),
         valorTotal: valorNum,
       });
@@ -355,81 +270,28 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
       setSelectedDate(DAYS[0]);
       setSelectedTime(null);
       setSelectedDuration(1);
+      setEstiloId(null);
       setValorTotal('');
-      setBusySlots([]);
       setSelectedPosicao(null);
       setPosicoesVisible(false);
-      setCustomTimeActive(false);
-      setCustomTimeInput('');
     }
   }, [visible]);
 
   const canSend =
+    !!estudio &&
     sessions.length > 0 &&
-    sessions.every((s) => s.horario !== null && (!estudio || s.posicao !== null)) &&
+    sessions.every((s) => s.horario !== null && s.posicao !== null) &&
+    !!estiloId &&
     valorTotal.length > 0 &&
     !enviando;
 
   const totalNum = parseFloat(valorTotal.replace(/\./g, '').replace(',', '.')) || 0;
 
-  const secaoDuracao = (
-    <Section label="DURAÇÃO ESTIMADA">
-      <View className="flex-row flex-wrap gap-2">
-        {DURATIONS_H.map((h) => {
-          const active = selectedDuration === h;
-          return (
-            <TouchableOpacity
-              key={h}
-              onPress={() => handleDurationSelect(h)}
-              className={`px-4 py-2 rounded-rd-xs ${active ? 'bg-plum' : 'bg-surface'}`}
-            >
-              <Text className={`font-body text-[13px] ${active ? 'text-white' : 'text-ink'}`}>
-                {h}h
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    </Section>
-  );
-
   const fimSelecionado = selectedTime
     ? paraHorario(paraMinutos(selectedTime) + selectedDuration * 60)
     : null;
 
-  const secaoHorarioEstudio = (
-    <Section label="HORÁRIO E POSIÇÃO">
-      <TouchableOpacity
-        onPress={() => {
-          setAberturaPosicoes((n) => n + 1);
-          setPosicoesVisible(true);
-        }}
-        accessibilityRole="button"
-        accessibilityLabel="Escolher horário e posição no estúdio"
-        className="flex-row items-center bg-surface rounded-rd-md px-4 py-4"
-      >
-        <View className="flex-1">
-          {selectedTime && selectedPosicao ? (
-            <>
-              <Text className="font-aux-bold text-[18px] text-ink">
-                {selectedTime} – {fimSelecionado} · Posição {selectedPosicao}
-              </Text>
-              <Text className="font-body text-[12px] text-fg-2 mt-0.5">Toque para trocar</Text>
-            </>
-          ) : (
-            <>
-              <Text className="font-body-semibold text-[15px] text-ink">Escolher horário e posição</Text>
-              <Text className="font-body text-[12px] text-fg-2 mt-0.5">
-                Veja as reservas das {estudio?.posicoes ?? 0} posições
-                {estudio?.nome ? ` do ${estudio.nome}` : ' do estúdio'}
-              </Text>
-            </>
-          )}
-        </View>
-        <ChevronRight size={22} color="#602C66" />
-      </TouchableOpacity>
-    </Section>
-  );
+  const intervalosHoje = intervalosDoDia(horarios, selectedDate);
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen">
@@ -448,198 +310,225 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
           <View className="w-8" />
         </View>
 
-        <ScrollView
-          className="flex-1"
-          contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 120 }}
-          keyboardShouldPersistTaps="handled"
-        >
-
-          <Section label="SESSÕES">
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
-              {sessions.map((s, i) => (
-                <TouchableOpacity
-                  key={i}
-                  onPress={() => setActiveIdx(i)}
-                  className={`flex-row items-center mr-2 px-3 py-1.5 rounded-rd-xs border ${
-                    i === activeIdx ? 'bg-plum border-plum' : 'bg-surface border-surface'
-                  }`}
-                >
-                  <Text className={`font-body text-[13px] ${i === activeIdx ? 'text-white' : 'text-ink'}`}>
-                    {`${i + 1}. `}
-                    {s.horario
-                      ? `${s.data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} · ${s.horario}${
-                          estudio && s.posicao ? ` · P${s.posicao}` : ''}`
-                      : 'Pendente'}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => removeSession(i)}
-                    hitSlop={6}
-                    className="ml-2"
-                    accessibilityLabel={`Remover sessão ${i + 1}`}
-                  >
-                    <X size={12} color={i === activeIdx ? '#ffffff' : '#602C66'} />
-                  </TouchableOpacity>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            <TouchableOpacity
-              onPress={addSession}
-              className="self-start bg-plum px-4 py-2 rounded-rd-xs"
-            >
-              <Text className="font-body text-[13px] text-white">+ Adicionar sessão</Text>
-            </TouchableOpacity>
-          </Section>
-
-          {sessions.length > 0 && (
-            <>
-              <Section label="DATA">
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  {DAYS.map((day, i) => {
-                    const active = sameDay(day, selectedDate);
-                    const fechado = !diaAberto(day);
-                    return (
-                      <TouchableOpacity
-                        key={i}
-                        onPress={() => handleDateSelect(day)}
-                        disabled={fechado}
-                        className={`items-center mr-2 px-3 py-2 rounded-rd-xs ${
-                          active ? 'bg-ink' : 'bg-surface'
-                        }`}
-                        style={{ opacity: fechado ? 0.3 : 1 }}
-                        accessibilityState={{ disabled: fechado, selected: active }}
-                      >
-                        <Text className={`font-body text-[11px] ${active ? 'text-background' : 'text-fg-2'}`}>
-                          {DAY_NAMES[day.getDay()]}
-                        </Text>
-                        <Text className={`font-display text-[20px] ${active ? 'text-background' : 'text-ink'}`}>
-                          {day.getDate()}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-                {horarios.length > 0 && (
-                  <Text className="font-body text-[12px] text-fg-2 mt-2">
-                    {intervalosDoDia(horarios, selectedDate).length > 0
-                      ? `Seu horário neste dia: ${intervalosDoDia(horarios, selectedDate)
-                          .map((h) => `${h.abre}–${h.fecha}`)
-                          .join(', ')}`
-                      : 'Você não atende neste dia.'}
-                  </Text>
-                )}
-              </Section>
-
-              {estudio ? (
-                <>
-                  {secaoDuracao}
-                  {secaoHorarioEstudio}
-                </>
-              ) : (
-              <Section label="HORÁRIO">
-                <View className="flex-row flex-wrap gap-2">
-                  {FIXED_SLOTS.map((slot) => {
-                    const blocked = isSlotBlocked(slot);
-                    const active = selectedTime === slot && !customTimeActive;
-                    return (
-                      <TouchableOpacity
-                        key={slot}
-                        onPress={() => !blocked && handleTimeSelect(slot)}
-                        disabled={blocked}
-                        className={`px-4 py-2 rounded-rd-xs ${
-                          active ? 'bg-plum' : 'bg-surface'
-                        }`}
-                        style={{ opacity: blocked ? 0.3 : 1 }}
-                      >
-                        <Text className={`font-body text-[13px] ${active ? 'text-white' : 'text-ink'}`}>
-                          {slot}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-
-                  {customTimeActive ? (
-                    <View className="flex-row items-center bg-plum px-3 py-2 rounded-rd-xs">
-                      <TextInput
-                        ref={customTimeRef}
-                        value={customTimeInput}
-                        onChangeText={(t) => {
-                          const digits = t.replace(/[^0-9]/g, '').slice(0, 4);
-                          const formatted =
-                            digits.length > 2
-                              ? `${digits.slice(0, 2)}:${digits.slice(2)}`
-                              : digits;
-                          setCustomTimeInput(formatted);
-                        }}
-                        onBlur={handleCustomTimeBlur}
-                        placeholder="HH:MM"
-                        placeholderTextColor="rgba(255,255,255,0.6)"
-                        keyboardType="numeric"
-                        maxLength={5}
-                        className="font-body text-[13px] text-white w-14"
-                        style={{ padding: 0 }}
-                      />
-                    </View>
-                  ) : (
-                    <TouchableOpacity
-                      onPress={handleCustomTimeActivate}
-                      className={`px-4 py-2 rounded-rd-xs ${
-                        customTimeInput ? 'bg-plum' : 'bg-surface'
-                      }`}
-                    >
-                      <Text className={`font-body text-[13px] ${customTimeInput ? 'text-white' : 'text-ink'}`}>
-                        {customTimeInput || 'Outro'}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </Section>
-              )}
-
-              {!estudio && secaoDuracao}
-            </>
-          )}
-
-          <Section label="VALOR TOTAL DA TATUAGEM">
-            <View className="flex-row items-center bg-surface rounded-rd-xs px-4 py-3">
-              <Text className="font-body text-[14px] text-fg-2 mr-1">R$</Text>
-              <TextInput
-                value={valorTotal}
-                onChangeText={(t) => setValorTotal(formatBRL(t))}
-                keyboardType="numeric"
-                placeholder="0"
-                placeholderTextColor="#999"
-                className="flex-1 font-body text-[14px] text-ink"
-                style={{ padding: 0 }}
-              />
-            </View>
-          </Section>
-
-          {sessions.length > 0 && totalNum > 0 && (
-            <View className="bg-ink rounded-rd-md px-4 py-3 mt-2">
-              <Text className="font-body text-[14px] text-background">
-                {sessions.length} {sessions.length > 1 ? 'sessões' : 'sessão'} · R${' '}
-                {totalNum.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} total
-              </Text>
-            </View>
-          )}
-
-        </ScrollView>
-
-        <View
-          className="absolute bottom-0 left-0 right-0 px-6 bg-background"
-          style={{ paddingBottom: insets.bottom + 16, paddingTop: 12 }}
-        >
-          <TouchableOpacity
-            onPress={handleEnviar}
-            disabled={!canSend}
-            className="bg-plum rounded-rd-md py-4 items-center"
-            style={{ opacity: canSend ? 1 : 0.4 }}
-          >
-            <Text className="font-display text-[16px] text-white tracking-wide">
-              {enviando ? 'ENVIANDO...' : 'CONFIRMAR AGENDAMENTO'}
+        {carregandoEstudio ? (
+          <View className="py-10 items-center">
+            <ActivityIndicator color="#602C66" />
+          </View>
+        ) : !estudio ? (
+          <View className="mx-6 bg-surface rounded-rd-lg p-5">
+            <Text className="font-aux-bold text-[16px] text-ink mb-2">Você ainda não atende em um estúdio</Text>
+            <Text className="font-body text-[13px] text-fg-2 leading-[18px]">
+              As sessões acontecem no estúdio onde você atende. Para agendar, aceite o convite de um
+              estúdio para entrar na equipe.
             </Text>
-          </TouchableOpacity>
-        </View>
+          </View>
+        ) : (
+          <ScrollView
+            className="flex-1"
+            contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 120 }}
+            keyboardShouldPersistTaps="handled"
+          >
+
+            <Section label="SESSÕES">
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
+                {sessions.map((s, i) => (
+                  <TouchableOpacity
+                    key={i}
+                    onPress={() => setActiveIdx(i)}
+                    className={`flex-row items-center mr-2 px-3 py-1.5 rounded-rd-xs border ${
+                      i === activeIdx ? 'bg-plum border-plum' : 'bg-surface border-surface'
+                    }`}
+                  >
+                    <Text className={`font-body text-[13px] ${i === activeIdx ? 'text-white' : 'text-ink'}`}>
+                      {`${i + 1}. `}
+                      {s.horario
+                        ? `${s.data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} · ${s.horario}${
+                            s.posicao ? ` · P${s.posicao}` : ''}`
+                        : 'Pendente'}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => removeSession(i)}
+                      hitSlop={6}
+                      className="ml-2"
+                      accessibilityLabel={`Remover sessão ${i + 1}`}
+                    >
+                      <X size={12} color={i === activeIdx ? '#ffffff' : '#602C66'} />
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              <TouchableOpacity
+                onPress={addSession}
+                className="self-start bg-plum px-4 py-2 rounded-rd-xs"
+              >
+                <Text className="font-body text-[13px] text-white">+ Adicionar sessão</Text>
+              </TouchableOpacity>
+            </Section>
+
+            {sessions.length > 0 && (
+              <>
+                <Section label="DATA">
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    {DAYS.map((day, i) => {
+                      const active = sameDay(day, selectedDate);
+                      const fechado = !diaAberto(day);
+                      return (
+                        <TouchableOpacity
+                          key={i}
+                          onPress={() => handleDateSelect(day)}
+                          disabled={fechado}
+                          className={`items-center mr-2 px-3 py-2 rounded-rd-xs ${
+                            active ? 'bg-ink' : 'bg-surface'
+                          }`}
+                          style={{ opacity: fechado ? 0.3 : 1 }}
+                          accessibilityState={{ disabled: fechado, selected: active }}
+                        >
+                          <Text className={`font-body text-[11px] ${active ? 'text-background' : 'text-fg-2'}`}>
+                            {DAY_NAMES[day.getDay()]}
+                          </Text>
+                          <Text className={`font-display text-[20px] ${active ? 'text-background' : 'text-ink'}`}>
+                            {day.getDate()}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                  {horarios.length > 0 && (
+                    <Text className="font-body text-[12px] text-fg-2 mt-2">
+                      {intervalosHoje.length > 0
+                        ? `Horário do estúdio neste dia: ${intervalosHoje
+                            .map((h) => `${h.abre}–${h.fecha}`)
+                            .join(', ')}`
+                        : 'O estúdio não atende neste dia.'}
+                    </Text>
+                  )}
+                </Section>
+
+                <Section label="DURAÇÃO ESTIMADA">
+                  <View className="flex-row flex-wrap gap-2">
+                    {DURATIONS_H.map((h) => {
+                      const active = selectedDuration === h;
+                      return (
+                        <TouchableOpacity
+                          key={h}
+                          onPress={() => handleDurationSelect(h)}
+                          className={`px-4 py-2 rounded-rd-xs ${active ? 'bg-plum' : 'bg-surface'}`}
+                        >
+                          <Text className={`font-body text-[13px] ${active ? 'text-white' : 'text-ink'}`}>
+                            {h}h
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </Section>
+
+                <Section label="HORÁRIO E POSIÇÃO">
+                  <TouchableOpacity
+                    onPress={() => {
+                      setAberturaPosicoes((n) => n + 1);
+                      setPosicoesVisible(true);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Escolher horário e posição no estúdio"
+                    className="flex-row items-center bg-surface rounded-rd-md px-4 py-4"
+                  >
+                    <View className="flex-1">
+                      {selectedTime && selectedPosicao ? (
+                        <>
+                          <Text className="font-aux-bold text-[18px] text-ink">
+                            {selectedTime} – {fimSelecionado}
+                            {estudio.posicoes > 1 ? ` · Posição ${selectedPosicao}` : ''}
+                          </Text>
+                          <Text className="font-body text-[12px] text-fg-2 mt-0.5">Toque para trocar</Text>
+                        </>
+                      ) : (
+                        <>
+                          <Text className="font-body-semibold text-[15px] text-ink">
+                            {estudio.posicoes > 1 ? 'Escolher horário e posição' : 'Escolher horário'}
+                          </Text>
+                          <Text className="font-body text-[12px] text-fg-2 mt-0.5">
+                            {estudio.posicoes > 1
+                              ? `Veja as reservas das ${estudio.posicoes} posições`
+                              : 'Veja as reservas'}
+                            {estudio.nome ? ` do ${estudio.nome}` : ' do estúdio'}
+                          </Text>
+                        </>
+                      )}
+                    </View>
+                    <ChevronRight size={22} color="#602C66" />
+                  </TouchableOpacity>
+                </Section>
+              </>
+            )}
+
+            <Section label="ESTILO">
+              {estilosLoading ? (
+                <ActivityIndicator color="#602C66" />
+              ) : estilosError ? (
+                <TouchableOpacity onPress={reloadEstilos} hitSlop={8} accessibilityRole="button">
+                  <Text className="font-body-semibold text-[13px] text-plum">
+                    Não foi possível carregar os estilos. Tentar novamente
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <View className="flex-row flex-wrap gap-2">
+                  {estilos.map((e) => (
+                    <FilterChip
+                      key={e.estiloId}
+                      label={e.nome}
+                      active={estiloId === e.estiloId}
+                      onPress={() => setEstiloId(e.estiloId)}
+                    />
+                  ))}
+                </View>
+              )}
+            </Section>
+
+            <Section label="VALOR TOTAL DA TATUAGEM">
+              <View className="flex-row items-center bg-surface rounded-rd-xs px-4 py-3">
+                <Text className="font-body text-[14px] text-fg-2 mr-1">R$</Text>
+                <TextInput
+                  value={valorTotal}
+                  onChangeText={(t) => setValorTotal(formatBRL(t))}
+                  keyboardType="numeric"
+                  placeholder="0"
+                  placeholderTextColor="#999"
+                  className="flex-1 font-body text-[14px] text-ink"
+                  style={{ padding: 0 }}
+                />
+              </View>
+            </Section>
+
+            {sessions.length > 0 && totalNum > 0 && (
+              <View className="bg-ink rounded-rd-md px-4 py-3 mt-2">
+                <Text className="font-body text-[14px] text-background">
+                  {sessions.length} {sessions.length > 1 ? 'sessões' : 'sessão'} · R${' '}
+                  {totalNum.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} total
+                </Text>
+              </View>
+            )}
+
+          </ScrollView>
+        )}
+
+        {estudio && (
+          <View
+            className="absolute bottom-0 left-0 right-0 px-6 bg-background"
+            style={{ paddingBottom: insets.bottom + 16, paddingTop: 12 }}
+          >
+            <TouchableOpacity
+              onPress={handleEnviar}
+              disabled={!canSend}
+              className="bg-plum rounded-rd-md py-4 items-center"
+              style={{ opacity: canSend ? 1 : 0.4 }}
+            >
+              <Text className="font-display text-[16px] text-white tracking-wide">
+                {enviando ? 'ENVIANDO...' : 'CONFIRMAR AGENDAMENTO'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {estudio && (
           <StudioPositionsModal

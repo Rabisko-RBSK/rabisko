@@ -13,7 +13,7 @@ import { StudioEquipeStack } from './studio-equipe.stack';
  * `authStore.role === 'estudio'`.
  *
  * Team é a gestão real da equipe (colaboradores + convites, via
- * StudioEquipeStack); Dashboard e Agenda ainda usam dados de demonstração.
+ * StudioEquipeStack); Dashboard e Agenda vêm das rotas /studio/me/dashboard/**.
  */
 export type StudioRoutesParamList = {
   Dashboard: undefined;

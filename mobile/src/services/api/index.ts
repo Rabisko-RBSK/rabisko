@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { useAuthStore } from '../../store/authStore';
+import { supabase } from '../supabase';
 import { multipartImage } from '../../utils/multipart';
 
 const api = axios.create({
@@ -10,18 +10,16 @@ const api = axios.create({
   }
 });
 
-api.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().token;
+// Token do Supabase Auth. getSession() devolve a sessão já renovada quando o
+// access_token venceu (ex.: app voltando do segundo plano).
+api.interceptors.request.use(async (config) => {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
-
-export interface LoginData {
-  login: string;
-  senha: string;
-}
 
 export interface RegisterClienteData {
   nome: string;
@@ -29,7 +27,7 @@ export interface RegisterClienteData {
   senha: string;
   telefone?: string;
   dataNasc?: string;
-  cpf?: string;
+  cpf: string;
   termosAceitos: boolean;
 }
 
@@ -39,11 +37,18 @@ export interface RegisterArtistaData {
   senha: string;
   telefone?: string;
   dataNasc?: string;
-  cnpj?: string;
+  cpf: string;
   bio?: string;
   instagram?: string;
-  endereco: EnderecoInput;
+  /** Estúdio próprio (solo): cria o estúdio e o contrato "dono" junto com a conta. */
+  estudioSolo?: EstudioSoloInput;
   termosAceitos: boolean;
+}
+
+export interface EstudioSoloInput {
+  nome: string;
+  cnpj?: string;
+  endereco: EnderecoInput;
 }
 
 export interface EnderecoInput {
@@ -77,6 +82,8 @@ export interface UserMeResponse {
   telefone?: string;
   dataNasc?: string;
   role: 'admin' | 'cliente' | 'tatuador' | 'estudio';
+  /** Estúdio próprio do tatuador (contrato "dono"); null nos demais casos. */
+  estudioProprioId: string | null;
 }
 
 export interface ChatDTO {
@@ -108,28 +115,20 @@ export interface Page<T> {
   last: boolean;
 }
 
-export interface AuthResponse {
-  token: string;
-}
-
+/**
+ * Cadastro e perfil. O login em si é feito no Supabase Auth (services/supabase.ts):
+ * o cadastro cria a conta e o perfil e responde 201 sem token — a tela entra
+ * com o mesmo e-mail e senha logo depois.
+ */
 export const authService = {
-  
-  async login(data: LoginData): Promise<AuthResponse> {
-    const response = await api.post<AuthResponse>('/auth/login', data);
-    return response.data;
+  async registerCliente(data: RegisterClienteData): Promise<void> {
+    await api.post('/user/cadastro/cliente', data);
   },
-
-  async registerCliente(data: RegisterClienteData): Promise<AuthResponse> {
-    const { data: res } = await api.post<AuthResponse>('/user/cadastro/cliente', data);
-    return res;
+  async registerArtista(data: RegisterArtistaData): Promise<void> {
+    await api.post('/user/cadastro/artista', data);
   },
-  async registerArtista(data: RegisterArtistaData): Promise<AuthResponse> {
-    const { data: res } = await api.post<AuthResponse>('/user/cadastro/artista', data);
-    return res;
-  },
-  async registerEstudio(data: RegisterEstudioData): Promise<AuthResponse> {
-    const { data: res } = await api.post<AuthResponse>('/user/cadastro/estudio', data);
-    return res;
+  async registerEstudio(data: RegisterEstudioData): Promise<void> {
+    await api.post('/user/cadastro/estudio', data);
   },
 
   async me(): Promise<UserMeResponse> {
@@ -177,7 +176,7 @@ export interface AppointmentSessionInput {
   data: string;
   horario: string;
   duracaoMinutos: number;
-  /** Obrigatória quando o tatuador é vinculado a um estúdio. */
+  /** Posição do estúdio; o backend usa 1 quando o estúdio só tem uma. */
   posicao?: number;
 }
 
@@ -241,6 +240,7 @@ export interface SessaoListItemDTO {
 export const appointmentService = {
   async criar(data: {
     chatId: string;
+    estiloId: string;
     sessoes: AppointmentSessionInput[];
     valorTotal: number;
   }): Promise<AppointmentDTO> {

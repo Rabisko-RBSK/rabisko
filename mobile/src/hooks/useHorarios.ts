@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { HorarioDTO, artistService } from '../services/api/artistService';
+import { studioService } from '../services/api/studioService';
 import { normalizarGrade } from '../utils/horario';
 
 interface UseHorariosResult {
@@ -10,8 +11,8 @@ interface UseHorariosResult {
 }
 
 /**
- * Grade de atendimento: do tatuador logado (sem `tatuadorId`) ou de qualquer
- * tatuador (perfil público). Lista vazia = tatuador sem restrição de horário.
+ * Grade de atendimento: do estúdio logado (sem `tatuadorId`) ou do estúdio
+ * onde um tatuador atende (perfil público). Lista vazia = sem restrição.
  */
 export function useHorarios(tatuadorId?: string): UseHorariosResult {
   const [horarios, setHorarios] = useState<HorarioDTO[]>([]);
@@ -24,7 +25,7 @@ export function useHorarios(tatuadorId?: string): UseHorariosResult {
     try {
       const data = tatuadorId
         ? await artistService.horariosDoTatuador(tatuadorId)
-        : await artistService.meusHorarios();
+        : await studioService.meusHorarios();
       setHorarios(normalizarGrade(data));
     } catch (err: any) {
       console.warn('[useHorarios] falha ao carregar horários', err?.response?.status, err?.message);

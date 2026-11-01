@@ -21,8 +21,9 @@ import { Checkbox } from '../../components/common/Checkbox';
 import { RoleSwitch } from '../../components/common/RoleSwitch';
 import { EnderecoForm, validarEndereco } from '../../components/common/EnderecoForm';
 import { DatePickerModal } from '../../components/common/DatePickerModal';
-import { isValidCNPJ } from '../../utils/validators';
+import { isValidCNPJ, isValidCPF } from '../../utils/validators';
 import { authService, type EnderecoInput } from '../../services/api';
+import { entrar } from '../../services/supabase';
 import { geocodificar } from '../../utils/geocodificar';
 
 /** Subtitle copy per role (P1 Cadastro — DESIGN.md §3 / IMPLEMENTATION-CHECKLIST F9). */
@@ -120,6 +121,7 @@ function backendRoleToFront(role: 'admin' | 'cliente' | 'tatuador' | 'estudio'):
  *   3) Erro de rede/timeout: e.response é undefined.
  */
 function parseAxiosError(e: any, fallback: string): string {
+  if (e?.name === 'LoginError') return e.message;
   const data = e?.response?.data;
   if (typeof data === 'string' && data.length) return data;
   if (data?.errors?.[0]?.defaultMessage) return data.errors[0].defaultMessage;
@@ -134,7 +136,7 @@ function parseAxiosError(e: any, fallback: string): string {
 export function RegisterScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AuthRoutesParamList>>();
   const insets = useSafeAreaInsets();
-  const { role, setRole, setUser, setToken } = useAuthStore();
+  const { role, setRole, setUser, setToken, setEstudioProprioId, setModo } = useAuthStore();
 
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
@@ -149,6 +151,11 @@ export function RegisterScreen() {
   const [endereco, setEndereco] = useState<EnderecoInput | null>(null);
   const [instagram, setInstagram] = useState('');
 
+  // Artista com estúdio próprio: nome, CNPJ e endereço do estúdio (CNPJ e
+  // endereço reaproveitam os mesmos campos do cadastro de estúdio).
+  const [estudioProprio, setEstudioProprio] = useState(false);
+  const [nomeEstudio, setNomeEstudio] = useState('');
+
   const [cnpj, setCnpj] = useState('');
   const [posicoes, setPosicoes] = useState('');
   const [posicoesError, setPosicoesError] = useState<string | null>(null);
@@ -156,6 +163,7 @@ export function RegisterScreen() {
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [confirmarSenhaError, setConfirmarSenhaError] = useState<string | null>(null);
   const [cnpjError, setCnpjError] = useState<string | null>(null);
+  const [cpfError, setCpfError] = useState<string | null>(null);
 
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -165,6 +173,7 @@ export function RegisterScreen() {
     setErro(null);
     setConfirmarSenhaError(null);
     setCnpjError(null);
+    setCpfError(null);
 
     if (!nome.trim() || !email.trim() || senha.length < 8) {
       setErro('Preencha nome, e-mail e senha (mínimo 8 caracteres).');
@@ -179,19 +188,25 @@ export function RegisterScreen() {
       setErro('As senhas não coincidem.');
       return;
     }
-    if (role === 'artista') {
-      if (!cnpj.trim()) {
-        setCnpjError('Informe o CNPJ do artista.');
-        setErro('Informe o CNPJ do artista.');
+    if (role === 'cliente' || role === 'artista') {
+      if (!cpf.trim()) {
+        setCpfError('Informe seu CPF.');
+        setErro('Informe seu CPF.');
         return;
       }
-      if (!isValidCNPJ(cnpj)) {
-        setCnpjError('CNPJ inválido (dígitos incorretos ou repetidos).');
-        setErro('CNPJ inválido. Confira os números.');
+      if (!isValidCPF(cpf)) {
+        setCpfError('CPF inválido (dígitos incorretos ou repetidos).');
+        setErro('CPF inválido. Confira os números.');
         return;
       }
     }
-    if (role === 'estudio' && cnpj.trim()) {
+    // Endereço e CNPJ são do estúdio: do cadastro de estúdio ou do estúdio próprio do artista.
+    const temEstudio = role === 'estudio' || (role === 'artista' && estudioProprio);
+    if (role === 'artista' && estudioProprio && !nomeEstudio.trim()) {
+      setErro('Informe o nome do seu estúdio.');
+      return;
+    }
+    if (temEstudio && cnpj.trim()) {
       if (!isValidCNPJ(cnpj)) {
         setCnpjError('CNPJ inválido (dígitos incorretos ou repetidos).');
         setErro('CNPJ inválido. Confira os números.');
@@ -210,7 +225,7 @@ export function RegisterScreen() {
       setErro('Você precisa aceitar os termos para continuar.');
       return;
     }
-    if (role !== 'cliente') {
+    if (temEstudio) {
       const erroEndereco = validarEndereco(endereco);
       if (erroEndereco) {
         setErro(erroEndereco);
@@ -222,37 +237,39 @@ export function RegisterScreen() {
     try {
       // Coordenadas para "Perto de você"; se não der, segue sem elas.
       let enderecoFinal: EnderecoInput | null = endereco;
-      if (role !== 'cliente' && endereco) {
+      if (temEstudio && endereco) {
         const coords = await geocodificar(endereco);
         enderecoFinal = { ...endereco, ...(coords ?? {}) };
       }
 
-      let token: string;
       if (role === 'cliente') {
-        ({ token } = await authService.registerCliente({
+        await authService.registerCliente({
           nome: nome.trim(),
           email: email.trim(),
           senha,
           telefone: telefone || undefined,
           dataNasc: toIsoDate(dataNasc),
-          cpf: cpf || undefined,
+          cpf: cpf.replace(/\D/g, ''),
           termosAceitos: termsAccepted,
-        }));
+        });
       } else if (role === 'artista') {
-        ({ token } = await authService.registerArtista({
+        await authService.registerArtista({
           nome: nome.trim(),
           email: email.trim(),
           senha,
           telefone: telefone || undefined,
           dataNasc: toIsoDate(dataNasc),
-          cnpj: cnpj || undefined,
+          // Só dígitos: o backend grava como chegou e a coluna é única.
+          cpf: cpf.replace(/\D/g, ''),
           bio: bio || undefined,
           instagram: instagram || undefined,
-          endereco: enderecoFinal!,
+          estudioSolo: estudioProprio
+            ? { nome: nomeEstudio.trim(), cnpj: cnpj || undefined, endereco: enderecoFinal! }
+            : undefined,
           termosAceitos: termsAccepted,
-        }));
+        });
       } else {
-        ({ token } = await authService.registerEstudio({
+        await authService.registerEstudio({
           nome: nome.trim(),
           email: email.trim(),
           senha,
@@ -261,11 +278,15 @@ export function RegisterScreen() {
           posicoes: Number(posicoes),
           endereco: enderecoFinal!,
           termosAceitos: termsAccepted,
-        }));
+        });
       }
 
+      // O cadastro não devolve token: entra no Supabase com a conta recém-criada.
+      const token = await entrar(email.trim(), senha);
       setToken(token);
       const me = await authService.me();
+      setEstudioProprioId(me.estudioProprioId ?? null);
+      setModo('artista');
       setUser({ id: me.userId, name: me.nome, email: me.email });
       setRole(backendRoleToFront(me.role));
     } catch (e: any) {
@@ -276,8 +297,8 @@ export function RegisterScreen() {
     }
   }, [
     role, nome, email, senha, confirmarSenha, telefone, dataNasc, cpf,
-    bio, instagram, endereco, cnpj, posicoes, termsAccepted,
-    setToken, setUser, setRole,
+    bio, instagram, endereco, cnpj, posicoes, termsAccepted, estudioProprio, nomeEstudio,
+    setToken, setUser, setRole, setEstudioProprioId, setModo,
   ]);
 
   return (
@@ -310,6 +331,7 @@ export function RegisterScreen() {
             setErro(null);
             setConfirmarSenhaError(null);
             setCnpjError(null);
+            setCpfError(null);
           }}
           className="mb-8"
         />
@@ -358,7 +380,7 @@ export function RegisterScreen() {
             </View>
           </TouchableOpacity>
         )}
-        {role === 'cliente' && (
+        {(role === 'cliente' || role === 'artista') && (
           <Input
             label="CPF"
             placeholder="000.000.000-00"
@@ -366,7 +388,11 @@ export function RegisterScreen() {
             keyboardType="numeric"
             maxLength={14}
             value={cpf}
-            onChangeText={(s) => setCpf(maskCPF(s))}
+            onChangeText={(s) => {
+              setCpf(maskCPF(s));
+              setCpfError(null);
+            }}
+            error={cpfError ?? undefined}
             editable={!loading}
           />
         )}
@@ -396,20 +422,6 @@ export function RegisterScreen() {
         {role === 'artista' && (
           <>
             <Input
-              label="CNPJ"
-              placeholder="00.000.000/0000-00"
-              icon={Building2}
-              keyboardType="numeric"
-              maxLength={18}
-              value={cnpj}
-              onChangeText={(s) => {
-                setCnpj(maskCNPJ(s));
-                setCnpjError(null);
-              }}
-              error={cnpjError ?? undefined}
-              editable={!loading}
-            />
-            <Input
               label="Bio"
               placeholder="Conte um pouco sobre você e seu trabalho..."
               icon={PenLine}
@@ -422,8 +434,6 @@ export function RegisterScreen() {
               onChangeText={setBio}
               editable={!loading}
             />
-            <Text className="font-body text-[12px] text-fg-2 mb-2 ml-1">Endereço de atendimento</Text>
-            <EnderecoForm value={endereco} onChange={setEndereco} disabled={loading} />
             <Input
               label="@ Instagram"
               placeholder="@seuhandle"
@@ -436,6 +446,51 @@ export function RegisterScreen() {
             <Text className="font-body text-[12px] text-fg-3 mb-4 ml-1 leading-[16px]">
               Seus estilos aparecem a partir dos trabalhos que você publicar no portfólio.
             </Text>
+
+            <View className="mb-2">
+              <Checkbox
+                checked={estudioProprio}
+                onChange={setEstudioProprio}
+                accessibilityLabel="Tenho estúdio próprio"
+                label={
+                  <Text className="font-body-semibold text-[14px] text-ink">Tenho estúdio próprio</Text>
+                }
+              />
+            </View>
+            <Text className="font-body text-[12px] text-fg-3 mb-4 ml-1 leading-[16px]">
+              {estudioProprio
+                ? 'Você atende e agenda sessões no seu estúdio, e pode gerenciá-lo pelo app.'
+                : 'Sem estúdio próprio, você poderá agendar sessões quando entrar na equipe de um estúdio.'}
+            </Text>
+
+            {estudioProprio && (
+              <>
+                <Input
+                  label="Nome do estúdio"
+                  placeholder="Ex: Estúdio Fênix"
+                  icon={Building2}
+                  value={nomeEstudio}
+                  onChangeText={setNomeEstudio}
+                  editable={!loading}
+                />
+                <Input
+                  label="CNPJ do estúdio (opcional)"
+                  placeholder="00.000.000/0001-00"
+                  icon={Building2}
+                  keyboardType="numeric"
+                  maxLength={18}
+                  value={cnpj}
+                  onChangeText={(s) => {
+                    setCnpj(maskCNPJ(s));
+                    setCnpjError(null);
+                  }}
+                  error={cnpjError ?? undefined}
+                  editable={!loading}
+                />
+                <Text className="font-body text-[12px] text-fg-2 mb-2 ml-1">Endereço do estúdio</Text>
+                <EnderecoForm value={endereco} onChange={setEndereco} disabled={loading} />
+              </>
+            )}
           </>
         )}
 

@@ -34,8 +34,8 @@ public class Appointment {
     @Column(name = "tatuador_id", nullable = false)
     private UUID tatuadorId;
 
-    @Column(name = "estudio_id", updatable = false) 
-    private UUID estudioId;
+    @Column(name = "estilo_id", updatable = false) 
+    private UUID estiloId;
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)

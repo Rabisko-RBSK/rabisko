@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text,
   useWindowDimensions, View,
@@ -11,6 +11,7 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { StudioRevenueChart } from '../../components/common/StudioRevenueChart';
 import { useStudioDashboard } from '../../hooks/useStudioDashboard';
 import { formatStudioCurrency as currency, type StudioDashboard } from '../../services/studioDashboard';
+import { studioService } from '../../services/api/studioService';
 import { studioDashboardTheme as theme } from '../../theme/studioDashboard';
 import type { StudioRoutesParamList } from '../../routes/studio.routes';
 
@@ -116,6 +117,9 @@ function ArtistRow({ artist }: { artist: StudioDashboard['artists'][number] }) {
 }
 
 function StylesList({ styles }: { styles: StudioDashboard['styles'] }) {
+  if (styles.length === 0) {
+    return <Text style={s.note}>Nenhum serviço no período.</Text>;
+  }
   return <View style={s.list}>
     {styles.map((style, index) => <View key={style.name} accessible
       accessibilityLabel={`${style.name}: ${Math.round(style.percent)} por cento, ${style.count} agendamentos`}>
@@ -137,7 +141,18 @@ export function StudioDashboardScreen() {
   const peakDate = new Date(month.getFullYear(), month.getMonth(), data.peak.day)
     .toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
 
-  return <StudioPage title="Olá, Tinta Negra Studio!" subtitle={`Aqui está o resumo de desempenho do seu estúdio ${period === 'current' ? 'este mês' : 'no mês anterior'}.`}>
+  // Nome do estúdio gerenciado (conta de estúdio ou estúdio próprio do tatuador
+  // no modo estúdio — por isso não dá para usar o nome do usuário logado).
+  const [nomeEstudio, setNomeEstudio] = useState<string | null>(null);
+  useEffect(() => {
+    let ativo = true;
+    studioService.meuEstudio()
+      .then((e) => { if (ativo) setNomeEstudio(e.nome); })
+      .catch(() => { if (ativo) setNomeEstudio(null); });
+    return () => { ativo = false; };
+  }, []);
+
+  return <StudioPage title={nomeEstudio ? `Olá, ${nomeEstudio}!` : 'Olá!'} subtitle={`Aqui está o resumo de desempenho do seu estúdio ${period === 'current' ? 'este mês' : 'no mês anterior'}.`}>
     <View style={[s.metrics, stacked && s.stacked]}>
       <View style={[s.card, s.metricCard]}>
         <View style={s.row}><Text style={[s.eyebrow, s.flex]}>RECEITA TOTAL</Text><Wallet size={19} color={c.purple} /></View>
@@ -194,7 +209,6 @@ export function StudioDashboardScreen() {
         </Pressable>
       </View>
       <StylesList styles={data.styles.slice(0, 4)} />
-      <Text style={s.note}>Dados de demonstração.</Text>
     </View>
     <Sheet title="Estilos mais procurados" visible={showStyles} onClose={() => setShowStyles(false)}>
       <StylesList styles={data.styles} />

@@ -12,6 +12,7 @@ import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
 import { RoleSwitch } from '../../components/common/RoleSwitch';
 import { authService } from '../../services/api';
+import { entrar, sair } from '../../services/supabase';
 
 /** Subtitle copy per role (P1 Login — DESIGN.md §3 / IMPLEMENTATION-CHECKLIST F9). */
 const SUBTITLE_BY_ROLE: Record<UserRoleId, string> = {
@@ -21,8 +22,8 @@ const SUBTITLE_BY_ROLE: Record<UserRoleId, string> = {
 };
 
 /**
- * Mapeia o role que volta do backend (`UserResponseDTO.role`, em minúsculo, com
- * a constante `tatuador` do enum Postgres) pro id do front (`UserRoleId`,
+ * Mapeia o role que volta do backend (`UserResponseDTO.role`, em minúsculo, o
+ * mesmo `app_metadata.role` da conta no Supabase Auth) pro id do front (`UserRoleId`,
  * usado pelo RoleSwitch — "artista" em vez de "tatuador"). `admin` cai em
  * cliente como fallback (admin não usa o app mobile; se isso acontecer, é
  * porque alguém logou com conta de admin pra testar).
@@ -40,6 +41,7 @@ function isValidEmail(s: string): boolean {
 
 /** Cobre string (controller catch), JSON de @Valid, e erros de rede. */
 function parseAxiosError(e: any, fallback: string): string {
+  if (e?.name === 'LoginError') return e.message;
   const data = e?.response?.data;
   if (typeof data === 'string' && data.length) return data;
   if (data?.errors?.[0]?.defaultMessage) return data.errors[0].defaultMessage;
@@ -54,7 +56,7 @@ function parseAxiosError(e: any, fallback: string): string {
 export function LoginScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AuthRoutesParamList>>();
   const insets = useSafeAreaInsets();
-  const { role, setRole, setUser, setToken } = useAuthStore();
+  const { role, setRole, setUser, setToken, setEstudioProprioId, setModo } = useAuthStore();
 
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
@@ -75,22 +77,26 @@ export function LoginScreen() {
 
     setLoading(true);
     try {
-      const { token } = await authService.login({ login: email.trim(), senha });
+      const token = await entrar(email.trim(), senha);
 
       setToken(token);
 
       const me = await authService.me();
 
+      setEstudioProprioId(me.estudioProprioId ?? null);
+      setModo('artista');
       setUser({ id: me.userId, name: me.nome, email: me.email });
       setRole(backendRoleToFront(me.role));
 
     } catch (e: any) {
       console.warn('[Login] erro:', e?.response?.status, e?.response?.data, e?.message);
       setErro(parseAxiosError(e, 'Falha no login.'));
+      // Conta sem perfil (ou backend fora do ar): não deixa a sessão do Supabase pendurada.
+      if (e?.name !== 'LoginError') sair().catch(() => {});
     } finally {
       setLoading(false);
     }
-  }, [email, senha, setToken, setUser, setRole]);
+  }, [email, senha, setToken, setUser, setRole, setEstudioProprioId, setModo]);
 
   return (
     <KeyboardAvoidingView

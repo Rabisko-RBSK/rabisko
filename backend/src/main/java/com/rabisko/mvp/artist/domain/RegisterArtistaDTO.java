@@ -10,7 +10,8 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDate;
-import java.util.List;
+
+import org.hibernate.validator.constraints.br.CPF;
 
 import com.rabisko.mvp.endereco.domain.EnderecoDTO;
 
@@ -34,11 +35,12 @@ public class RegisterArtistaDTO {
 
     private LocalDate dataNasc;
 
+    @NotBlank
+    @CPF
     private String cpf;
 
     @Valid
-    @NotNull
-    private EnderecoDTO endereco;
+    private EstudioSoloDTO estudioSolo;
 
     private String bio;
 

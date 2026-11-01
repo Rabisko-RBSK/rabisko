@@ -27,11 +27,10 @@ public interface ConviteEstudioRepository extends JpaRepository<ConviteEstudio, 
         SELECT new com.rabisko.mvp.studio.domain.ConviteDetalheDTO(
             c.conviteId, c.status, c.dataCriacao,
             s.estudioId, s.nome, s.fotoPerfilUrl,
-            t.tatuadorId, u.nome, t.fotoPerfilUrl)
+            t.tatuadorId, t.nome, t.fotoPerfilUrl)
         FROM ConviteEstudio c
         JOIN Studio s ON s.estudioId = c.estudioId
         JOIN Artist t ON t.tatuadorId = c.tatuadorId
-        JOIN User u   ON u.userId = t.userId
         """;
 
     @Query(SELECT_DETALHE + " WHERE c.tatuadorId = :tatuadorId AND c.status = :status ORDER BY c.dataCriacao DESC")

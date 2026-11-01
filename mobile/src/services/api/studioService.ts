@@ -1,5 +1,5 @@
 import api from './index';
-import { ConviteDTO, ConviteDetalheDTO, ContratoDTO, ContratoInput } from './artistService';
+import { ConviteDTO, ConviteDetalheDTO, ContratoDTO, ContratoInput, HorarioDTO } from './artistService';
 
 /** Tatuador da equipe do estúdio (GET /studio/me/colaboradores). */
 export interface ColaboradorDTO {
@@ -13,7 +13,8 @@ export interface ColaboradorDTO {
 
 /**
  * Resultado da busca de tatuadores para convite (GET /studio/tatuadores).
- * O backend só devolve tatuadores ativos e sem estúdio.
+ * O backend só devolve tatuadores ativos que não são colaboradores de nenhum
+ * estúdio (quem só tem estúdio próprio pode ser convidado).
  */
 export interface TatuadorBuscaDTO {
   tatuadorId: string;
@@ -26,7 +27,6 @@ export interface TatuadorBuscaDTO {
 export interface StudioDTO {
   estudioId: string;
   nome: string;
-  email: string;
   cnpj: string | null;
   telefone: string | null;
   enderecoId: string | null;
@@ -35,7 +35,10 @@ export interface StudioDTO {
   posicoes: number;
 }
 
-/** Rotas `/studio/**` — exigem role ESTUDIO no backend. */
+/**
+ * Rotas `/studio/**` — conta de estúdio, ou tatuador dono gerenciando o próprio
+ * estúdio (modo estúdio).
+ */
 export const studioService = {
   async meuEstudio(): Promise<StudioDTO> {
     const { data } = await api.get<StudioDTO>('/studio/me');
@@ -95,6 +98,18 @@ export const studioService = {
 
   async cancelarPropostaContrato(tatuadorId: string): Promise<ContratoDTO> {
     const { data } = await api.delete<ContratoDTO>(`/studio/me/colaboradores/${tatuadorId}/contratos/proposta`);
+    return data;
+  },
+
+  /** Grade de atendimento do estúdio. Lista vazia = sem restrição. */
+  async meusHorarios(): Promise<HorarioDTO[]> {
+    const { data } = await api.get<HorarioDTO[]>('/studio/me/horarios');
+    return data;
+  },
+
+  /** Substitui a semana inteira; lista vazia remove a grade. */
+  async atualizarHorarios(horarios: HorarioDTO[]): Promise<HorarioDTO[]> {
+    const { data } = await api.put<HorarioDTO[]>('/studio/me/horarios', horarios);
     return data;
   },
 };

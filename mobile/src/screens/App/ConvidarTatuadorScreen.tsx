@@ -24,7 +24,8 @@ import { ContratoModal } from './ContratoModal';
 /**
  * Busca de tatuadores para convidar à equipe (empilhada no StudioEquipeStack).
  * O backend casa o termo com nome, e-mail ou instagram e só devolve
- * tatuadores sem estúdio. Os convites enviados nesta sessão ficam marcados
+ * tatuadores que não são colaboradores de nenhum estúdio (quem só tem estúdio
+ * próprio pode ser convidado). Os convites enviados nesta sessão ficam marcados
  * na lista; a tela Equipe recarrega os pendentes ao voltar.
  */
 

@@ -35,7 +35,7 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.POST, "/user/cadastro/estudio").permitAll()
                         .requestMatchers("/wss/**").permitAll()
                         .requestMatchers("/simulation/**").permitAll()
-                        .requestMatchers("/studio/**").hasRole("ESTUDIO")
+                        .requestMatchers("/studio/**").hasAnyRole("ESTUDIO", "TATUADOR")
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated())
                 

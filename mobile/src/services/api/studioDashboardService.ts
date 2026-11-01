@@ -41,6 +41,13 @@ export interface StudioArtistResumo {
   revenue: number;
 }
 
+/** Estilo mais procurado no período; percent de 0 a 100 sobre o total de serviços. */
+export interface StudioEstiloResumo {
+  name: string;
+  count: number;
+  percent: number;
+}
+
 export type StudioSessaoStatus = 'agendada' | 'confirmada' | 'em_andamento' | 'concluida' | 'no_show';
 
 /** Sessão da agenda. Não há estilo por sessão no banco, então não vem `style`. */
@@ -79,6 +86,12 @@ export const studioDashboardService = {
 
   async agenda(params: StudioDashboardPeriodo): Promise<StudioAgendaItem[]> {
     const { data } = await api.get<StudioAgendaItem[]>('/studio/me/dashboard/agenda', { params });
+    return data;
+  },
+
+  /** Estilo do serviço (servicos.estilo_id), do mais procurado ao menos. */
+  async estilos(params: StudioDashboardPeriodo): Promise<StudioEstiloResumo[]> {
+    const { data } = await api.get<StudioEstiloResumo[]>('/studio/me/dashboard/estilos', { params });
     return data;
   },
 };

@@ -11,23 +11,26 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Armchair, UserPlus, UserRound } from 'lucide-react-native';
+import { Armchair, ChevronRight, UserPlus, UserRound } from 'lucide-react-native';
 
 import { Header } from '../../components/common/Header';
 import { Input } from '../../components/common/Input';
 import { useColaboradores } from '../../hooks/useColaboradores';
 import { useConvitesEstudio } from '../../hooks/useConvitesEstudio';
+import { useHorarios } from '../../hooks/useHorarios';
 import { usePosicoesEstudio } from '../../hooks/usePosicoesEstudio';
 import { StudioEquipeStackParamList } from '../../routes/studio-equipe.stack';
 import { ConviteDetalheDTO } from '../../services/api/artistService';
 import { ColaboradorDTO } from '../../services/api/studioService';
 import { formatarContrato } from '../../utils/contrato';
 import { tempoRelativo } from '../../utils/datas';
+import { resumirGrade } from '../../utils/horario';
 import { MAX_POSICOES, MIN_POSICOES, rotuloPosicoes, validarNovaQuantidade } from '../../utils/posicoesEstudio';
 
 /**
  * Equipe do estúdio — primeira aba do fluxo do ESTÚDIO. Mostra as posições de
- * atendimento (com opção de alterar a quantidade), lista os tatuadores
+ * atendimento (com opção de alterar a quantidade), o horário de atendimento
+ * (editado em HorariosEstudio), lista os tatuadores
  * vinculados (com opção de remover) e os convites pendentes enviados (com
  * opção de cancelar). O botão no header abre a busca para convidar.
  */
@@ -110,11 +113,12 @@ function PessoaRow({
   subtitulo: string | null;
   /** Linhas extras abaixo do subtítulo (ex.: condições do contrato). */
   detalhes?: string[];
-  actionLabel: string;
-  accessibilityLabel: string;
-  busy: boolean;
-  disabled: boolean;
-  onAction: () => void;
+  /** Sem rótulo, a linha não tem ação (ex.: o dono do estúdio na equipe). */
+  actionLabel?: string;
+  accessibilityLabel?: string;
+  busy?: boolean;
+  disabled?: boolean;
+  onAction?: () => void;
   /** Toque na pessoa (avatar/nome); a ação à direita continua separada. */
   onPress?: () => void;
 }) {
@@ -145,7 +149,7 @@ function PessoaRow({
           ))}
         </View>
       </TouchableOpacity>
-      {busy ? (
+      {!actionLabel ? null : busy ? (
         <ActivityIndicator color="#602C66" />
       ) : (
         <TouchableOpacity
@@ -317,6 +321,8 @@ export function EquipeScreen() {
     reload: reloadConvites,
   } = useConvitesEstudio();
 
+  const horarios = useHorarios();
+
   const {
     posicoes,
     loading: posicoesLoading,
@@ -338,7 +344,8 @@ export function EquipeScreen() {
       reloadColaboradores();
       reloadConvites();
       reloadPosicoes();
-    }, [reloadColaboradores, reloadConvites, reloadPosicoes]),
+      horarios.reload();
+    }, [reloadColaboradores, reloadConvites, reloadPosicoes, horarios.reload]),
   );
 
   const confirmarRemocao = (colaborador: ColaboradorDTO) => {
@@ -439,6 +446,39 @@ export function EquipeScreen() {
           onRetry={reloadPosicoes}
         />
 
+        <SectionHeader title="Horário de atendimento" />
+        {horarios.loading ? (
+          <View className="py-8 items-center">
+            <ActivityIndicator color="#602C66" />
+          </View>
+        ) : horarios.error ? (
+          <LoadError message={horarios.error} onRetry={horarios.reload} />
+        ) : (
+          <TouchableOpacity
+            onPress={() => navigation.navigate('HorariosEstudio')}
+            activeOpacity={0.85}
+            className="bg-surface-2 rounded-rd-lg p-4 flex-row items-center"
+            accessibilityRole="button"
+            accessibilityLabel="Editar horário de atendimento"
+          >
+            <View className="flex-1">
+              {horarios.horarios.length === 0 ? (
+                <Text className="font-body text-[14px] text-fg-2">Sem restrição de horário</Text>
+              ) : (
+                resumirGrade(horarios.horarios).map((linha) => (
+                  <Text key={linha} className="font-body text-[14px] text-ink">
+                    {linha}
+                  </Text>
+                ))
+              )}
+              <Text className="font-body text-[12px] text-fg-3 mt-1">
+                Vale para toda a equipe · Toque para editar
+              </Text>
+            </View>
+            <ChevronRight size={22} color="#602C66" />
+          </TouchableOpacity>
+        )}
+
         <SectionHeader title="Colaboradores" count={colaboradores.length} />
         {colaboradoresLoading ? (
           <View className="py-8 items-center">
@@ -465,23 +505,35 @@ export function EquipeScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          colaboradores.map((c) => (
-            <PessoaRow
-              key={c.tatuadorId}
-              fotoUrl={c.fotoPerfilUrl}
-              nome={c.nome}
-              subtitulo={c.instagram ? formatHandle(c.instagram) : null}
-              detalhes={detalhesDoColaborador(c)}
-              actionLabel="Remover"
-              accessibilityLabel={`Remover ${c.nome} da equipe`}
-              busy={removendoId === c.tatuadorId}
-              disabled={removendoId !== null}
-              onAction={() => confirmarRemocao(c)}
-              onPress={() =>
-                navigation.navigate('ColaboradorContratos', { tatuadorId: c.tatuadorId, nome: c.nome })
-              }
-            />
-          ))
+          colaboradores.map((c) =>
+            // O dono do estúdio próprio aparece na equipe, mas não é removido
+            // nem tem contrato a renegociar.
+            c.contratoAtivo?.modelo === 'dono' ? (
+              <PessoaRow
+                key={c.tatuadorId}
+                fotoUrl={c.fotoPerfilUrl}
+                nome={c.nome}
+                subtitulo={c.instagram ? formatHandle(c.instagram) : null}
+                detalhes={['Dono do estúdio']}
+              />
+            ) : (
+              <PessoaRow
+                key={c.tatuadorId}
+                fotoUrl={c.fotoPerfilUrl}
+                nome={c.nome}
+                subtitulo={c.instagram ? formatHandle(c.instagram) : null}
+                detalhes={detalhesDoColaborador(c)}
+                actionLabel="Remover"
+                accessibilityLabel={`Remover ${c.nome} da equipe`}
+                busy={removendoId === c.tatuadorId}
+                disabled={removendoId !== null}
+                onAction={() => confirmarRemocao(c)}
+                onPress={() =>
+                  navigation.navigate('ColaboradorContratos', { tatuadorId: c.tatuadorId, nome: c.nome })
+                }
+              />
+            ),
+          )
         )}
 
         <SectionHeader title="Convites enviados" count={convites.length} />
