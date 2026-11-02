@@ -9,7 +9,7 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * Em que coluna do Kanban cada serviço e cada chat aparecem. Sem dependências
+ * Em que coluna do Kanban cada serviço aparece. Sem dependências
  * de Spring/banco para ser testável isoladamente (ver ClassificadorKanbanTest).
  *
  * O status do serviço fica "confirmada" desde a criação — nada o avança —, então
@@ -19,8 +19,7 @@ import java.util.List;
  *     aparece em serviço com sessão futura);
  *   - agendado: nenhuma sessão começou ainda;
  *   - em_progresso: alguma sessão já começou e ainda há sessão por terminar.
- * Um chat fica em chat_iniciado quando tem mensagem, nenhum serviço em aberto
- * e a última mensagem é posterior ao fim dos serviços já finalizados.
+ * A coluna mensagens_nao_lidas vem dos chats, não dos serviços (KanbanService).
  */
 public final class ClassificadorKanban {
 
@@ -45,10 +44,6 @@ public final class ClassificadorKanban {
     ) {
         public LocalDate concluidoEm() {
             return coluna == KanbanColuna.finalizado && fim != null ? fim.toLocalDate() : null;
-        }
-
-        boolean emAberto() {
-            return coluna == KanbanColuna.agendado || coluna == KanbanColuna.em_progresso;
         }
     }
 
@@ -81,14 +76,5 @@ public final class ClassificadorKanban {
             }
         }
         throw new IllegalStateException("Sessão em aberto não encontrada");
-    }
-
-    public static boolean chatIniciado(LocalDateTime ultimaMensagem, List<Situacao> servicosDoChat) {
-        if (ultimaMensagem == null) return false;
-        if (servicosDoChat.stream().anyMatch(Situacao::emAberto)) return false;
-        return servicosDoChat.stream()
-            .map(Situacao::fim)
-            .filter(f -> f != null)
-            .allMatch(ultimaMensagem::isAfter);
     }
 }

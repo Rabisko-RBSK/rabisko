@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { chatService, ChatDTO } from '../../services/api';
@@ -40,6 +40,8 @@ export function ChatScreen() {
   const [loading, setLoading] = useState(false);
   const role = useAuthStore((s) => s.role);
   const textos = role === 'artista' ? TEXTOS_ARTISTA : TEXTOS_CLIENTE;
+  // Indicador de não lida só para o tatuador (o backend calcula para os dois papéis).
+  const mostrarNaoLidas = role === 'artista';
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -53,9 +55,12 @@ export function ChatScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  // Ao voltar de uma conversa, o "não lida" dela já mudou.
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [refresh]),
+  );
 
   useEffect(() => {
     return stompClient.addListener(() => {
@@ -91,12 +96,17 @@ export function ChatScreen() {
               key={c.chatId}
               activeOpacity={0.8}
               className="flex-row items-center py-3"
-              onPress={() =>
+              onPress={() => {
+                // A conversa marca a leitura ao abrir; apaga o ponto já, sem esperar o refresh.
+                setChats((prev) => prev.map((x) => (x.chatId === c.chatId ? { ...x, naoLida: false } : x)));
                 navigation.navigate('ChatThread', {
                   chatId: c.chatId,
                   outroNome: c.outroUsuarioNome,
                   outroUsuarioId: c.outroUsuarioId,
-                })
+                });
+              }}
+              accessibilityLabel={
+                mostrarNaoLidas && c.naoLida ? `${c.outroUsuarioNome}, mensagem não lida` : c.outroUsuarioNome
               }
             >
               <View
@@ -114,9 +124,14 @@ export function ChatScreen() {
                     {formatarHora(c.dataUltimaMensagem)}
                   </Text>
                 </View>
-                <Text className="font-body text-[12px] text-fg-2 mt-1" numberOfLines={1}>
-                  {c.ultimaMensagem ?? 'Sem mensagens ainda'}
-                </Text>
+                <View className="flex-row items-center mt-1">
+                  <Text className="flex-1 font-body text-[12px] text-fg-2" numberOfLines={1}>
+                    {c.ultimaMensagem ?? 'Sem mensagens ainda'}
+                  </Text>
+                  {mostrarNaoLidas && c.naoLida && (
+                    <View className="w-2.5 h-2.5 rounded-rd-pill bg-plum ml-2" />
+                  )}
+                </View>
               </View>
             </TouchableOpacity>
           ))}

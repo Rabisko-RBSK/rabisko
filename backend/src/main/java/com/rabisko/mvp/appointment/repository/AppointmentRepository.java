@@ -19,8 +19,6 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
 
     List<Appointment> findByTatuadorIdAndStatusNotIn(UUID tatuadorId, Collection<AppointmentStatus> excluidos);
 
-    List<Appointment> findByChatIdIn(Collection<UUID> chatIds);
-
     /** Serviços com sessão no estúdio — o estúdio do serviço é o das reservas dele. */
     @Query("""
     SELECT a FROM Appointment a

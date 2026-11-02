@@ -7,8 +7,9 @@ import java.util.UUID;
 
 /**
  * Card somente leitura do Kanban de serviços. Os campos de data dependem da
- * coluna: `ultimaMensagemEm` em chat_iniciado, `proximaSessao` em agendado e
- * em_progresso, `concluidoEm` em finalizado. `servicoId` é null em chat_iniciado.
+ * coluna: `naoLidas`, `aguardandoDesde` e `ultimaMensagemEm` em
+ * mensagens_nao_lidas, `proximaSessao` em agendado e em_progresso,
+ * `concluidoEm` em finalizado. `servicoId` é null em mensagens_nao_lidas.
  */
 public record KanbanCardDTO(
     KanbanColuna coluna,
@@ -22,5 +23,9 @@ public record KanbanCardDTO(
     Integer sessaoAtual,
     LocalDateTime proximaSessao,
     LocalDate concluidoEm,
+    /** Mensagens do cliente que o tatuador ainda não leu. */
+    Integer naoLidas,
+    /** Envio da mais antiga não lida — desde quando o cliente espera resposta. */
+    OffsetDateTime aguardandoDesde,
     OffsetDateTime ultimaMensagemEm
 ) {}

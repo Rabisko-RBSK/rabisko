@@ -26,6 +26,11 @@ import { resolverUrlStorage } from '../../utils/storageUrl';
 
 type ChatThreadParams = { chatId: string; outroNome: string; outroUsuarioId: string };
 
+/** Falhar aqui só atrasa o "lido" — não deve atrapalhar a conversa. */
+function marcarComoLido(chatId: string) {
+  chatService.marcarComoLido(chatId).catch((e) => console.warn('Erro ao marcar chat como lido', e?.message));
+}
+
 export function ChatThreadScreen() {
   const route = useRoute<RouteProp<{ ChatThread: ChatThreadParams }, 'ChatThread'>>();
   const navigation = useNavigation();
@@ -47,6 +52,7 @@ export function ChatThreadScreen() {
         if (!cancelled) setMensagens(page.content);
       })
       .catch((e) => console.error('Erro ao carregar mensagens', e));
+    marcarComoLido(chatId);
     return () => {
       cancelled = true;
     };
@@ -56,6 +62,8 @@ export function ChatThreadScreen() {
     return stompClient.addListener((msg) => {
       if (msg.chatId !== chatId) return;
       setMensagens((prev) => [msg, ...prev]);
+      // Chegou com a conversa aberta: já foi vista.
+      marcarComoLido(chatId);
     });
   }, [chatId]);
 

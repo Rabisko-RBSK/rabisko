@@ -14,7 +14,7 @@ export interface ColunaKanban {
 }
 
 export const COLUNAS: ColunaKanban[] = [
-  { chave: 'chat_iniciado', titulo: 'Chat iniciado', cor: '#2C4466' },
+  { chave: 'mensagens_nao_lidas', titulo: 'Mensagens não lidas', cor: '#2C4466' },
   { chave: 'agendado', titulo: 'Agendado', cor: '#602C66' },
   { chave: 'em_progresso', titulo: 'Em progresso', cor: '#B5752A' },
   { chave: 'finalizado', titulo: 'Finalizado', cor: '#1F7A4D' },
@@ -33,7 +33,7 @@ const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 export function agruparPorColuna(cards: KanbanCardDTO[]): Record<KanbanColuna, KanbanCardDTO[]> {
   const grupos: Record<KanbanColuna, KanbanCardDTO[]> = {
-    chat_iniciado: [], agendado: [], em_progresso: [], finalizado: [],
+    mensagens_nao_lidas: [], agendado: [], em_progresso: [], finalizado: [],
   };
   for (const card of cards) grupos[card.coluna]?.push(card);
   return grupos;
@@ -53,30 +53,30 @@ export function formatarDiaMes(data: string): string {
   return `${dia}/${mes}`;
 }
 
-/** Tempo desde a última mensagem: "agora", "há 5 min", "há 2 h", "ontem", "há 3 dias", "em 12/09". */
-export function tempoDesde(iso: string, agora: Date = new Date()): string {
-  const quando = new Date(iso);
-  if (Number.isNaN(quando.getTime())) return '';
+/** Há quanto tempo o cliente espera: "menos de 1 min", "20 min", "2 h", "1 dia", "3 dias". */
+export function tempoDeEspera(iso: string, agora: Date = new Date()): string {
+  const desde = new Date(iso);
+  if (Number.isNaN(desde.getTime())) return '';
 
-  const minutos = Math.floor((agora.getTime() - quando.getTime()) / 60_000);
-  if (minutos < 1) return 'agora';
-  if (minutos < 60) return `há ${minutos} min`;
-  if (minutos < 24 * 60) return `há ${Math.floor(minutos / 60)} h`;
-
-  const dias = diasEntre(quando, agora);
-  if (dias <= 1) return 'ontem';
-  if (dias < 7) return `há ${dias} dias`;
-  return `em ${pad(quando.getDate())}/${pad(quando.getMonth() + 1)}`;
+  const minutos = Math.floor((agora.getTime() - desde.getTime()) / 60_000);
+  if (minutos < 1) return 'menos de 1 min';
+  if (minutos < 60) return `${minutos} min`;
+  const horas = Math.floor(minutos / 60);
+  if (horas < 24) return `${horas} h`;
+  const dias = Math.floor(horas / 24);
+  return `${dias} ${dias === 1 ? 'dia' : 'dias'}`;
 }
 
 export function textosDoCard(card: KanbanCardDTO, agora: Date = new Date()): TextosDoCard {
   switch (card.coluna) {
-    case 'chat_iniciado':
+    case 'mensagens_nao_lidas': {
+      const n = card.naoLidas ?? 0;
       return {
-        etiqueta: null,
+        etiqueta: `${n} ${n === 1 ? 'não lida' : 'não lidas'}`,
         icone: 'mensagem',
-        meta: card.ultimaMensagemEm ? `Última mensagem ${tempoDesde(card.ultimaMensagemEm, agora)}` : 'Chat iniciado',
+        meta: card.aguardandoDesde ? `Sem resposta há ${tempoDeEspera(card.aguardandoDesde, agora)}` : 'Sem resposta',
       };
+    }
     case 'agendado':
     case 'em_progresso': {
       const etiqueta = card.totalSessoes === 0 ? null
@@ -106,13 +106,6 @@ export function iniciais(nome: string): string {
   const primeira = partes[0][0];
   const ultima = partes.length > 1 ? partes[partes.length - 1][0] : '';
   return (primeira + ultima).toUpperCase();
-}
-
-/** Dias de calendário entre duas datas (meia-noite local a meia-noite local). */
-function diasEntre(de: Date, ate: Date): number {
-  const inicio = new Date(de.getFullYear(), de.getMonth(), de.getDate()).getTime();
-  const fim = new Date(ate.getFullYear(), ate.getMonth(), ate.getDate()).getTime();
-  return Math.round((fim - inicio) / 86_400_000);
 }
 
 function pad(n: number): string {

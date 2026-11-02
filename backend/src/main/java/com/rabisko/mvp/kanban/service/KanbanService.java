@@ -8,7 +8,9 @@ import com.rabisko.mvp.appointment.repository.AppointmentSessionRepository;
 import com.rabisko.mvp.artist.domain.Artist;
 import com.rabisko.mvp.artist.repository.ArtistRepository;
 import com.rabisko.mvp.chat.domain.Chat;
+import com.rabisko.mvp.chat.domain.NaoLidasDoChat;
 import com.rabisko.mvp.chat.repository.ChatRepository;
+import com.rabisko.mvp.chat.repository.MessageRepository;
 import com.rabisko.mvp.client.domain.Client;
 import com.rabisko.mvp.client.repository.ClientRepository;
 import com.rabisko.mvp.kanban.domain.KanbanCardDTO;
@@ -27,6 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.Collection;
 import java.util.Comparator;
@@ -40,8 +43,9 @@ import java.util.stream.Stream;
 
 /**
  * Kanban de serviços (somente leitura). O tatuador vê os próprios serviços e
- * chats; o estúdio vê os serviços com sessão nele e os chats de quem tem
- * contrato ativo no estúdio (inclusive o dono).
+ * os chats com mensagens que ele não leu; o estúdio vê os serviços com sessão
+ * nele e os chats em que alguém da equipe (contrato ativo, inclusive o dono)
+ * não leu o cliente — ou seja, cliente sem resposta, e há quanto tempo.
  */
 @Service
 public class KanbanService {
@@ -52,6 +56,7 @@ public class KanbanService {
     @Autowired private AppointmentRepository appointmentRepository;
     @Autowired private AppointmentSessionRepository sessionRepository;
     @Autowired private ChatRepository chatRepository;
+    @Autowired private MessageRepository messageRepository;
     @Autowired private ArtistRepository artistRepository;
     @Autowired private ClientRepository clientRepository;
     @Autowired private ContratoColaboradorRepository contratoRepository;
@@ -67,7 +72,7 @@ public class KanbanService {
 
         return montar(
             appointmentRepository.findByTatuadorIdAndStatusNotIn(artista.getTatuadorId(), FORA_DO_KANBAN),
-            chatRepository.findByTatuadorId(artista.getTatuadorId()));
+            Set.of(artista.getTatuadorId()));
     }
 
     @Transactional(readOnly = true)
@@ -77,52 +82,40 @@ public class KanbanService {
             .map(ContratoColaborador::getTatuadorId)
             .collect(Collectors.toSet());
 
-        return montar(
-            appointmentRepository.servicosDoEstudio(estudioId, FORA_DO_KANBAN),
-            equipe.isEmpty() ? List.of() : chatRepository.findByTatuadorIdIn(equipe));
+        return montar(appointmentRepository.servicosDoEstudio(estudioId, FORA_DO_KANBAN), equipe);
     }
 
-    private List<KanbanCardDTO> montar(List<Appointment> servicos, List<Chat> chats) {
-        LocalDateTime agora = LocalDateTime.now();
+    /** @param tatuadores de quem entram os chats com mensagens não lidas. */
+    private List<KanbanCardDTO> montar(List<Appointment> servicos, Set<UUID> tatuadores) {
+        Map<UUID, Situacao> situacoes = situacoes(servicos, LocalDateTime.now());
 
-        // Um chat sai de chat_iniciado se tem serviço em aberto — inclusive
-        // serviço em outro estúdio, que não aparece como card aqui.
-        Set<UUID> chatIds = chats.stream().map(Chat::getChatId).collect(Collectors.toSet());
-        List<Appointment> servicosDosChats = chatIds.isEmpty() ? List.of()
-            : appointmentRepository.findByChatIdIn(chatIds).stream()
-                .filter(a -> !FORA_DO_KANBAN.contains(a.getStatus()))
-                .toList();
-
-        Map<UUID, Appointment> todos = Stream.concat(servicos.stream(), servicosDosChats.stream())
-            .collect(Collectors.toMap(Appointment::getAppointmentId, Function.identity(), (a, b) -> a));
-        Map<UUID, Situacao> situacoes = situacoes(todos.values(), agora);
-
-        Map<UUID, List<Situacao>> situacoesPorChat = servicosDosChats.stream()
-            .collect(Collectors.groupingBy(Appointment::getChatId,
-                Collectors.mapping(a -> situacoes.get(a.getAppointmentId()), Collectors.toList())));
-
-        List<Chat> chatsIniciados = chats.stream()
-            .filter(c -> ClassificadorKanban.chatIniciado(
-                horarioLocal(c), situacoesPorChat.getOrDefault(c.getChatId(), List.of())))
-            .toList();
+        List<NaoLidasDoChat> naoLidas = tatuadores.isEmpty() ? List.of()
+            : messageRepository.naoLidasPeloTatuador(tatuadores);
+        Map<UUID, Chat> chats = chatRepository
+            .findAllById(naoLidas.stream().map(NaoLidasDoChat::chatId).toList()).stream()
+            .collect(Collectors.toMap(Chat::getChatId, Function.identity()));
 
         Map<UUID, String> clientes = clientRepository.findAllById(Stream.concat(
                 servicos.stream().map(Appointment::getClienteId),
-                chatsIniciados.stream().map(Chat::getClienteId)).collect(Collectors.toSet()))
+                chats.values().stream().map(Chat::getClienteId)).collect(Collectors.toSet()))
             .stream()
             .collect(Collectors.toMap(Client::getClientId, Client::getNome));
-        Map<UUID, String> tatuadores = artistRepository.findAllById(Stream.concat(
+        Map<UUID, String> nomesTatuadores = artistRepository.findAllById(Stream.concat(
                 servicos.stream().map(Appointment::getTatuadorId),
-                chatsIniciados.stream().map(Chat::getTatuadorId)).collect(Collectors.toSet()))
+                chats.values().stream().map(Chat::getTatuadorId)).collect(Collectors.toSet()))
             .stream()
             .collect(Collectors.toMap(Artist::getTatuadorId, Artist::getNome));
 
-        Stream<KanbanCardDTO> cardsDeChat = chatsIniciados.stream()
-            .map(c -> new KanbanCardDTO(
-                KanbanColuna.chat_iniciado, c.getChatId(), null,
-                clientes.getOrDefault(c.getClienteId(), "Cliente"),
-                c.getTatuadorId(), tatuadores.getOrDefault(c.getTatuadorId(), "Tatuador"),
-                0, null, null, null, c.getUltimaMensagemEm()));
+        Stream<KanbanCardDTO> cardsDeChat = naoLidas.stream()
+            .map(n -> {
+                Chat c = chats.get(n.chatId());
+                return new KanbanCardDTO(
+                    KanbanColuna.mensagens_nao_lidas, c.getChatId(), null,
+                    clientes.getOrDefault(c.getClienteId(), "Cliente"),
+                    c.getTatuadorId(), nomesTatuadores.getOrDefault(c.getTatuadorId(), "Tatuador"),
+                    0, null, null, null,
+                    (int) n.naoLidas(), comFuso(n.primeiraNaoLida()), comFuso(n.ultimaNaoLida()));
+            });
 
         Stream<KanbanCardDTO> cardsDeServico = servicos.stream()
             .map(a -> {
@@ -130,8 +123,9 @@ public class KanbanService {
                 return new KanbanCardDTO(
                     s.coluna(), a.getChatId(), a.getAppointmentId(),
                     clientes.getOrDefault(a.getClienteId(), "Cliente"),
-                    a.getTatuadorId(), tatuadores.getOrDefault(a.getTatuadorId(), "Tatuador"),
-                    s.totalSessoes(), s.sessaoAtual(), s.proximaSessao(), s.concluidoEm(), null);
+                    a.getTatuadorId(), nomesTatuadores.getOrDefault(a.getTatuadorId(), "Tatuador"),
+                    s.totalSessoes(), s.sessaoAtual(), s.proximaSessao(), s.concluidoEm(),
+                    null, null, null);
             });
 
         return Stream.concat(cardsDeChat, cardsDeServico).sorted(ORDEM).toList();
@@ -152,19 +146,18 @@ public class KanbanService {
                 a.getStatus(), sessoes.getOrDefault(a.getAppointmentId(), List.of()), agora)));
     }
 
-    /** `ultima_mensagem_em` é timestamptz; as sessões estão no fuso da aplicação. */
-    private static LocalDateTime horarioLocal(Chat chat) {
-        return chat.getUltimaMensagemEm() == null ? null
-            : chat.getUltimaMensagemEm().atZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();
+    /** `data_envio` vem no fuso da aplicação; o app calcula "há quanto tempo", então vai com offset. */
+    private static OffsetDateTime comFuso(LocalDateTime quando) {
+        return quando.atZone(ZoneId.systemDefault()).toOffsetDateTime();
     }
 
     /**
-     * Por coluna; dentro dela, o mais relevante primeiro: conversa mais recente,
-     * sessão mais próxima, conclusão mais recente.
+     * Por coluna; dentro dela, o mais relevante primeiro: cliente esperando há
+     * mais tempo, sessão mais próxima, conclusão mais recente.
      */
     private static final Comparator<KanbanCardDTO> ORDEM = Comparator
         .comparing(KanbanCardDTO::coluna)
-        .thenComparing(KanbanCardDTO::ultimaMensagemEm, Comparator.nullsLast(Comparator.reverseOrder()))
+        .thenComparing(KanbanCardDTO::aguardandoDesde, Comparator.nullsLast(Comparator.naturalOrder()))
         .thenComparing(KanbanCardDTO::proximaSessao, Comparator.nullsLast(Comparator.naturalOrder()))
         .thenComparing(KanbanCardDTO::concluidoEm, Comparator.nullsLast(Comparator.reverseOrder()));
 }

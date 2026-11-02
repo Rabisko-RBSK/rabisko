@@ -9,6 +9,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -72,6 +74,19 @@ public class ChatController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "30") int size) {
         return chatService.listarMensagens(usuario, chatId, PageRequest.of(page, size));
+    }
+
+    /**
+     * POST /chats/{chatId}/leitura — marca a conversa como lida pelo usuário
+     * logado até agora. O app chama ao abrir o chat e ao receber mensagem com
+     * ele aberto; alimenta "Mensagens não lidas" do Kanban de serviços.
+     */
+    @PostMapping("/{chatId}/leitura")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void marcarComoLido(
+            @AuthenticationPrincipal UsuarioLogado usuario,
+            @PathVariable UUID chatId) {
+        chatService.marcarComoLido(usuario, chatId);
     }
 
     /**

@@ -1,16 +1,17 @@
 import api from './index';
 
-export type KanbanColuna = 'chat_iniciado' | 'agendado' | 'em_progresso' | 'finalizado';
+export type KanbanColuna = 'mensagens_nao_lidas' | 'agendado' | 'em_progresso' | 'finalizado';
 
 /**
- * Card do Kanban de serviços. As datas dependem da coluna: `ultimaMensagemEm`
- * (ISO com fuso) em chat_iniciado, `proximaSessao` (horário local, sem fuso)
- * em agendado/em_progresso e `concluidoEm` (YYYY-MM-DD) em finalizado.
+ * Card do Kanban de serviços. Os campos dependem da coluna: `naoLidas`,
+ * `aguardandoDesde` e `ultimaMensagemEm` (ISO com fuso) em mensagens_nao_lidas,
+ * `proximaSessao` (horário local, sem fuso) em agendado/em_progresso e
+ * `concluidoEm` (YYYY-MM-DD) em finalizado.
  */
 export interface KanbanCardDTO {
   coluna: KanbanColuna;
   chatId: string | null;
-  /** null em chat_iniciado (ainda não há serviço). */
+  /** null em mensagens_nao_lidas (o card é do chat, não de um serviço). */
   servicoId: string | null;
   clienteNome: string;
   tatuadorId: string;
@@ -20,6 +21,10 @@ export interface KanbanCardDTO {
   sessaoAtual: number | null;
   proximaSessao: string | null;
   concluidoEm: string | null;
+  /** Mensagens do cliente que o tatuador ainda não leu. */
+  naoLidas: number | null;
+  /** Envio da mais antiga não lida — desde quando o cliente espera resposta. */
+  aguardandoDesde: string | null;
   ultimaMensagemEm: string | null;
 }
 

@@ -63,23 +63,4 @@ class ClassificadorKanbanTest {
         assertEquals(KanbanColuna.finalizado,
             ClassificadorKanban.doServico(AppointmentStatus.concluida, futura, AGORA).coluna());
     }
-
-    @Test
-    void chatSemServicoComMensagemEstaIniciado() {
-        assertTrue(ClassificadorKanban.chatIniciado(AGORA.minusHours(2), List.of()));
-        assertFalse(ClassificadorKanban.chatIniciado(null, List.of()));
-    }
-
-    @Test
-    void chatComServicoEmAbertoNaoEstaIniciado() {
-        Situacao aberto = classificar(List.of(sessao("2026-11-20T14:00")));
-        assertFalse(ClassificadorKanban.chatIniciado(AGORA.minusMinutes(5), List.of(aberto)));
-    }
-
-    @Test
-    void chatVoltaParaIniciadoSoComMensagemDepoisDoServicoFinalizado() {
-        Situacao finalizado = classificar(List.of(sessao("2026-11-01T14:00"))); // termina 16:00
-        assertFalse(ClassificadorKanban.chatIniciado(LocalDateTime.parse("2026-10-30T10:00"), List.of(finalizado)));
-        assertTrue(ClassificadorKanban.chatIniciado(LocalDateTime.parse("2026-11-05T10:00"), List.of(finalizado)));
-    }
 }

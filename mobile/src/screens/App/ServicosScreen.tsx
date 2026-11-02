@@ -22,6 +22,8 @@ import { COLUNAS, ColunaKanban, IconeMeta, agruparPorColuna, iniciais, textosDoC
  * por vez, com as vizinhas aparecendo nas bordas; troca-se de coluna
  * deslizando ou tocando nas abas de status. O tatuador vê os próprios
  * serviços; o estúdio vê os da equipe inteira, com o tatuador em cada card.
+ * A primeira coluna são os chats com mensagens que o tatuador não leu — no
+ * estúdio, os clientes sem resposta e há quanto tempo esperam.
  */
 
 const PADDING = 24;

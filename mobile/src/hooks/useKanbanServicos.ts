@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { KanbanCardDTO, servicosService } from '../services/api/servicosService';
+import { stompClient } from '../services/ws/stompClient';
 
 export type VisaoKanban = 'tatuador' | 'estudio';
 
@@ -16,7 +17,7 @@ interface UseKanbanServicosResult {
 /**
  * Cards do Kanban de serviços: do tatuador logado (GET /artist/me/servicos) ou
  * de toda a equipe do estúdio (GET /studio/me/servicos). Recarrega ao focar a
- * aba — as colunas dependem do horário atual e de mensagens novas.
+ * aba — as colunas dependem do horário atual e das mensagens não lidas.
  */
 export function useKanbanServicos(visao: VisaoKanban): UseKanbanServicosResult {
   const [cards, setCards] = useState<KanbanCardDTO[]>([]);
@@ -47,9 +48,12 @@ export function useKanbanServicos(visao: VisaoKanban): UseKanbanServicosResult {
   }, [buscar]);
 
   // Só o primeiro carregamento mostra o spinner; ao voltar à aba, atualiza por baixo.
+  // Com a aba aberta, mensagem nova (do tatuador logado) também atualiza as não lidas.
   useFocusEffect(
     useCallback(() => {
       buscar().finally(() => setLoading(false));
+      const remover = stompClient.addListener(() => { buscar(); });
+      return () => { remover(); };
     }, [buscar]),
   );
 
