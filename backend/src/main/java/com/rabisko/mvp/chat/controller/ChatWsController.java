@@ -17,12 +17,6 @@ public class ChatWsController {
     @Autowired
     private ChatService chatService;
 
-    /**
-     * Recebe o Authentication, não `@AuthenticationPrincipal UsuarioLogado`: em
-     * @MessageMapping, o resolver nativo de java.security.Principal roda antes
-     * do @AuthenticationPrincipal e, como UsuarioLogado é um Principal, injetaria
-     * o token inteiro no parâmetro ("argument type mismatch").
-     */
     @MessageMapping("/chat.send")
     public void enviarMensagem(Authentication auth, @Payload EnviarMensagemRequest req) {
         chatService.enviarMensagem((UsuarioLogado) auth.getPrincipal(), req.chatId(), req);
