@@ -30,7 +30,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -97,7 +99,8 @@ public class ChatService {
             outroNome,
             ultima.map(ChatService::preview).orElse(null),
             ultima.map(Message::getDataEnvio).orElse(null),
-            chat.isAtivo()
+            chat.isAtivo(),
+            naoLida(logado, chat, ultima)
         );
     }
 
@@ -118,8 +121,9 @@ public class ChatService {
 
     /**
      * Devolve a lista de chats do usuario logado, com o nome do outro
-     * lado e um preview da ultima mensagem. Igual ao WhatsApp "lista
-     * de conversas".
+     * lado, um preview da ultima mensagem e se ela esta nao lida. Igual ao
+     * WhatsApp "lista de conversas": da conversa mais recente (enviada ou
+     * recebida) para a mais antiga; chats sem mensagem vao para o fim.
      */
     public List<ChatDTO> listarChatsDoUsuario(UsuarioLogado logado){
         List<ChatDTO> listaChats = new ArrayList<>();
@@ -142,7 +146,8 @@ public class ChatService {
                     outro.getNome(),
                     ultima.map(ChatService::preview).orElse(null),
                     ultima.map(Message::getDataEnvio).orElse(null),
-                    chats.get(i).isAtivo()
+                    chats.get(i).isAtivo(),
+                    naoLida(logado, chats.get(i), ultima)
                 ));
             }
         } else if ("tatuador".equals(logado.papel())) {
@@ -163,14 +168,28 @@ public class ChatService {
                     outro.getNome(),
                     ultima.map(ChatService::preview).orElse(null),
                     ultima.map(Message::getDataEnvio).orElse(null),
-                    chats.get(i).isAtivo()
+                    chats.get(i).isAtivo(),
+                    naoLida(logado, chats.get(i), ultima)
                 ));
             }
         } else {
             throw new AccessDeniedException("Esse papel não participa de chat");
         }
 
+        listaChats.sort(Comparator.comparing(ChatDTO::dataUltimaMensagem,
+            Comparator.nullsLast(Comparator.reverseOrder())));
         return listaChats;
+    }
+
+    /**
+     * Basta olhar a última mensagem: se é minha, já respondi (e enviar marca
+     * como lido); se é para mim, está não lida quando chegou depois da minha
+     * última leitura — ou se nunca abri a conversa.
+     */
+    private static boolean naoLida(UsuarioLogado logado, Chat chat, Optional<Message> ultima) {
+        if (ultima.isEmpty() || !ultima.get().getDestinatarioId().equals(logado.authId())) return false;
+        LocalDateTime leuEm = "tatuador".equals(logado.papel()) ? chat.getTatuadorLeuEm() : chat.getClienteLeuEm();
+        return leuEm == null || ultima.get().getDataEnvio().isAfter(leuEm);
     }
 
 
@@ -254,6 +273,8 @@ public class ChatService {
             .imagemUrl(imagemUrl)
             .build());
 
+        registrarLeitura(logado, chatId, salva.getDataEnvio());
+
         MensagemDTO dto = MensagemDTO.from(salva);
 
         Runnable distribuir = () -> {
@@ -272,6 +293,26 @@ public class ChatService {
         }
 
         return dto;
+    }
+
+
+    /**
+     * Marca a conversa como lida pelo usuário logado até agora (tela do chat
+     * aberta). Também é chamado ao enviar: quem responde já leu o que veio antes.
+     */
+    public void marcarComoLido(UsuarioLogado logado, UUID chatId) {
+        Chat chat = chatRepository.findById(chatId)
+            .orElseThrow(() -> new EntityNotFoundException("Chat não encontrado"));
+        garantirParticipacao(logado, chat);
+        registrarLeitura(logado, chatId, LocalDateTime.now());
+    }
+
+    private void registrarLeitura(UsuarioLogado logado, UUID chatId, LocalDateTime quando) {
+        if ("tatuador".equals(logado.papel())) {
+            chatRepository.marcarLidoPeloTatuador(chatId, quando);
+        } else if ("cliente".equals(logado.papel())) {
+            chatRepository.marcarLidoPeloCliente(chatId, quando);
+        }
     }
 
 
