@@ -2,6 +2,7 @@ package com.rabisko.mvp.chat.repository;
 
 import com.rabisko.mvp.chat.domain.Chat;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -13,6 +14,8 @@ public interface ChatRepository extends JpaRepository<Chat, UUID> {
     Optional<Chat> findByClienteIdAndTatuadorId(UUID clienteId, UUID tatuadorId);
 
     List<Chat> findByTatuadorId(UUID tatuadorId);
+
+    List<Chat> findByTatuadorIdIn(Collection<UUID> tatuadorIds);
 
     List<Chat> findByClienteId(UUID clienteId);
 

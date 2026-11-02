@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -19,6 +20,8 @@ public interface AppointmentSessionRepository extends JpaRepository<AppointmentS
 
     /** Todas as sessões de um agendamento (servico_id). */
     List<AppointmentSession> findByAppointmentId(UUID appointmentId);
+
+    List<AppointmentSession> findByAppointmentIdIn(Collection<UUID> appointmentIds);
 
     /** Sessões do estúdio numa janela de tempo (agenda de posições e conflito de posição). */
     List<AppointmentSession> findByEstudioIdAndDataSessaoBetween(UUID estudioId, LocalDateTime inicio, LocalDateTime fim);

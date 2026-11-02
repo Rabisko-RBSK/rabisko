@@ -1,11 +1,12 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { CalendarDays, LayoutDashboard, Settings, Users, type LucideIcon } from 'lucide-react-native';
+import { CalendarDays, LayoutDashboard, Settings, SquareKanban, Users, type LucideIcon } from 'lucide-react-native';
 
 import { BottomNav } from '../components/common/BottomNav';
 import { StudioDashboardProvider } from '../hooks/useStudioDashboard';
 import { StudioAgendaScreen, StudioDashboardScreen } from '../screens/App/StudioDashboardScreen';
 import { SettingsScreen } from '../screens/App/SettingsScreen';
+import { StudioServicosScreen } from '../screens/App/ServicosScreen';
 import { StudioEquipeStack } from './studio-equipe.stack';
 
 /**
@@ -14,16 +15,18 @@ import { StudioEquipeStack } from './studio-equipe.stack';
  *
  * Team é a gestão real da equipe (colaboradores + convites, via
  * StudioEquipeStack); Dashboard e Agenda vêm das rotas /studio/me/dashboard/**.
+ * Serviços é o Kanban (somente leitura) dos serviços de toda a equipe.
  */
 export type StudioRoutesParamList = {
   Dashboard: undefined;
+  Servicos: undefined;
   Team: undefined;
   Agenda: undefined;
   Settings: undefined;
 };
 
-const icons: Record<string, LucideIcon> = { Dashboard: LayoutDashboard, Team: Users, Agenda: CalendarDays, Settings };
-const labels = { Dashboard: 'Dashboard', Team: 'Equipe', Agenda: 'Agenda', Settings: 'Configurações' };
+const icons: Record<string, LucideIcon> = { Dashboard: LayoutDashboard, Servicos: SquareKanban, Team: Users, Agenda: CalendarDays, Settings };
+const labels = { Dashboard: 'Dashboard', Servicos: 'Serviços', Team: 'Equipe', Agenda: 'Agenda', Settings: 'Configurações' };
 const { Navigator, Screen } = createBottomTabNavigator<StudioRoutesParamList>();
 
 export function StudioRoutes() {
@@ -32,6 +35,7 @@ export function StudioRoutes() {
       <Navigator tabBar={(props) => <BottomNav {...props} icons={icons} labels={labels} />}
         screenOptions={{ headerShown: false }}>
         <Screen name="Dashboard" component={StudioDashboardScreen} />
+        <Screen name="Servicos" component={StudioServicosScreen} />
         <Screen name="Team" component={StudioEquipeStack} />
         <Screen name="Agenda" component={StudioAgendaScreen} />
         <Screen name="Settings" component={SettingsScreen} />
