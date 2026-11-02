@@ -2,7 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 import { ManagementScreen } from '../screens/App/ManagementScreen';
-import { ArtistServicosScreen } from '../screens/App/ServicosScreen';
+import { ArtistServicosStack } from './servicos.stack';
 import { ChatStack } from './chat.stack';
 import { ArtistSessionsStack } from './sessions.stack';
 import { SettingsScreen } from '../screens/App/SettingsScreen';
@@ -36,7 +36,7 @@ export function ArtistRoutes() {
       screenOptions={{ headerShown: false }}
     >
       <Screen name="Management" component={ManagementScreen} />
-      <Screen name="Servicos" component={ArtistServicosScreen} />
+      <Screen name="Servicos" component={ArtistServicosStack} />
       <Screen name="Chat" component={ChatStack} />
       <Screen name="Profile" component={ArtistProfileStack} />
       <Screen name="Calendar" component={ArtistSessionsStack} />

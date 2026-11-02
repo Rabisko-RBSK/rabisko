@@ -11,11 +11,19 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CalendarDays, CircleCheck, MessageCircle, type LucideIcon } from 'lucide-react-native';
+
+import { SessionDetailModal } from './SessionDetailModal';
+import type { ServicosStackParamList } from '../../routes/servicos.stack';
+import type { SessaoListItemDTO } from '../../services/api';
 
 import { useKanbanServicos, VisaoKanban } from '../../hooks/useKanbanServicos';
 import { KanbanCardDTO } from '../../services/api/servicosService';
-import { COLUNAS, ColunaKanban, IconeMeta, agruparPorColuna, iniciais, textosDoCard } from '../../utils/kanbanServicos';
+import {
+  COLUNAS, ColunaKanban, IconeMeta, acaoDoCard, agruparPorColuna, iniciais, textosDoCard,
+} from '../../utils/kanbanServicos';
 
 /**
  * Serviços — Kanban somente leitura (Figma "Artista / Serviços"). Uma coluna
@@ -24,6 +32,10 @@ import { COLUNAS, ColunaKanban, IconeMeta, agruparPorColuna, iniciais, textosDoC
  * serviços; o estúdio vê os da equipe inteira, com o tatuador em cada card.
  * A primeira coluna são os chats com mensagens que o tatuador não leu — no
  * estúdio, os clientes sem resposta e há quanto tempo esperam.
+ *
+ * Toque no card (regra em `acaoDoCard`): nas não lidas, o tatuador abre o
+ * chat (o estúdio não tem ação); nas demais colunas, abre o mesmo modal de
+ * detalhes da sessão do Gantt da Agenda.
  */
 
 const PADDING = 24;
@@ -79,11 +91,25 @@ function AbaStatus({ coluna, total, ativa, onPress, onLayout }: {
   );
 }
 
-function CardServico({ card, visao }: { card: KanbanCardDTO; visao: VisaoKanban }) {
+function CardServico({ card, visao, onPress }: {
+  card: KanbanCardDTO;
+  visao: VisaoKanban;
+  /** Ausente quando o card não tem ação — fica um View comum. */
+  onPress?: () => void;
+}) {
   const { etiqueta, icone, meta } = textosDoCard(card);
   const Icone = ICONES[icone];
+  const Container = onPress ? TouchableOpacity : View;
   return (
-    <View className="bg-paper border border-hairline rounded-rd-md p-[14px] gap-2">
+    <Container
+      {...(onPress && {
+        onPress,
+        activeOpacity: 0.85,
+        accessibilityRole: 'button' as const,
+        accessibilityHint: card.coluna === 'mensagens_nao_lidas' ? 'Abre a conversa' : 'Abre os detalhes da sessão',
+      })}
+      className="bg-paper border border-hairline rounded-rd-md p-[14px] gap-2"
+    >
       <View className="flex-row items-center gap-2">
         <Text className="flex-1 font-body-semibold text-[15px] text-ink" numberOfLines={1}>
           {card.clienteNome}
@@ -111,17 +137,19 @@ function CardServico({ card, visao }: { card: KanbanCardDTO; visao: VisaoKanban 
           </View>
         </>
       )}
-    </View>
+    </Container>
   );
 }
 
-function Coluna({ coluna, cards, largura, visao, refreshing, onRefresh }: {
+function Coluna({ coluna, cards, largura, visao, refreshing, onRefresh, aoTocar }: {
   coluna: ColunaKanban;
   cards: KanbanCardDTO[];
   largura: number;
   visao: VisaoKanban;
   refreshing: boolean;
   onRefresh: () => void;
+  /** undefined para cards sem ação. */
+  aoTocar: (card: KanbanCardDTO) => (() => void) | undefined;
 }) {
   return (
     <View style={{ width: largura }} className="bg-surface-2 rounded-rd-lg p-3">
@@ -140,7 +168,12 @@ function Coluna({ coluna, cards, largura, visao, refreshing, onRefresh }: {
           <Text className="font-body text-[13px] text-fg-3 text-center mt-6">Nenhum serviço aqui.</Text>
         ) : (
           cards.map((card) => (
-            <CardServico key={card.servicoId ?? `chat-${card.chatId}`} card={card} visao={visao} />
+            <CardServico
+              key={card.servicoId ?? `chat-${card.chatId}`}
+              card={card}
+              visao={visao}
+              onPress={aoTocar(card)}
+            />
           ))
         )}
       </ScrollView>
@@ -161,10 +194,29 @@ function Indicador({ ativa }: { ativa: number }) {
   );
 }
 
-export function ServicosScreen({ visao }: { visao: VisaoKanban }) {
+interface ServicosScreenProps {
+  visao: VisaoKanban;
+  /** Só o tatuador abre chat e anamnese (as telas ficam na pilha da aba dele). */
+  onAbrirChat?: (card: KanbanCardDTO) => void;
+  onAbrirAnamnese?: (sessao: SessaoListItemDTO) => void;
+}
+
+export function ServicosScreen({ visao, onAbrirChat, onAbrirAnamnese }: ServicosScreenProps) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const { cards, loading, refreshing, error, reload, refresh } = useKanbanServicos(visao);
+  const [sessaoAberta, setSessaoAberta] = useState<SessaoListItemDTO | null>(null);
+
+  const aoTocar = (card: KanbanCardDTO) => {
+    switch (acaoDoCard(card, visao)) {
+      case 'abrir_chat':
+        return onAbrirChat && (() => onAbrirChat(card));
+      case 'detalhes_sessao':
+        return () => setSessaoAberta(card.sessao);
+      default:
+        return undefined;
+    }
+  };
 
   const [ativa, setAtiva] = useState(0);
   const kanbanRef = useRef<ScrollView>(null);
@@ -263,6 +315,7 @@ export function ServicosScreen({ visao }: { visao: VisaoKanban }) {
                 visao={visao}
                 refreshing={refreshing}
                 onRefresh={refresh}
+                aoTocar={aoTocar}
               />
             ))}
           </ScrollView>
@@ -272,12 +325,36 @@ export function ServicosScreen({ visao }: { visao: VisaoKanban }) {
 
       {/* Respiro acima da barra de abas (mesma folga das outras telas). */}
       <View style={{ height: 16 }} />
+
+      <SessionDetailModal
+        visible={!!sessaoAberta}
+        onClose={() => setSessaoAberta(null)}
+        sessao={sessaoAberta}
+        onOpenAnamnese={() => {
+          // No estúdio o botão fica desabilitado (acessoAnamnese só libera cliente e tatuador).
+          if (!sessaoAberta || !onAbrirAnamnese) return;
+          const sessao = sessaoAberta;
+          setSessaoAberta(null);
+          onAbrirAnamnese(sessao);
+        }}
+      />
     </View>
   );
 }
 
 export function ArtistServicosScreen() {
-  return <ServicosScreen visao="tatuador" />;
+  const navigation = useNavigation<NativeStackNavigationProp<ServicosStackParamList>>();
+  return (
+    <ServicosScreen
+      visao="tatuador"
+      onAbrirChat={(card) => navigation.navigate('ChatThread', {
+        chatId: card.chatId!,
+        outroNome: card.clienteNome,
+        outroUsuarioId: card.clienteAuthId!,
+      })}
+      onAbrirAnamnese={(sessao) => navigation.navigate('Anamnese', { sessao })}
+    />
+  );
 }
 
 export function StudioServicosScreen() {

@@ -1,4 +1,4 @@
-import api from './index';
+import api, { SessaoListItemDTO } from './index';
 
 export type KanbanColuna = 'mensagens_nao_lidas' | 'agendado' | 'em_progresso' | 'finalizado';
 
@@ -14,6 +14,8 @@ export interface KanbanCardDTO {
   /** null em mensagens_nao_lidas (o card é do chat, não de um serviço). */
   servicoId: string | null;
   clienteNome: string;
+  /** auth.users.id do cliente — o chat usa para separar as mensagens de cada lado. */
+  clienteAuthId: string | null;
   tatuadorId: string;
   tatuadorNome: string;
   totalSessoes: number;
@@ -26,6 +28,12 @@ export interface KanbanCardDTO {
   /** Envio da mais antiga não lida — desde quando o cliente espera resposta. */
   aguardandoDesde: string | null;
   ultimaMensagemEm: string | null;
+  /**
+   * Sessão aberta ao tocar no card (mesmo formato do Gantt): a próxima, ou em
+   * andamento, em agendado/em_progresso; a última em finalizado. null em
+   * mensagens_nao_lidas ou em serviço sem sessão.
+   */
+  sessao: SessaoListItemDTO | null;
 }
 
 /** Kanban de serviços (somente leitura). Os cards já vêm ordenados por coluna. */

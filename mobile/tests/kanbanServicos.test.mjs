@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  agruparPorColuna, formatarSessao, iniciais, tempoDeEspera, textosDoCard,
+  acaoDoCard, agruparPorColuna, formatarSessao, iniciais, tempoDeEspera, textosDoCard,
 } from '../src/utils/kanbanServicos.ts';
 
 const card = (coluna, extra = {}) => ({
-  coluna, chatId: 'c1', servicoId: 's1', clienteNome: 'Cliente A', tatuadorId: 't1', tatuadorNome: 'Ana Souza',
+  coluna, chatId: 'c1', servicoId: 's1', clienteNome: 'Cliente A', clienteAuthId: 'a1',
+  tatuadorId: 't1', tatuadorNome: 'Ana Souza', sessao: null,
   totalSessoes: 0, sessaoAtual: null, proximaSessao: null, concluidoEm: null,
   naoLidas: null, aguardandoDesde: null, ultimaMensagemEm: null, ...extra,
 });
@@ -66,4 +67,19 @@ test('iniciais do tatuador para o avatar', () => {
   assert.equal(iniciais('Ana Souza'), 'AS');
   assert.equal(iniciais('Tatuador 1'), 'T1');
   assert.equal(iniciais(' ana '), 'A');
+});
+
+test('ação ao tocar: chat só para o tatuador; detalhes quando há sessão', () => {
+  const naoLida = card('mensagens_nao_lidas', { servicoId: null, naoLidas: 2 });
+  assert.equal(acaoDoCard(naoLida, 'tatuador'), 'abrir_chat');
+  assert.equal(acaoDoCard(naoLida, 'estudio'), null);
+  assert.equal(acaoDoCard({ ...naoLida, clienteAuthId: null }, 'tatuador'), null);
+
+  const sessao = { sessionId: 'r1', appointmentId: 's1', data: '2026-11-10', horario: '14:00:00',
+    duracaoMinutos: 120, outroNome: 'Cliente A', outroFotoUrl: null, valorTotal: 500, status: 'confirmada' };
+  for (const coluna of ['agendado', 'em_progresso', 'finalizado']) {
+    assert.equal(acaoDoCard(card(coluna, { sessao }), 'tatuador'), 'detalhes_sessao');
+    assert.equal(acaoDoCard(card(coluna, { sessao }), 'estudio'), 'detalhes_sessao');
+  }
+  assert.equal(acaoDoCard(card('agendado'), 'tatuador'), null);
 });

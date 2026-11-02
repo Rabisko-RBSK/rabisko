@@ -99,6 +99,20 @@ export function textosDoCard(card: KanbanCardDTO, agora: Date = new Date()): Tex
   }
 }
 
+/** O que acontece ao tocar no card; null quando o card não tem ação. */
+export type AcaoDoCard = 'abrir_chat' | 'detalhes_sessao';
+
+/**
+ * Mensagens não lidas: só o tatuador abre o chat (o estúdio não participa da
+ * conversa). Demais colunas: detalhes da sessão de referência, nas duas visões.
+ */
+export function acaoDoCard(card: KanbanCardDTO, visao: 'tatuador' | 'estudio'): AcaoDoCard | null {
+  if (card.coluna === 'mensagens_nao_lidas') {
+    return visao === 'tatuador' && card.chatId && card.clienteAuthId ? 'abrir_chat' : null;
+  }
+  return card.sessao ? 'detalhes_sessao' : null;
+}
+
 /** "Ana Souza" → "AS"; "Tatuador 1" → "T1"; "Ana" → "A". */
 export function iniciais(nome: string): string {
   const partes = nome.trim().split(/\s+/).filter(Boolean);
