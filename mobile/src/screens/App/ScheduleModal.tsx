@@ -319,7 +319,7 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
             <Text className="font-aux-bold text-[16px] text-ink mb-2">Você ainda não atende em um estúdio</Text>
             <Text className="font-body text-[13px] text-fg-2 leading-[18px]">
               As sessões acontecem no estúdio onde você atende. Para agendar, aceite o convite de um
-              estúdio para entrar na equipe.
+              estúdio para entrar na equipe ou abra o seu estúdio pelo seu perfil.
             </Text>
           </View>
         ) : (

@@ -44,11 +44,12 @@ function useStudioDashboardState() {
       studioDashboardService.receitaTotal(previousRange),
       studioDashboardService.agendamentos(previousRange),
       studioDashboardService.estilos(range),
+      studioDashboardService.financeiro(range),
     ])
-      .then(([agendamentos, receita, evolucao, artists, bookings, previousReceita, previousAgendamentos, styles]) => {
+      .then(([agendamentos, receita, evolucao, artists, bookings, previousReceita, previousAgendamentos, styles, financeiro]) => {
         if (!active) return;
         setData({
-          dashboard: { ...agendamentos, ...receita, ...evolucao, artists, bookings, styles },
+          dashboard: { ...agendamentos, ...receita, ...evolucao, artists, bookings, styles, financeiro },
           previousRevenue: previousReceita.revenue,
           previousAppointments: previousAgendamentos.appointments,
         });

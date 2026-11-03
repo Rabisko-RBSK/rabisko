@@ -3,6 +3,7 @@ package com.rabisko.mvp.studio.controller;
 import com.rabisko.mvp.studio.domain.dashboard.DashboardAgendaProjection;
 import com.rabisko.mvp.studio.domain.dashboard.DashboardAgendamentosProjection;
 import com.rabisko.mvp.studio.domain.dashboard.DashboardEstiloProjection;
+import com.rabisko.mvp.studio.domain.dashboard.DashboardFinanceiroProjection;
 import com.rabisko.mvp.studio.domain.dashboard.DashboardTatuadorProjection;
 import com.rabisko.mvp.studio.domain.dashboard.PeriodoDashboard;
 import com.rabisko.mvp.studio.domain.dashboard.PeriodoDashboard.PeriodoInvalidoException;
@@ -99,5 +100,14 @@ public class StudioDashboardController {
     @ExceptionHandler(PeriodoInvalidoException.class)
     public ResponseEntity<String> periodoInvalido(PeriodoInvalidoException e) {
         return ResponseEntity.badRequest().contentType(MediaType.TEXT_PLAIN).body(e.getMessage());
+    }
+
+    @GetMapping("/financeiro")
+    public ResponseEntity<List<DashboardFinanceiroProjection>> financeiro(
+            @AuthenticationPrincipal UsuarioLogado logado,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate
+    ) {
+        return ResponseEntity.ok(dashboardService.financeiro(logado, PeriodoDashboard.of(startDate, endDate)));
     }
 }

@@ -4,6 +4,7 @@ import com.rabisko.mvp.appointment.domain.AppointmentStatus;
 import com.rabisko.mvp.appointment.repository.AppointmentSessionRepository;
 import com.rabisko.mvp.artist.domain.Artist;
 import com.rabisko.mvp.artist.domain.ArtistStudioSearchResultDTO;
+import com.rabisko.mvp.artist.domain.EstudioSoloDTO;
 import com.rabisko.mvp.artist.repository.ArtistRepository;
 import com.rabisko.mvp.endereco.domain.Endereco;
 import com.rabisko.mvp.endereco.service.EnderecoService;
@@ -12,6 +13,7 @@ import com.rabisko.mvp.horario.service.HorarioService;
 import com.rabisko.mvp.studio.domain.*;
 import com.rabisko.mvp.studio.repository.ConviteEstudioRepository;
 import com.rabisko.mvp.studio.repository.StudioRepository;
+import com.rabisko.mvp.shared.infraestrutura.cnpj.ResultadoCnpj;
 import com.rabisko.mvp.shared.infraestrutura.security.UsuarioLogado;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -52,7 +54,7 @@ public class StudioService {
     private HorarioService horarioService;
 
     @Transactional
-    public Studio cadastrarEstudio(UUID authId, RegisterEstudioDTO body) {
+    public Studio cadastrarEstudio(UUID authId, RegisterEstudioDTO body, ResultadoCnpj cnpj) {
         Studio novoStudio = Studio.builder()
                 .authId(authId)
                 .nome(body.getNome())
@@ -62,6 +64,8 @@ public class StudioService {
                 .termosAceitos(body.isTermosAceitos())
                 .build();
 
+        novoStudio.aplicarVerificacaoCnpj(cnpj);
+
         Studio s = studioRepository.save(novoStudio);
 
         if(body.getEndereco() != null){
@@ -70,6 +74,30 @@ public class StudioService {
         }
 
         return s;
+    }
+
+    /**
+     * Estúdio próprio do tatuador (contrato "dono"), sem conta de estúdio:
+     * o tatuador gerencia pelo modo estúdio. Usado no cadastro do artista e
+     * quando ele abre o estúdio depois.
+     */
+    @Transactional
+    public Studio criarEstudioSolo(Artist dono, EstudioSoloDTO solo, ResultadoCnpj cnpj) {
+        if (studioRepository.existsByCnpj(solo.cnpj())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Já existe um estúdio com este CNPJ");
+        }
+        Endereco e = enderecoService.salvar(solo.endereco(), null);
+        Studio estudio = Studio.builder()
+                .nome(solo.nome().trim())
+                .cnpj(solo.cnpj())
+                .telefone(dono.getTelefone())
+                .enderecoId(e.getEnderecoId())
+                .termosAceitos(dono.isTermosAceitos())
+                .build();
+        estudio.aplicarVerificacaoCnpj(cnpj);
+        studioRepository.save(estudio);
+        contratoService.criarDono(estudio.getEstudioId(), dono.getTatuadorId());
+        return estudio;
     }
 
     public StudioDTO meuEstudio(UsuarioLogado logado) {

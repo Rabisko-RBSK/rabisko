@@ -2,12 +2,18 @@ package com.rabisko.mvp.studio.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import com.rabisko.mvp.shared.infraestrutura.cnpj.ResultadoCnpj;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -76,4 +82,27 @@ public class Studio {
 
     @Column(name = "data_modificacao", updatable = false, insertable = false)
     private LocalDateTime dataModificacao;
+
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "cnpj_status", nullable = false, columnDefinition = "cnpj_status")
+    @Builder.Default
+    private CnpjStatus cnpjStatus = CnpjStatus.pendente;
+
+    @Column(name = "cnpj_situacao")
+    private String cnpjSituacao;
+
+    @Column(name = "cnpj_verificado_em")
+    private LocalDateTime cnpjVerificadoEm;
+
+    public void aplicarVerificacaoCnpj(ResultadoCnpj r) {
+        if (r.status() == ResultadoCnpj.Status.INDISPONIVEL) return;
+        this.cnpjStatus = r.status() == ResultadoCnpj.Status.CONFORME
+                ? CnpjStatus.verificado
+                : CnpjStatus.irregular;
+        this.cnpjSituacao = r.situacao();
+        this.cnpjVerificadoEm = LocalDateTime.now();
+    }
 }
+
+

@@ -35,8 +35,8 @@
 --   * Rita: tatuadora sem estúdio — não aparece na busca do cliente e não
 --     agenda, mas pode ser convidada.
 --
--- Todas as contas usam a mesma senha do seed antigo (mesmo hash bcrypt, que
--- o Supabase Auth aceita). CPFs e CNPJs são válidos; CPFs só com dígitos,
+-- Todas as contas entram com a senha "senha12345" (bcrypt gerado pelo pgcrypto,
+-- que o Supabase Auth aceita). CPFs e CNPJs são válidos; CPFs só com dígitos,
 -- como o app envia.
 --
 -- Todos os IDs são fixos (não gerados via uuid_generate_v4) para que as
@@ -111,7 +111,7 @@ INSERT INTO "auth"."users"
      "raw_app_meta_data", "raw_user_meta_data", "created_at", "updated_at",
      "confirmation_token", "recovery_token", "email_change_token_new", "email_change")
 SELECT '00000000-0000-0000-0000-000000000000', c.id, 'authenticated', 'authenticated', c.email,
-       '$2a$10$ulN5jQ9YJacE3Ym9i4hmsO31TaVkdrvbrQgIaAXAU9j4gn29sBHLS', now(),
+       extensions.crypt('senha12345', extensions.gen_salt('bf', 10)), now(),
        jsonb_build_object('provider', 'email', 'providers', jsonb_build_array('email'), 'role', c.papel),
        '{}'::jsonb, now(), now(),
        '', '', '', ''

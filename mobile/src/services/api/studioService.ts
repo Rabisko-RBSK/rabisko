@@ -33,7 +33,15 @@ export interface StudioDTO {
   fotoPerfilUrl: string | null;
   /** Posições (macas/bancadas) de atendimento, de 1 a 50. */
   posicoes: number;
+  /**
+   * Conformidade do CNPJ na Receita Federal (ativo + CNAE de tatuagem):
+   * pendente = ainda não consultado; irregular = deixou de estar conforme.
+   * O backend confere de novo todo dia.
+   */
+  cnpjStatus: CnpjStatus;
 }
+
+export type CnpjStatus = 'verificado' | 'pendente' | 'irregular';
 
 /**
  * Rotas `/studio/**` — conta de estúdio, ou tatuador dono gerenciando o próprio

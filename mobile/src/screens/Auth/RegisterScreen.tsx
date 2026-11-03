@@ -22,6 +22,7 @@ import { RoleSwitch } from '../../components/common/RoleSwitch';
 import { EnderecoForm, validarEndereco } from '../../components/common/EnderecoForm';
 import { DatePickerModal } from '../../components/common/DatePickerModal';
 import { isValidCNPJ, isValidCPF } from '../../utils/validators';
+import { AJUDA_CNPJ, maskCNPJ } from '../../utils/cnpj';
 import { authService, type EnderecoInput } from '../../services/api';
 import { entrar } from '../../services/supabase';
 import { geocodificar } from '../../utils/geocodificar';
@@ -83,15 +84,6 @@ function maskPhone(s: string): string {
   if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
   if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
   return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
-}
-
-function maskCNPJ(s: string): string {
-  const d = s.replace(/\D/g, '').slice(0, 14);
-  if (d.length <= 2) return d;
-  if (d.length <= 5) return `${d.slice(0, 2)}.${d.slice(2)}`;
-  if (d.length <= 8) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5)}`;
-  if (d.length <= 12) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8)}`;
-  return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
 }
 
 /**
@@ -206,7 +198,12 @@ export function RegisterScreen() {
       setErro('Informe o nome do seu estúdio.');
       return;
     }
-    if (temEstudio && cnpj.trim()) {
+    if (temEstudio) {
+      if (!cnpj.trim()) {
+        setCnpjError('Informe o CNPJ do estúdio.');
+        setErro('Informe o CNPJ do estúdio.');
+        return;
+      }
       if (!isValidCNPJ(cnpj)) {
         setCnpjError('CNPJ inválido (dígitos incorretos ou repetidos).');
         setErro('CNPJ inválido. Confira os números.');
@@ -264,7 +261,7 @@ export function RegisterScreen() {
           bio: bio || undefined,
           instagram: instagram || undefined,
           estudioSolo: estudioProprio
-            ? { nome: nomeEstudio.trim(), cnpj: cnpj || undefined, endereco: enderecoFinal! }
+            ? { nome: nomeEstudio.trim(), cnpj, endereco: enderecoFinal! }
             : undefined,
           termosAceitos: termsAccepted,
         });
@@ -274,7 +271,7 @@ export function RegisterScreen() {
           email: email.trim(),
           senha,
           telefone: telefone || undefined,
-          cnpj: cnpj || undefined,
+          cnpj,
           posicoes: Number(posicoes),
           endereco: enderecoFinal!,
           termosAceitos: termsAccepted,
@@ -291,7 +288,10 @@ export function RegisterScreen() {
       setRole(backendRoleToFront(me.role));
     } catch (e: any) {
       console.warn('[Register] erro:', e?.response?.status, e?.response?.data, e?.message);
-      setErro(parseAxiosError(e, 'Falha no cadastro.'));
+      const mensagem = parseAxiosError(e, 'Falha no cadastro.');
+      setErro(mensagem);
+      // Recusa da Receita Federal (CNPJ inexistente, inativo ou sem CNAE de tatuagem).
+      if (mensagem.includes('CNPJ')) setCnpjError(mensagem);
     } finally {
       setLoading(false);
     }
@@ -474,7 +474,7 @@ export function RegisterScreen() {
                   editable={!loading}
                 />
                 <Input
-                  label="CNPJ do estúdio (opcional)"
+                  label="CNPJ do estúdio"
                   placeholder="00.000.000/0001-00"
                   icon={Building2}
                   keyboardType="numeric"
@@ -487,6 +487,9 @@ export function RegisterScreen() {
                   error={cnpjError ?? undefined}
                   editable={!loading}
                 />
+                <Text className="font-body text-[12px] text-fg-3 -mt-2 mb-4 ml-1 leading-[16px]">
+                  {AJUDA_CNPJ}
+                </Text>
                 <Text className="font-body text-[12px] text-fg-2 mb-2 ml-1">Endereço do estúdio</Text>
                 <EnderecoForm value={endereco} onChange={setEndereco} disabled={loading} />
               </>
@@ -523,6 +526,9 @@ export function RegisterScreen() {
               error={cnpjError ?? undefined}
               editable={!loading}
             />
+            <Text className="font-body text-[12px] text-fg-3 -mt-2 mb-4 ml-1 leading-[16px]">
+              {AJUDA_CNPJ}
+            </Text>
             <Input
               label="Número de posições"
               placeholder="Ex.: 3 (macas ou bancadas de atendimento)"

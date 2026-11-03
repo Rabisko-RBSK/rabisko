@@ -3,17 +3,23 @@ import {
   Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text,
   useWindowDimensions, View,
 } from 'react-native';
-import { CalendarDays, ChevronDown, ChevronLeft, Users, Wallet, X } from 'lucide-react-native';
+import {
+  ArrowDownLeft, ArrowUpRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Scale, ShieldAlert, Users, Wallet, X,
+} from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { StudioRevenueChart } from '../../components/common/StudioRevenueChart';
 import { useStudioDashboard } from '../../hooks/useStudioDashboard';
-import { formatStudioCurrency as currency, type StudioDashboard } from '../../services/studioDashboard';
-import { studioService } from '../../services/api/studioService';
+import { formatStudioCurrency as currency, totaisFinanceiros, type StudioDashboard } from '../../services/studioDashboard';
+import type { StudioFinanceiroLinha } from '../../services/api/studioDashboardService';
+import { studioService, type CnpjStatus } from '../../services/api/studioService';
 import { studioDashboardTheme as theme } from '../../theme/studioDashboard';
 import type { StudioRoutesParamList } from '../../routes/studio.routes';
+import type { FiltroFinanceiro, StudioDashboardStackParamList } from '../../routes/studio-dashboard.stack';
+import { formatarContrato } from '../../utils/contrato';
 
 const c = theme.colors;
 const f = theme.fonts;
@@ -132,6 +138,74 @@ function StylesList({ styles }: { styles: StudioDashboard['styles'] }) {
   </View>;
 }
 
+/** Aviso da conformidade do CNPJ na Receita Federal; nada quando verificado. */
+function CnpjAviso({ status }: { status: CnpjStatus | null }) {
+  if (status !== 'pendente' && status !== 'irregular') return null;
+  const irregular = status === 'irregular';
+  const cor = irregular ? c.error : c.warning;
+  return <View style={[s.card, s.aviso, { borderColor: cor }]} accessibilityRole="alert">
+    <View style={s.row}>
+      <ShieldAlert size={19} color={cor} />
+      <Text style={[s.sectionTitle, s.flex, { color: cor }]}>
+        {irregular ? 'CNPJ irregular' : 'Verificando seu CNPJ'}
+      </Text>
+    </View>
+    <Text style={s.body}>
+      {irregular
+        ? 'O CNPJ do seu estúdio está irregular na Receita Federal: ele precisa estar ativo e ter a atividade de tatuagem (CNAE 9609-2/06). Depois de regularizar, a verificação se repete todo dia.'
+        : 'Estamos verificando o CNPJ do seu estúdio na Receita Federal. Isso acontece automaticamente, em até um dia.'}
+    </Text>
+  </View>;
+}
+
+type FinanceiroNav = NativeStackNavigationProp<StudioDashboardStackParamList>;
+
+/**
+ * Área "Resultados financeiros" do dashboard: consolidado, a receber
+ * (comissões + aluguéis) e a pagar (salários). Cada card abre a análise por
+ * profissional já filtrada.
+ */
+function ResultadosFinanceiros({ linhas }: { linhas: StudioFinanceiroLinha[] }) {
+  const navigation = useNavigation<FinanceiroNav>();
+  const { width, fontScale } = useWindowDimensions();
+  const stacked = width < 360 || fontScale > 1.2;
+  const t = totaisFinanceiros(linhas);
+  const abrir = (filtro: FiltroFinanceiro) => navigation.navigate('Financeiro', { filtro });
+
+  return <View style={s.financeiro}>
+    <Text style={[s.sectionTitle, s.financeiroTitulo]} accessibilityRole="header">Resultados financeiros</Text>
+    <Pressable style={s.card} onPress={() => abrir('todos')} accessibilityRole="button"
+      accessibilityLabel={`Consolidado: ${currency(t.consolidado)}. Ver análise por profissional`}>
+      <View style={s.row}><Text style={[s.eyebrow, s.flex]}>CONSOLIDADO</Text><Scale size={19} color={c.purple} /></View>
+      <Text style={[s.metricValue, { color: t.consolidado < 0 ? c.error : c.text }]}>{currency(t.consolidado)}</Text>
+      <View style={s.row}>
+        <Text style={[s.small, s.flex]}>A receber menos a pagar com a equipe no período</Text>
+        <ChevronRight size={18} color={c.muted} />
+      </View>
+    </Pressable>
+    <View style={[s.metrics, stacked && s.stacked]}>
+      <Pressable style={[s.card, s.metricCard, s.cardFinanceiro]} onPress={() => abrir('receber')} accessibilityRole="button"
+        accessibilityLabel={`A receber: ${currency(t.aReceber)}. Ver detalhes`}>
+        <View style={s.row}><Text style={[s.eyebrow, s.flex]}>A RECEBER</Text><ArrowDownLeft size={19} color={c.success} /></View>
+        <Text style={s.metricValue}>{currency(t.aReceber)}</Text>
+        <View style={s.metricFooter}>
+          <View style={s.flex}><Text style={s.micro}>COMISSÕES</Text><Text style={s.number}>{currency(t.comissoes)}</Text></View>
+          <View style={s.flex}><Text style={s.micro}>ALUGUÉIS</Text><Text style={s.number}>{currency(t.alugueis)}</Text></View>
+        </View>
+      </Pressable>
+      <Pressable style={[s.card, s.metricCard, s.cardFinanceiro]} onPress={() => abrir('pagar')} accessibilityRole="button"
+        accessibilityLabel={`A pagar: ${currency(t.aPagar)}. Ver detalhes`}>
+        <View style={s.row}><Text style={[s.eyebrow, s.flex]}>A PAGAR</Text><ArrowUpRight size={19} color={c.error} /></View>
+        <Text style={s.metricValue}>{currency(t.aPagar)}</Text>
+        <View style={s.metricFooter}>
+          <View style={s.flex}><Text style={s.micro}>SALÁRIOS</Text><Text style={s.number}>{currency(t.aPagar)}</Text></View>
+        </View>
+      </Pressable>
+    </View>
+    <Text style={s.note}>Comissão sobre as sessões marcadas como realizadas; aluguel e salário proporcionais aos dias de contrato no período.</Text>
+  </View>;
+}
+
 export function StudioDashboardScreen() {
   const { dashboard: data, period, month, revenueChange, bookingChange } = useStudioDashboard();
   const navigation = useNavigation<BottomTabNavigationProp<StudioRoutesParamList>>();
@@ -144,15 +218,21 @@ export function StudioDashboardScreen() {
   // Nome do estúdio gerenciado (conta de estúdio ou estúdio próprio do tatuador
   // no modo estúdio — por isso não dá para usar o nome do usuário logado).
   const [nomeEstudio, setNomeEstudio] = useState<string | null>(null);
+  const [cnpjStatus, setCnpjStatus] = useState<CnpjStatus | null>(null);
   useEffect(() => {
     let ativo = true;
     studioService.meuEstudio()
-      .then((e) => { if (ativo) setNomeEstudio(e.nome); })
+      .then((e) => {
+        if (!ativo) return;
+        setNomeEstudio(e.nome);
+        setCnpjStatus(e.cnpjStatus);
+      })
       .catch(() => { if (ativo) setNomeEstudio(null); });
     return () => { ativo = false; };
   }, []);
 
   return <StudioPage title={nomeEstudio ? `Olá, ${nomeEstudio}!` : 'Olá!'} subtitle={`Aqui está o resumo de desempenho do seu estúdio ${period === 'current' ? 'este mês' : 'no mês anterior'}.`}>
+    <CnpjAviso status={cnpjStatus} />
     <View style={[s.metrics, stacked && s.stacked]}>
       <View style={[s.card, s.metricCard]}>
         <View style={s.row}><Text style={[s.eyebrow, s.flex]}>RECEITA TOTAL</Text><Wallet size={19} color={c.purple} /></View>
@@ -169,6 +249,7 @@ export function StudioDashboardScreen() {
         </View>
       </View>
     </View>
+    <ResultadosFinanceiros linhas={data.financeiro} />
     <View style={s.card}>
       <View style={s.row}>
         <View style={s.flex}>
@@ -223,6 +304,79 @@ export function StudioTeamScreen() {
   </StudioPage>;
 }
 
+const FILTROS: { id: FiltroFinanceiro; rotulo: string }[] = [
+  { id: 'todos', rotulo: 'Todos' },
+  { id: 'receber', rotulo: 'A receber' },
+  { id: 'pagar', rotulo: 'A pagar' },
+];
+
+/** "2026-10-15" -> "15/10". */
+function diaMes(iso: string): string {
+  return `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+}
+
+/** Base do cálculo de uma linha: sessões (comissão) ou dias de contrato (aluguel/salário). */
+function baseDoCalculo(l: StudioFinanceiroLinha): string {
+  const sessoes = `${l.sessoes} ${l.sessoes === 1 ? 'sessão realizada' : 'sessões realizadas'}`;
+  if (l.modelo === 'comissao') return `${sessoes} · ${currency(l.valorSessoes)}`;
+  return `${l.dias} ${l.dias === 1 ? 'dia' : 'dias'} de contrato · ${sessoes}`;
+}
+
+function LinhaFinanceira({ linha }: { linha: StudioFinanceiroLinha }) {
+  const pagar = linha.modelo === 'salario';
+  const valor = pagar ? linha.aPagar : linha.aReceber;
+  const initials = linha.nome.split(' ').map((part) => part[0]).slice(0, 2).join('');
+  return <View style={s.artistRow} accessible
+    accessibilityLabel={`${linha.nome}, ${formatarContrato(linha)}: ${pagar ? 'a pagar' : 'a receber'} ${currency(valor)}`}>
+    <View style={s.avatar} accessibilityElementsHidden><Text style={s.initials}>{initials}</Text></View>
+    <View style={s.flex}>
+      <Text style={s.artistName}>{linha.nome}</Text>
+      <Text style={s.purpleCaption}>{formatarContrato(linha)}</Text>
+      <Text style={s.small}>{baseDoCalculo(linha)}</Text>
+      <Text style={s.small}>{diaMes(linha.inicio)} a {diaMes(linha.fim)}</Text>
+    </View>
+    <Text style={[s.artistRevenue, { color: pagar ? c.error : c.success }]}>
+      {pagar ? '−' : '+'} {currency(valor)}
+    </Text>
+  </View>;
+}
+
+/**
+ * Análise dos resultados financeiros por profissional da equipe, no período do
+ * dashboard. Abre filtrada pelo card tocado (consolidado, a receber ou a pagar).
+ */
+export function StudioFinanceiroScreen() {
+  const { dashboard } = useStudioDashboard();
+  const route = useRoute<RouteProp<StudioDashboardStackParamList, 'Financeiro'>>();
+  const [filtro, setFiltro] = useState<FiltroFinanceiro>(route.params?.filtro ?? 'todos');
+  const linhas = dashboard.financeiro.filter((l) =>
+    filtro === 'todos' || (filtro === 'pagar' ? l.modelo === 'salario' : l.modelo !== 'salario'));
+  const t = totaisFinanceiros(linhas);
+  const total = filtro === 'pagar' ? t.aPagar : filtro === 'receber' ? t.aReceber : t.consolidado;
+
+  return <StudioPage title="Resultados financeiros" subtitle="Comissões, aluguéis e salários de cada profissional da equipe no período.">
+    <View style={s.row}>
+      {FILTROS.map((opcao) => <Pressable key={opcao.id} style={[s.chip, filtro === opcao.id && s.optionSelected]}
+        onPress={() => setFiltro(opcao.id)} accessibilityRole="radio" accessibilityState={{ checked: filtro === opcao.id }}>
+        <Text style={s.buttonText}>{opcao.rotulo}</Text>
+      </Pressable>)}
+    </View>
+    <View style={s.card}>
+      <Text style={s.eyebrow}>
+        {filtro === 'pagar' ? 'TOTAL A PAGAR' : filtro === 'receber' ? 'TOTAL A RECEBER' : 'CONSOLIDADO'}
+      </Text>
+      <Text style={[s.metricValue, { color: total < 0 ? c.error : c.text }]}>{currency(total)}</Text>
+      {filtro === 'receber' && <Text style={s.small}>Comissões {currency(t.comissoes)} · Aluguéis {currency(t.alugueis)}</Text>}
+      {filtro === 'todos' && <Text style={s.small}>A receber {currency(t.aReceber)} · A pagar {currency(t.aPagar)}</Text>}
+    </View>
+    <View style={s.card}>
+      {linhas.length === 0
+        ? <Text style={s.note}>Nenhum contrato da equipe neste período.</Text>
+        : <View style={s.list}>{linhas.map((linha) => <LinhaFinanceira key={linha.contratoId} linha={linha} />)}</View>}
+    </View>
+  </StudioPage>;
+}
+
 export function StudioAgendaScreen() {
   const { dashboard } = useStudioDashboard();
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
@@ -268,6 +422,11 @@ const s = StyleSheet.create({
   metrics: { flexDirection: 'row', gap: 12, alignItems: 'stretch' },
   stacked: { flexDirection: 'column' },
   card: { padding: 20, backgroundColor: c.card, borderRadius: theme.radius.card, gap: 12, boxShadow: '0 4px 20px -2px rgba(28,25,23,0.05)' },
+  aviso: { borderWidth: 1.5 },
+  financeiro: { gap: 12 },
+  financeiroTitulo: { paddingHorizontal: 4 },
+  cardFinanceiro: { minHeight: 0 },
+  chip: { minHeight: 40, paddingHorizontal: 14, justifyContent: 'center', borderRadius: theme.radius.pill, backgroundColor: c.card },
   metricCard: { flex: 1, padding: 16, minHeight: 185, justifyContent: 'space-between' },
   eyebrow: { fontFamily: f.bold, fontSize: 10, lineHeight: 15, color: c.muted },
   purpleEyebrow: { fontFamily: f.bold, fontSize: 10, lineHeight: 15, color: c.purple, marginBottom: 3 },

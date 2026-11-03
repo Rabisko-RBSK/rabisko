@@ -1,4 +1,5 @@
-import api from './index';
+import api, { type EstudioSoloInput } from './index';
+import type { StudioDTO } from './studioService';
 import { multipartImage } from '../../utils/multipart';
 
 /**
@@ -231,6 +232,16 @@ export const artistService = {
 
   async recusarConvite(conviteId: string): Promise<ConviteDTO> {
     const { data } = await api.post<ConviteDTO>(`/artist/me/convites/${conviteId}/recusar`);
+    return data;
+  },
+
+  /**
+   * Abre o estúdio próprio (contrato "dono") depois do cadastro. 409 se já
+   * tiver estúdio próprio ou o CNPJ já for de outro estúdio; 400 com o motivo
+   * (em `message`) se a Receita recusar o CNPJ.
+   */
+  async criarEstudioProprio(dados: EstudioSoloInput): Promise<StudioDTO> {
+    const { data } = await api.post<StudioDTO>('/artist/me/estudio', dados);
     return data;
   },
 

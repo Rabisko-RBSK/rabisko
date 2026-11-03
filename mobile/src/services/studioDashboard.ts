@@ -1,5 +1,6 @@
 import type {
   StudioAgendaItem, StudioArtistResumo, StudioDailyRevenue, StudioDashboardPeriodo, StudioEstiloResumo,
+  StudioFinanceiroLinha,
 } from './api/studioDashboardService';
 
 export type StudioPeriod = 'current' | 'previous';
@@ -18,6 +19,17 @@ export interface StudioDashboard {
   artists: StudioArtistResumo[];
   styles: StudioStyleResumo[];
   bookings: StudioAgendaItem[];
+  /** Resultados financeiros com a equipe: uma linha por contrato no período. */
+  financeiro: StudioFinanceiroLinha[];
+}
+
+/** Totais dos cards de resultados financeiros. */
+export function totaisFinanceiros(linhas: StudioFinanceiroLinha[]) {
+  const soma = (filtro: (l: StudioFinanceiroLinha) => number) => linhas.reduce((total, l) => total + filtro(l), 0);
+  const comissoes = soma((l) => (l.modelo === 'comissao' ? l.aReceber : 0));
+  const alugueis = soma((l) => (l.modelo === 'aluguel' ? l.aReceber : 0));
+  const salarios = soma((l) => l.aPagar);
+  return { comissoes, alugueis, aReceber: comissoes + alugueis, aPagar: salarios, consolidado: comissoes + alugueis - salarios };
 }
 
 export function monthKey(date: Date): string {
@@ -44,7 +56,7 @@ export function emptyStudioDashboard(days: number): StudioDashboard {
   const daily = Array.from({ length: days }, (_, index) => ({ day: index + 1, value: 0 }));
   return {
     revenue: 0, appointments: 0, newAppointments: 0, recurringAppointments: 0,
-    daily, peak: daily[0], average: 0, artists: [], styles: [], bookings: [],
+    daily, peak: daily[0], average: 0, artists: [], styles: [], bookings: [], financeiro: [],
   };
 }
 

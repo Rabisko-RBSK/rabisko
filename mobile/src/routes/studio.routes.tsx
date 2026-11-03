@@ -4,7 +4,8 @@ import { CalendarDays, LayoutDashboard, Settings, SquareKanban, Users, type Luci
 
 import { BottomNav } from '../components/common/BottomNav';
 import { StudioDashboardProvider } from '../hooks/useStudioDashboard';
-import { StudioAgendaScreen, StudioDashboardScreen } from '../screens/App/StudioDashboardScreen';
+import { StudioAgendaScreen } from '../screens/App/StudioDashboardScreen';
+import { StudioDashboardStack } from './studio-dashboard.stack';
 import { SettingsScreen } from '../screens/App/SettingsScreen';
 import { StudioServicosScreen } from '../screens/App/ServicosScreen';
 import { StudioEquipeStack } from './studio-equipe.stack';
@@ -34,7 +35,7 @@ export function StudioRoutes() {
     <StudioDashboardProvider>
       <Navigator tabBar={(props) => <BottomNav {...props} icons={icons} labels={labels} />}
         screenOptions={{ headerShown: false }}>
-        <Screen name="Dashboard" component={StudioDashboardScreen} />
+        <Screen name="Dashboard" component={StudioDashboardStack} />
         <Screen name="Servicos" component={StudioServicosScreen} />
         <Screen name="Team" component={StudioEquipeStack} />
         <Screen name="Agenda" component={StudioAgendaScreen} />

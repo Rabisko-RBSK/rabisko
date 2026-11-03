@@ -1,10 +1,10 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, Modal, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, Modal, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { Image } from 'expo-image';
 import { X, CalendarDays, Clock, Banknote, UserCircle2 } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { SessaoListItemDTO } from '../../services/api';
+import { SessaoListItemDTO, StatusSessaoMarcavel, appointmentService } from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
 import { acessoAnamnese } from '../../services/anamneseFlow';
 import { AnamneseButton } from '../../components/anamnese/AnamneseButton';
@@ -39,10 +39,17 @@ const STATUS_LABELS: Record<string, string> = {
   confirmada:   'Confirmada',
   agendada:     'Agendada',
   em_andamento: 'Em andamento',
-  concluida:    'Concluída',
+  concluida:    'Realizada',
   cancelada:    'Cancelada',
   no_show:      'Não compareceu',
 };
+
+/** A sessão já começou? Antes disso, o backend recusa a marcação. */
+function jaComecou(sessao: SessaoListItemDTO): boolean {
+  const [y, m, d] = sessao.data.split('-').map(Number);
+  const [hh, mm] = sessao.horario.split(':').map(Number);
+  return new Date(y, m - 1, d, hh, mm).getTime() <= Date.now();
+}
 
 function statusBadgeColors(status: string): { bg: string; text: string } {
   switch (status) {
@@ -64,11 +71,31 @@ interface Props {
   onClose: () => void;
   sessao: SessaoListItemDTO | null;
   onOpenAnamnese: () => void;
+  /** Chamado depois que o tatuador marca a sessão (para a lista atualizar o status). */
+  onStatusAtualizado?: (sessionId: string, status: StatusSessaoMarcavel) => void;
 }
 
-export function SessionDetailModal({ visible, onClose, sessao, onOpenAnamnese }: Props) {
+export function SessionDetailModal({ visible, onClose, sessao, onOpenAnamnese, onStatusAtualizado }: Props) {
   const perfil = useAuthStore((state) => state.role);
+  const [marcando, setMarcando] = useState<StatusSessaoMarcavel | null>(null);
   if (!sessao) return null;
+
+  // O tatuador marca a sessão depois do horário dela; cancelada não muda.
+  const podeMarcar = perfil === 'artista' && sessao.status !== 'cancelada' && jaComecou(sessao);
+
+  const marcar = async (status: StatusSessaoMarcavel) => {
+    setMarcando(status);
+    try {
+      await appointmentService.marcarSessao(sessao.sessionId, status);
+      onStatusAtualizado?.(sessao.sessionId, status);
+    } catch (err: any) {
+      console.warn('[SessionDetail] erro ao marcar sessão', err?.response?.status, err?.message);
+      const mensagem: string | undefined = err?.response?.data?.mensagem ?? err?.response?.data?.message;
+      Alert.alert('Não foi possível marcar a sessão', mensagem ?? 'Tente novamente.');
+    } finally {
+      setMarcando(null);
+    }
+  };
 
   const badgeColors = statusBadgeColors(sessao.status);
   const acesso = acessoAnamnese(sessao, perfil);
@@ -133,6 +160,36 @@ export function SessionDetailModal({ visible, onClose, sessao, onOpenAnamnese }:
             </View>
             <DetailRow icon={<Banknote size={18} color="#602C66" />} label={formatPreco(sessao.valorTotal)} />
           </View>
+          {podeMarcar && (
+            <View style={{ marginTop: 24, padding: 16, gap: 12, backgroundColor: theme.colors.card,
+              borderRadius: theme.radius.row, width: '100%', maxWidth: 560, alignSelf: 'center' }}>
+              <Text style={{ fontFamily: theme.fonts.bold, fontSize: 18, lineHeight: 26, color: theme.colors.text }}>
+                {sessao.status === 'concluida' || sessao.status === 'no_show' ? 'Corrigir a sessão' : 'Como foi a sessão?'}
+              </Text>
+              <Text style={{ fontFamily: theme.fonts.regular, fontSize: 14, lineHeight: 22, color: theme.colors.text }}>
+                Sessões realizadas entram no fechamento do estúdio (comissão).
+              </Text>
+              <View className="flex-row" style={{ gap: 10 }}>
+                {sessao.status !== 'concluida' && (
+                  <BotaoMarcar
+                    titulo="Sessão realizada"
+                    principal
+                    carregando={marcando === 'concluida'}
+                    desabilitado={marcando !== null}
+                    onPress={() => marcar('concluida')}
+                  />
+                )}
+                {sessao.status !== 'no_show' && (
+                  <BotaoMarcar
+                    titulo="Cliente faltou"
+                    carregando={marcando === 'no_show'}
+                    desabilitado={marcando !== null}
+                    onPress={() => marcar('no_show')}
+                  />
+                )}
+              </View>
+            </View>
+          )}
           <View style={{ marginTop: 24, padding: 16, gap: 12, backgroundColor: theme.colors.card,
             borderRadius: theme.radius.row, width: '100%', maxWidth: 560, alignSelf: 'center' }}>
             <Text style={{ fontFamily: theme.fonts.bold, fontSize: 18, lineHeight: 26, color: theme.colors.text }}>
@@ -147,6 +204,32 @@ export function SessionDetailModal({ visible, onClose, sessao, onOpenAnamnese }:
         </ScrollView>
       </SafeAreaView>
     </Modal>
+  );
+}
+
+function BotaoMarcar({ titulo, principal, carregando, desabilitado, onPress }: {
+  titulo: string;
+  principal?: boolean;
+  carregando: boolean;
+  desabilitado: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={desabilitado}
+      activeOpacity={0.85}
+      className={`flex-1 rounded-rd-md py-3 items-center ${principal ? 'bg-plum' : 'bg-background'}`}
+      style={{ opacity: desabilitado && !carregando ? 0.5 : 1 }}
+      accessibilityRole="button"
+      accessibilityLabel={titulo}
+    >
+      {carregando ? (
+        <ActivityIndicator color={principal ? '#FFFFFF' : '#602C66'} />
+      ) : (
+        <Text className={`font-body-semibold text-[14px] ${principal ? 'text-white' : 'text-ink'}`}>{titulo}</Text>
+      )}
+    </TouchableOpacity>
   );
 }
 

@@ -4,6 +4,7 @@ import com.rabisko.mvp.artist.domain.ArtistDashboardDTO;
 import com.rabisko.mvp.artist.domain.ArtistProfileDTO;
 import com.rabisko.mvp.artist.domain.ArtistSearchResultDTO;
 import com.rabisko.mvp.artist.domain.AvaliacaoDTO;
+import com.rabisko.mvp.artist.domain.EstudioSoloDTO;
 import com.rabisko.mvp.artist.domain.PortfolioImagemDTO;
 import com.rabisko.mvp.artist.domain.UploadResponseDTO;
 import com.rabisko.mvp.artist.service.ArtistService;
@@ -12,10 +13,15 @@ import com.rabisko.mvp.horario.service.HorarioService;
 import com.rabisko.mvp.studio.domain.ContratoDTO;
 import com.rabisko.mvp.studio.domain.ConviteDTO;
 import com.rabisko.mvp.studio.domain.ConviteDetalheDTO;
+import com.rabisko.mvp.studio.domain.StudioDTO;
 import com.rabisko.mvp.studio.service.ContratoService;
+
+import jakarta.validation.Valid;
+
 import com.rabisko.mvp.shared.infraestrutura.security.UsuarioLogado;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -99,6 +105,15 @@ public class ArtistController {
     ) {
         return ResponseEntity.ok(artistService.atualizarPerfil(user, payload));
     }
+
+    @PostMapping("/me/estudio")
+    public ResponseEntity<StudioDTO> criarEstudioProprio(
+            @AuthenticationPrincipal UsuarioLogado user,
+            @RequestBody @Valid EstudioSoloDTO body
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(artistService.criarEstudioProprio(user, body));
+    }
+
 
     @GetMapping("/{tatuadorId}/horarios")
     public ResponseEntity<List<HorarioDTO>> horariosDoTatuador(

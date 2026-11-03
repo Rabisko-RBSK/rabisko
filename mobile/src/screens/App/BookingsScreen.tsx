@@ -128,6 +128,10 @@ export function BookingsScreen() {
           setDetalheVisivel(false);
           navigation.navigate('Anamnese', { sessao: selectedSessao });
         }}
+        onStatusAtualizado={(sessionId, status) => {
+          setSessoes((lista) => lista.map((s) => (s.sessionId === sessionId ? { ...s, status } : s)));
+          setSelectedSessao((s) => (s && s.sessionId === sessionId ? { ...s, status } : s));
+        }}
       />
     </View>
   );

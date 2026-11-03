@@ -4,6 +4,7 @@ import com.rabisko.mvp.studio.domain.Studio;
 import com.rabisko.mvp.studio.domain.dashboard.DashboardAgendaProjection;
 import com.rabisko.mvp.studio.domain.dashboard.DashboardAgendamentosProjection;
 import com.rabisko.mvp.studio.domain.dashboard.DashboardEstiloProjection;
+import com.rabisko.mvp.studio.domain.dashboard.DashboardFinanceiroProjection;
 import com.rabisko.mvp.studio.domain.dashboard.DashboardTatuadorProjection;
 import com.rabisko.mvp.studio.domain.dashboard.PeriodoDashboard;
 import com.rabisko.mvp.studio.repository.StudioDashboardRepository;
@@ -67,5 +68,9 @@ public class StudioDashboardService {
         Studio studio = studioService.exigirEstudioDoUser(user);
 
         return studio.getEstudioId();
+    }
+
+    public List<DashboardFinanceiroProjection> financeiro(UsuarioLogado logado, PeriodoDashboard periodo) {
+        return dashboardRepository.financeiro(estudioId(logado), periodo.inicio(), periodo.fim());
     }
 }

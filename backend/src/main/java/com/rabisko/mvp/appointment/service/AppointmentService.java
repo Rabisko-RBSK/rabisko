@@ -17,12 +17,13 @@ import com.rabisko.mvp.studio.domain.Studio;
 import com.rabisko.mvp.studio.repository.StudioRepository;
 import com.rabisko.mvp.studio.service.ContratoService;
 
-import java.math.BigDecimal;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -402,5 +403,33 @@ public class AppointmentService {
             a.getAppointmentId(), a.getChatId(), a.getClienteId(), a.getTatuadorId(),
             a.getStatus().name(), a.getValorTotal(), sessoesDTO, a.getDataCriacao()
         );
+    }
+
+    @Transactional
+    public void atualizarStatusSessao(UsuarioLogado logado, UUID sessionId, AppointmentStatus status) {
+        if (status != AppointmentStatus.concluida && status != AppointmentStatus.no_show) {
+            throw new AgendamentoInvalidoException("Marque a sessão como realizada ou como falta do cliente.");
+        }
+        if (!"tatuador".equals(logado.papel())) {
+            throw new AccessDeniedException("Apenas o tatuador marca a sessão");
+        }
+        Artist artista = artistRepository.findByAuthId(logado.authId())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Perfil tatuador não encontrado"));
+        AppointmentSession sessao = sessionRepository.findById(sessionId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Sessão não encontrada"));
+        Appointment servico = appointmentRepository.findById(sessao.getAppointmentId())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Serviço não encontrado"));
+
+        if (!servico.getTatuadorId().equals(artista.getTatuadorId())) {
+            throw new AccessDeniedException("Você não participa desta sessão");
+        }
+        if (sessao.getStatus() == AppointmentStatus.cancelada) {
+            throw new ConflitoAgendaException("Sessão cancelada não pode ser marcada.");
+        }
+        if (sessao.getDataSessao().isAfter(LocalDateTime.now())) {
+            throw new AgendamentoInvalidoException("A sessão ainda não aconteceu.");
+        }
+
+        sessao.setStatus(status);
     }
 }
