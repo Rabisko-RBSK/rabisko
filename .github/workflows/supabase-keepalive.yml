@@ -21,7 +21,7 @@ jobs:
       - name: Configurar Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.118.0
 
       - name: Consultar o banco do Supabase Dev
         run: |
@@ -43,7 +43,7 @@ jobs:
       - name: Configurar Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.118.0
 
       - name: Consultar o banco do Supabase Homol
         run: |
