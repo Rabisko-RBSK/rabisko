@@ -47,7 +47,8 @@ export interface RegisterArtistaData {
 
 export interface EstudioSoloInput {
   nome: string;
-  cnpj?: string;
+  /** Conferido na Receita Federal pelo backend (ativo + CNAE 9609-2/06). */
+  cnpj: string;
   endereco: EnderecoInput;
 }
 
@@ -68,7 +69,8 @@ export interface RegisterEstudioData {
   email: string;
   senha: string;
   telefone?: string;
-  cnpj?: string;
+  /** Conferido na Receita Federal pelo backend (ativo + CNAE 9609-2/06). */
+  cnpj: string;
   /** Quantidade de posições (macas/bancadas) de atendimento, de 1 a 50. */
   posicoes: number;
   endereco: EnderecoInput;
@@ -237,6 +239,9 @@ export interface SessaoListItemDTO {
   status: string;
 }
 
+/** Status que o tatuador pode marcar numa sessão que já aconteceu. */
+export type StatusSessaoMarcavel = 'concluida' | 'no_show';
+
 export const appointmentService = {
   async criar(data: {
     chatId: string;
@@ -263,6 +268,14 @@ export const appointmentService = {
   async listarSessoes(params?: { de?: string; ate?: string }): Promise<SessaoListItemDTO[]> {
     const { data: res } = await api.get<SessaoListItemDTO[]>('/appointments/minhas-sessoes', { params });
     return res;
+  },
+
+  /**
+   * O tatuador marca a sessão como realizada ou falta do cliente, depois do
+   * horário dela. Só sessões realizadas entram na comissão do estúdio.
+   */
+  async marcarSessao(sessionId: string, status: StatusSessaoMarcavel): Promise<void> {
+    await api.patch(`/appointments/sessoes/${sessionId}/status`, { status });
   },
 
   /** Posições do estúdio do tatuador logado e as reservas do dia. */

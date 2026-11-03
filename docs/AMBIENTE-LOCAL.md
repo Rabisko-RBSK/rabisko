@@ -185,6 +185,23 @@ npx supabase migration up --local
 
 Os buckets `profile_images`, `portfolio_images` e `chat_images` (públicos) são declarados em `supabase/config.toml` (`[storage.buckets.*]`) e criados pelo `start`/`db reset` local.
 
+### Contas de teste do seed
+
+Todas entram com a senha **`senha12345`**.
+
+| Conta | Papel | Situação no seed |
+|---|---|---|
+| `e@e.com` | estúdio | Tinta Negra Studio (3 posições), com Diego, Filipe e João na equipe |
+| `carla.mendes@example.com` | tatuadora | dona do Ateliê Carla Mendes (modo estúdio) e com convite pendente do Tinta Negra |
+| `diego.fernandes@example.com` | tatuador | colaborador do Tinta Negra (comissão de 30%) |
+| `filipe.ribeiro@example.com` | tatuador | colaborador do Tinta Negra (aluguel mensal) |
+| `j@j.com` | tatuador | João Santos, colaborador do Tinta Negra (salário mensal) |
+| `rita.alves@example.com` | tatuadora | sem estúdio: não aparece na busca e não agenda |
+| `ana.souza@example.com`, `bruno.lima@example.com`, `t@t.com` | cliente | com chats e sessões |
+| `admin@rabisko.com` | admin | só no Supabase Auth, sem perfil no app |
+
+As contas só existem depois do seed (`npm run db:reset`). Contas criadas pelo app, no cadastro, usam a senha escolhida no cadastro.
+
 > Os scripts em `backend/src/main/resources/db/migration` **não** são aplicados por nada (o projeto não usa Flyway). A fonte de verdade do schema é `supabase/migrations`.
 
 ---

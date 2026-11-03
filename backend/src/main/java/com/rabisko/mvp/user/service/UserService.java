@@ -5,6 +5,8 @@ import com.rabisko.mvp.artist.repository.ArtistRepository;
 import com.rabisko.mvp.artist.service.ArtistService;
 import com.rabisko.mvp.client.repository.ClientRepository;
 import com.rabisko.mvp.client.service.ClientService;
+import com.rabisko.mvp.shared.infraestrutura.cnpj.ResultadoCnpj;
+import com.rabisko.mvp.shared.infraestrutura.cnpj.ValidadorCnpjService;
 import com.rabisko.mvp.shared.infraestrutura.security.SupabaseAuthAdmin;
 import com.rabisko.mvp.shared.infraestrutura.security.UsuarioLogado;
 import com.rabisko.mvp.studio.domain.RegisterEstudioDTO;
@@ -28,6 +30,7 @@ public class UserService {
     @Autowired private ClientService clientService;
     @Autowired private ArtistService artistService;
     @Autowired private StudioService studioService;
+    @Autowired private ValidadorCnpjService validadorCnpj;
     @Autowired private ClientRepository clientRepository;
     @Autowired private ArtistRepository artistRepository;
     @Autowired private StudioRepository studioRepository;
@@ -47,9 +50,13 @@ public class UserService {
 
 
     public UUID cadastrarArtista(RegisterArtistaDTO body) {
+        ResultadoCnpj cnpj = body.getEstudioSolo() != null
+            ? validadorCnpj.exigirConforme(body.getEstudioSolo().cnpj())
+            : null;
         UUID authId = supabaseAuthAdmin.criarConta(body.getEmail(), body.getSenha(), "tatuador");
+        
         try {
-            artistService.cadastrarArtista(authId, body);
+            artistService.cadastrarArtista(authId, body, cnpj);
             return authId;
         } catch (RuntimeException e) {
             supabaseAuthAdmin.excluirConta(authId);
@@ -58,9 +65,11 @@ public class UserService {
     }
 
     public UUID cadastrarEstudio(RegisterEstudioDTO body) {
+        ResultadoCnpj cnpj = validadorCnpj.exigirConforme(body.getCnpj());
         UUID authId = supabaseAuthAdmin.criarConta(body.getEmail(), body.getSenha(), "estudio");
+        
         try {
-            studioService.cadastrarEstudio(authId, body);
+            studioService.cadastrarEstudio(authId, body, cnpj);
             return authId;
         } catch (RuntimeException e) {
             supabaseAuthAdmin.excluirConta(authId);

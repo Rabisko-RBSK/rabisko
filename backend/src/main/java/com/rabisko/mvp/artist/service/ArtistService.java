@@ -11,6 +11,8 @@ import com.rabisko.mvp.endereco.service.EnderecoService;
 import com.rabisko.mvp.estilo.repository.EstiloRepository;
 import com.rabisko.mvp.horario.domain.HorarioDTO;
 import com.rabisko.mvp.horario.service.HorarioService;
+import com.rabisko.mvp.shared.infraestrutura.cnpj.ResultadoCnpj;
+import com.rabisko.mvp.shared.infraestrutura.cnpj.ValidadorCnpjService;
 import com.rabisko.mvp.shared.infraestrutura.security.UsuarioLogado;
 import com.rabisko.mvp.shared.storage.StorageService;
 import com.rabisko.mvp.studio.domain.ContratoDTO;
@@ -18,9 +20,11 @@ import com.rabisko.mvp.studio.domain.ConviteDTO;
 import com.rabisko.mvp.studio.domain.ConviteDetalheDTO;
 import com.rabisko.mvp.studio.domain.ConviteEstudio;
 import com.rabisko.mvp.studio.domain.Studio;
+import com.rabisko.mvp.studio.domain.StudioDTO;
 import com.rabisko.mvp.studio.repository.ConviteEstudioRepository;
 import com.rabisko.mvp.studio.repository.StudioRepository;
 import com.rabisko.mvp.studio.service.ContratoService;
+import com.rabisko.mvp.studio.service.StudioService;
 
 import jakarta.persistence.EntityNotFoundException;
 
@@ -73,6 +77,8 @@ public class ArtistService {
     @Autowired private ContratoService contratoService;
     @Autowired private EnderecoService enderecoService;
     @Autowired private HorarioService horarioService;
+    @Autowired private StudioService studioService;
+    @Autowired private ValidadorCnpjService validadorCnpj;
 
     /**
      * Cria o perfil tatuador apos o UsuarioLogado ja ter sido salvo.
@@ -80,7 +86,7 @@ public class ArtistService {
      * pra um Estilo do catalogo via resolverEstilos().
      */
     @Transactional
-    public Artist cadastrarArtista(UUID authId, RegisterArtistaDTO body) {
+    public Artist cadastrarArtista(UUID authId, RegisterArtistaDTO body, ResultadoCnpj cnpj) {
         Artist novoArtist = Artist.builder()
                 .authId(authId)
                 .nome(body.getNome())
@@ -95,20 +101,30 @@ public class ArtistService {
         Artist a = artistRepository.save(novoArtist);
 
         if (body.getEstudioSolo() != null) {
-            EstudioSoloDTO solo = body.getEstudioSolo();
-            Endereco e = enderecoService.salvar(solo.endereco(), null);
-            Studio estudio = studioRepository.save(Studio.builder()
-                    .nome(solo.nome().trim())
-                    .cnpj(solo.cnpj())
-                    .telefone(body.getTelefone())
-                    .enderecoId(e.getEnderecoId())
-                    .termosAceitos(body.isTermosAceitos())
-                    .build());
-            contratoService.criarDono(estudio.getEstudioId(), a.getTatuadorId());
+            studioService.criarEstudioSolo(a, body.getEstudioSolo(), cnpj);
         }
 
         return a;
     }
+
+    /**
+     * Tatuador abre o estúdio próprio depois do cadastro. Sem @Transactional:
+     * a consulta à Receita fica fora da transação; criarEstudioSolo abre a sua.
+     */
+    public StudioDTO criarEstudioProprio(UsuarioLogado logado, EstudioSoloDTO body) {
+        Artist artist = exigirArtistDoUser(logado);
+        if (contratoService.estudioProprio(artist.getTatuadorId()).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Você já tem um estúdio próprio");
+        }
+        ResultadoCnpj cnpj;
+        try {
+            cnpj = validadorCnpj.exigirConforme(body.cnpj());
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+        return StudioDTO.from(studioService.criarEstudioSolo(artist, body, cnpj));
+    }
+
 
     /**
      * Busca tatuadores com filtros OPCIONAIS:

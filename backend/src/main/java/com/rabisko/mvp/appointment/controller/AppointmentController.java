@@ -3,6 +3,8 @@ package com.rabisko.mvp.appointment.controller;
 import com.rabisko.mvp.appointment.domain.AgendaEstudioDTO;
 import com.rabisko.mvp.appointment.domain.AgendamentoInvalidoException;
 import com.rabisko.mvp.appointment.domain.AppointmentDTO;
+import com.rabisko.mvp.appointment.domain.AppointmentStatus;
+import com.rabisko.mvp.appointment.domain.AtualizarStatusSessaoRequest;
 import com.rabisko.mvp.appointment.domain.BusySlotDTO;
 import com.rabisko.mvp.appointment.domain.ConflitoAgendaException;
 import com.rabisko.mvp.appointment.domain.CreateAppointmentRequest;
@@ -82,6 +84,16 @@ public class AppointmentController {
             @AuthenticationPrincipal UsuarioLogado usuario,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return appointmentService.obterAgendaDoEstudio(usuario, date);
+    }
+
+    @PatchMapping("/appointments/sessoes/{sessionId}/status")
+    public ResponseEntity<Void> atualizarStatusSessao(
+            @AuthenticationPrincipal UsuarioLogado logado,
+            @PathVariable UUID sessionId,
+            @RequestBody @Valid AtualizarStatusSessaoRequest body
+    ) {
+        appointmentService.atualizarStatusSessao(logado, sessionId, body.status());
+        return ResponseEntity.noContent().build();
     }
 
     /** 409 com o motivo do conflito no corpo (o handler padrão do Spring esconde a mensagem). */

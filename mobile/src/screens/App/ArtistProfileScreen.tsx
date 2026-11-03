@@ -252,6 +252,30 @@ function EstudioProprioCard({ nome, onGerenciar }: { nome: string | null; onGere
   );
 }
 
+/** Convite para abrir o estúdio próprio, para quem ainda não tem. */
+function AbrirEstudioCard({ onPress }: { onPress: () => void }) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.85}
+      className="bg-surface rounded-rd-lg p-5 flex-row items-center"
+      accessibilityRole="button"
+      accessibilityLabel="Abrir meu estúdio"
+    >
+      <View className="w-12 h-12 rounded-rd-pill bg-surface-2 items-center justify-center mr-3">
+        <Store size={22} color="#602C66" strokeWidth={1.5} />
+      </View>
+      <View className="flex-1">
+        <Text className="font-body-semibold text-[15px] text-ink">Abrir meu estúdio</Text>
+        <Text className="font-body text-[12px] text-fg-3">
+          Atenda e gerencie o seu próprio estúdio
+        </Text>
+      </View>
+      <ChevronRight size={20} color="#6B6B6B" />
+    </TouchableOpacity>
+  );
+}
+
 /** Atalho para a edição de nome, telefone e instagram. */
 function DadosCadastraisCard({ resumo, onPress }: { resumo: string; onPress: () => void }) {
   return (
@@ -764,7 +788,11 @@ export function ArtistProfileScreen() {
                   onGerenciar={() => setModo('estudio')}
                 />
               </View>
-            ) : null}
+            ) : (
+              <View className="mb-3">
+                <AbrirEstudioCard onPress={() => navigation.navigate('CriarEstudio')} />
+              </View>
+            )}
             {estudioColaboradorId && profile ? (
               <EstudioVinculadoCard
                 nome={profile.nomeEstudio ?? 'Estúdio'}

@@ -1,5 +1,7 @@
 package com.rabisko.mvp.studio.domain;
 
+import org.hibernate.validator.constraints.br.CNPJ;
+
 import com.rabisko.mvp.endereco.domain.EnderecoDTO;
 
 import jakarta.validation.Valid;
@@ -31,6 +33,7 @@ public class RegisterEstudioDTO {
 
     private String telefone;
 
+    @NotBlank @CNPJ
     private String cnpj;
 
     /** Opcional: sem valor, o estudio e criado com 1 posicao. */

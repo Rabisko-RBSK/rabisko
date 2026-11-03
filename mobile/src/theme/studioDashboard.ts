@@ -11,6 +11,8 @@ export const studioDashboardTheme = {
     soft: '#F8F6F4',
     line: '#F1ECE7',
     success: theme.colors.success,
+    warning: theme.colors.warning,
+    error: theme.colors.error,
   },
   fonts: {
     regular: 'Inter_400Regular',

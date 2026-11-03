@@ -1,5 +1,6 @@
 package com.rabisko.mvp.studio.repository;
 
+import com.rabisko.mvp.studio.domain.CnpjStatus;
 import com.rabisko.mvp.studio.domain.Studio;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -7,10 +8,15 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 public interface StudioRepository extends JpaRepository<Studio, UUID> {
+    boolean existsByCnpj(String cnpj);
+    
     Optional<Studio> findByAuthId(UUID userId);
 
     /**
@@ -21,4 +27,20 @@ public interface StudioRepository extends JpaRepository<Studio, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from Studio s where s.estudioId = :estudioId")
     Optional<Studio> lockById(@Param("estudioId") UUID estudioId);
+
+    /**
+     * Estúdios com CNPJ para conferir de novo na Receita: pendentes e irregulares
+     * (todo dia) e verificados há mais de `limite`. Os nunca consultados vêm primeiro.
+     */
+    @Query("""
+        select s from Studio s
+        where s.cnpj is not null
+        and (s.cnpjStatus in :reconferir
+            or s.cnpjVerificadoEm is null
+            or s.cnpjVerificadoEm < :limite)
+        order by s.cnpjVerificadoEm asc nulls first
+    """)
+        List<Studio> paraReverificarCnpj(@Param("reconferir") Collection<CnpjStatus> reconferir,
+                                    @Param("limite") LocalDateTime limite);
+
 }
