@@ -33,6 +33,8 @@ public interface ContratoColaboradorRepository extends JpaRepository<ContratoCol
 
     List<ContratoColaborador> findByTatuadorIdAndStatus(UUID tatuadorId, ContratoStatus status);
 
+    List<ContratoColaborador> findByEstudioIdAndStatus(UUID estudioId, ContratoStatus status);
+
     @Modifying
     @Query("""
         UPDATE ContratoColaborador c

@@ -9,5 +9,7 @@ public record ChatDTO(
     String outroUsuarioNome,
     String ultimaMensagem,
     LocalDateTime dataUltimaMensagem,
-    boolean ativo
+    boolean ativo,
+    /** A última mensagem é para o usuário logado e chegou depois da última leitura dele. */
+    boolean naoLida
 ) {}

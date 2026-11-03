@@ -95,6 +95,8 @@ export interface ChatDTO {
   ultimaMensagem: string | null;
   dataUltimaMensagem: string | null;
   ativo: boolean;
+  /** A última mensagem é para o usuário logado e ainda não foi lida. */
+  naoLida: boolean;
 }
 
 export interface MensagemDTO {
@@ -156,6 +158,11 @@ export const chatService = {
       { params: { page, size } }
     );
     return data;
+  },
+
+  /** Marca a conversa como lida até agora (alimenta "Mensagens não lidas" do Kanban). */
+  async marcarComoLido(chatId: string): Promise<void> {
+    await api.post(`/chats/${chatId}/leitura`);
   },
 
   /**
