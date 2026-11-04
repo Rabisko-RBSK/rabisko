@@ -36,9 +36,11 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -115,7 +117,7 @@ public class AppointmentService {
             .orElseThrow(() -> new AgendamentoInvalidoException(
                 "Você precisa estar vinculado a um estúdio para agendar sessões."));
 
-        List<IntervaloSessao> novas = validarHorarios(artista, estudioId, req.sessoes());
+        List<IntervaloSessao> novas = validarHorarios(artista, estudioId, req.sessoes(), Set.of());
 
         Appointment appointment = appointmentRepository.save(Appointment.builder()
             .chatId(req.chatId())
@@ -149,8 +151,12 @@ public class AppointmentService {
      *
      * Os locks (estúdio e tatuador) duram até o commit da transação de
      * criarAgendamento, então duas reservas simultâneas não passam juntas.
+     *
+     * `ignorar`: sessões já gravadas que não contam como ocupadas — na edição
+     * do serviço, as que estão sendo remarcadas ou canceladas.
      */
-    private List<IntervaloSessao> validarHorarios(Artist artista, UUID estudioId, List<SessionInput> sessoes) {
+    private List<IntervaloSessao> validarHorarios(
+            Artist artista, UUID estudioId, List<SessionInput> sessoes, Set<UUID> ignorar) {
         Studio estudio = studioRepository.lockById(estudioId)
             .orElseThrow(() -> new EntityNotFoundException("Estúdio não encontrado"));
         artistRepository.lockById(artista.getTatuadorId());
@@ -189,6 +195,7 @@ public class AppointmentService {
         List<AppointmentSession> candidatas = Stream.concat(
                 sessionRepository.findByEstudioIdAndDataSessaoBetween(estudioId, busca, ate).stream(),
                 sessionRepository.sessoesDoTatuadorNoPeriodo(artista.getTatuadorId(), busca, ate).stream())
+            .filter(s -> !ignorar.contains(s.getSessionId()))
             .collect(Collectors.toMap(AppointmentSession::getSessionId, Function.identity(), (a, b) -> a, LinkedHashMap::new))
             .values().stream()
             .toList();
@@ -260,6 +267,7 @@ public class AppointmentService {
 
         List<ReservaPosicaoDTO> reservas = sessoes.stream()
             .map(s -> new ReservaPosicaoDTO(
+                s.sessao().getSessionId(),
                 s.sessao().getPosicao(),
                 s.sessao().getDataSessao().toLocalDate(),
                 s.sessao().getDataSessao().toLocalTime(),
@@ -399,21 +407,133 @@ public class AppointmentService {
     }
 
     private AppointmentDTO toDTO(Appointment a, List<AppointmentSession> sessoes) {
+        LocalDateTime agora = LocalDateTime.now();
         List<AppointmentSessionDTO> sessoesDTO = sessoes.stream()
-            .map(s -> {
-                return new AppointmentSessionDTO(
-                    s.getSessionId(),
-                    s.getDataSessao().toLocalDate(),
-                    s.getDataSessao().toLocalTime(),
-                    s.getDuracaoMinutos(),
-                    s.getPosicao()
-                );
-            })
+            .filter(s -> s.getStatus() != AppointmentStatus.cancelada)
+            .sorted(Comparator.comparing(AppointmentSession::getDataSessao))
+            .map(s -> new AppointmentSessionDTO(
+                s.getSessionId(),
+                s.getDataSessao().toLocalDate(),
+                s.getDataSessao().toLocalTime(),
+                s.getDuracaoMinutos(),
+                s.getPosicao(),
+                s.getStatus().name(),
+                servicoEditavel(a) && sessaoEditavel(s, agora)))
             .collect(Collectors.toList());
+        String clienteNome = clientRepository.findById(a.getClienteId()).map(Client::getNome).orElse(null);
         return new AppointmentDTO(
-            a.getAppointmentId(), a.getChatId(), a.getClienteId(), a.getTatuadorId(),
-            a.getStatus().name(), a.getValorTotal(), sessoesDTO, a.getDataCriacao()
+            a.getAppointmentId(), a.getChatId(), a.getClienteId(), a.getTatuadorId(), clienteNome,
+            a.getStatus().name(), a.isFinalizado(), a.getValorTotal(), sessoesDTO, a.getDataCriacao()
         );
+    }
+
+    private static boolean servicoEditavel(Appointment a) {
+        return !a.isFinalizado() && a.getStatus() != AppointmentStatus.cancelada;
+    }
+
+    /** Ainda não começou nem foi marcada (realizada/falta) ou cancelada. */
+    private static boolean sessaoEditavel(AppointmentSession s, LocalDateTime agora) {
+        return s.getDataSessao().isAfter(agora)
+            && s.getStatus() != AppointmentStatus.concluida
+            && s.getStatus() != AppointmentStatus.no_show
+            && s.getStatus() != AppointmentStatus.cancelada;
+    }
+
+    /**
+     * Edita o serviço pelo Kanban: valor total e as sessões editáveis (futuras
+     * e não marcadas) — remarca, cria e cancela conforme o pedido. Sessões que
+     * já aconteceram ou foram marcadas ficam como estão (contam na comissão).
+     * Com alguma mudança, o cliente recebe no chat a grade atualizada.
+     */
+    @Transactional
+    public AppointmentDTO editarServico(UsuarioLogado logado, UUID servicoId, EditarServicoRequest req) {
+        if (!"tatuador".equals(logado.papel())) {
+            throw new AccessDeniedException("Apenas o tatuador edita o serviço");
+        }
+        Artist artista = artistRepository.findByAuthId(logado.authId())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Perfil tatuador não encontrado"));
+        Appointment servico = appointmentRepository.findById(servicoId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Serviço não encontrado"));
+
+        if (!servico.getTatuadorId().equals(artista.getTatuadorId())) {
+            throw new AccessDeniedException("Este serviço não é seu");
+        }
+        if (!servicoEditavel(servico)) {
+            throw new ConflitoAgendaException("Serviço finalizado ou cancelado não pode ser alterado.");
+        }
+
+        LocalDateTime agora = LocalDateTime.now();
+        List<AppointmentSession> sessoes = sessionRepository.findByAppointmentId(servicoId);
+        List<AppointmentSession> ativas = sessoes.stream()
+            .filter(s -> s.getStatus() != AppointmentStatus.cancelada)
+            .toList();
+        Map<UUID, AppointmentSession> editaveis = ativas.stream()
+            .filter(s -> sessaoEditavel(s, agora))
+            .collect(Collectors.toMap(AppointmentSession::getSessionId, Function.identity()));
+
+        PlanoEdicaoServico.Plano plano = PlanoEdicaoServico.montar(
+            editaveis.values().stream()
+                .map(s -> new PlanoEdicaoServico.SessaoAtual(
+                    s.getSessionId(), s.getDataSessao(), s.getDuracaoMinutos(), s.getPosicao()))
+                .toList(),
+            ativas.size() - editaveis.size(),
+            req.sessoes());
+
+        boolean valorMudou = servico.getValorTotal().compareTo(req.valorTotal()) != 0;
+        if (plano.vazio() && !valorMudou) {
+            return toDTO(servico, sessoes);
+        }
+
+        if (!plano.aValidar().isEmpty()) {
+            // Sessões novas vão para o estúdio onde o serviço já acontece.
+            UUID estudioId = ativas.stream().map(AppointmentSession::getEstudioId).findFirst()
+                .or(() -> contratoService.estudioDeAtendimento(artista.getTatuadorId()))
+                .orElseThrow(() -> new AgendamentoInvalidoException(
+                    "Você precisa estar vinculado a um estúdio para agendar sessões."));
+
+            Set<UUID> ignorar = new HashSet<>(plano.cancelar());
+            plano.alterar().forEach(a -> ignorar.add(a.sessionId()));
+
+            List<IntervaloSessao> validadas = validarHorarios(
+                artista, estudioId, plano.aValidar().stream().map(SessaoEditada::comoEntrada).toList(), ignorar);
+
+            for (int i = 0; i < validadas.size(); i++) {
+                IntervaloSessao v = validadas.get(i);
+                if (i < plano.alterar().size()) {
+                    AppointmentSession s = editaveis.get(plano.alterar().get(i).sessionId());
+                    s.setDataSessao(v.inicio());
+                    s.setDuracaoMinutos(v.duracaoMinutos());
+                    s.setPosicao(v.posicao());
+                } else {
+                    sessionRepository.save(AppointmentSession.builder()
+                        .appointmentId(servicoId)
+                        .estudioId(estudioId)
+                        .dataSessao(v.inicio())
+                        .duracaoMinutos(v.duracaoMinutos())
+                        .posicao(v.posicao())
+                        .build());
+                }
+            }
+        }
+
+        plano.cancelar().forEach(id -> editaveis.get(id).setStatus(AppointmentStatus.cancelada));
+        servico.setValorTotal(req.valorTotal());
+        sessionRepository.flush();
+
+        List<AppointmentSession> atualizadas = sessionRepository.findByAppointmentId(servicoId);
+        if (servico.getChatId() != null) {
+            chatRepository.findById(servico.getChatId()).ifPresent(chat -> {
+                List<IntervaloSessao> grade = atualizadas.stream()
+                    .filter(s -> s.getStatus() != AppointmentStatus.cancelada)
+                    .sorted(Comparator.comparing(AppointmentSession::getDataSessao))
+                    .map(s -> new IntervaloSessao(
+                        servico.getTatuadorId(), s.getDataSessao(), s.getDuracaoMinutos(), s.getPosicao()))
+                    .toList();
+                chatService.enviarConfirmacaoAgendamento(
+                    logado, chat, MensagemAlteracao.montar(grade, req.valorTotal(), artista.getNome()));
+            });
+        }
+        return toDTO(servico, atualizadas);
     }
 
     @Transactional

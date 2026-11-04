@@ -8,8 +8,8 @@ import { servicosService, KanbanCardDTO } from '../../services/api/servicosServi
 import { escolherImagemDaGaleria } from '../../utils/imagePicker';
 
 interface Props {
-  /** Card do serviço a finalizar; null fecha o modal. */
-  card: KanbanCardDTO | null;
+  /** Serviço a finalizar (o card do Kanban ou a tela do serviço); null fecha o modal. */
+  card: Pick<KanbanCardDTO, 'servicoId' | 'clienteNome'> | null;
   onClose: () => void;
   /** Chamado depois que o backend confirmou a finalização. */
   onFinalizado: () => void;

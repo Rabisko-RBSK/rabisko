@@ -218,11 +218,12 @@ function Indicador({ ativa }: { ativa: number }) {
 
 interface ServicosScreenProps {
   visao: VisaoKanban;
-  /** Só o tatuador abre o chat (a tela fica na pilha da aba dele). */
+  /** Só o tatuador abre o chat e o serviço (as telas ficam na pilha da aba dele). */
   onAbrirChat?: (card: KanbanCardDTO) => void;
+  onAbrirServico?: (card: KanbanCardDTO) => void;
 }
 
-export function ServicosScreen({ visao, onAbrirChat }: ServicosScreenProps) {
+export function ServicosScreen({ visao, onAbrirChat, onAbrirServico }: ServicosScreenProps) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const { cards, loading, refreshing, error, reload, refresh } = useKanbanServicos(visao);
@@ -240,6 +241,8 @@ export function ServicosScreen({ visao, onAbrirChat }: ServicosScreenProps) {
     switch (acaoDoCard(card, visao)) {
       case 'abrir_chat':
         return onAbrirChat && (() => onAbrirChat(card));
+      case 'abrir_servico':
+        return onAbrirServico && (() => onAbrirServico(card));
       case 'detalhes_sessao':
         return () => setSessaoAberta(card.sessao);
       default:
@@ -380,6 +383,12 @@ export function ArtistServicosScreen() {
         chatId: card.chatId!,
         outroNome: card.clienteNome,
         outroUsuarioId: card.clienteAuthId!,
+      })}
+      onAbrirServico={(card) => navigation.navigate('Servico', {
+        servicoId: card.servicoId!,
+        clienteNome: card.clienteNome,
+        chatId: card.chatId,
+        clienteAuthId: card.clienteAuthId,
       })}
     />
   );

@@ -9,5 +9,8 @@ public record AppointmentSessionDTO(
     LocalDate data,
     LocalTime horario,
     int duracaoMinutos,
-    Integer posicao
+    Integer posicao,
+    String status,
+    /** Futura e não marcada: o tatuador pode alterar ou remover. */
+    boolean editavel
 ) {}

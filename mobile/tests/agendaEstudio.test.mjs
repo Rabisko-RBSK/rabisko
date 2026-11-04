@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  blocosDoDia, encaixarNoPasso, minutosAgoraSeHoje, motivoConflito, paraHorario, paraMinutos, primeiroNome, sobrepoe,
+  FORA_DO_HORARIO, blocosDoDia, encaixarNoPasso, faixasFechadas, minutosAgoraSeHoje, motivoConflito, paraHorario,
+  paraMinutos, primeiroNome, sobrepoe,
 } from '../src/utils/agendaEstudio.ts';
 
 const reserva = (horario, duracaoMinutos, posicao, propria = false, data = '2026-11-10') =>
@@ -72,8 +73,31 @@ test('horário que já passou (ou é agora) é recusado; logo depois, liberado',
   assert.equal(motivoConflito({ posicao: 1, inicioMin: 9 * 60, duracaoMin: 60 }, [], null), null);
 });
 
-test('o toque é arredondado para o passo de 30 min e respeita a grade', () => {
+test('o toque é arredondado para o passo de 30 min e respeita a grade de 00:00 às 24:00', () => {
   assert.equal(encaixarNoPasso(875, 60), 870);
-  assert.equal(encaixarNoPasso(300, 60), 480);
-  assert.equal(encaixarNoPasso(1370, 120), 1260);
+  assert.equal(encaixarNoPasso(300, 60), 300);
+  assert.equal(encaixarNoPasso(-10, 60), 0);
+  // Termina no máximo à meia-noite: uma sessão de 2h começa até as 22:00.
+  assert.equal(encaixarNoPasso(1370, 120), 1320);
+});
+
+test('faixas fechadas são o complemento dos intervalos abertos no dia', () => {
+  assert.deepEqual(faixasFechadas(null), []);
+  assert.deepEqual(faixasFechadas([]), [{ inicio: 0, fim: 1440 }]);
+  assert.deepEqual(faixasFechadas([{ inicio: 840, fim: 1200 }, { inicio: 600, fim: 720 }]), [
+    { inicio: 0, fim: 600 }, { inicio: 720, fim: 840 }, { inicio: 1200, fim: 1440 },
+  ]);
+  assert.deepEqual(faixasFechadas([{ inicio: 0, fim: 1440 }]), []);
+});
+
+test('fora do horário do estúdio é recusado; a sessão inteira precisa caber num intervalo', () => {
+  const abertas = [{ inicio: 600, fim: 720 }, { inicio: 840, fim: 1200 }];
+  assert.equal(motivoConflito({ posicao: 1, inicioMin: 540, duracaoMin: 60 }, [], null, abertas), FORA_DO_HORARIO);
+  assert.equal(motivoConflito({ posicao: 1, inicioMin: 690, duracaoMin: 60 }, [], null, abertas), FORA_DO_HORARIO);
+  assert.equal(motivoConflito({ posicao: 1, inicioMin: 1140, duracaoMin: 120 }, [], null, abertas), FORA_DO_HORARIO);
+  assert.equal(motivoConflito({ posicao: 1, inicioMin: 660, duracaoMin: 60 }, [], null, abertas), null);
+  assert.equal(motivoConflito({ posicao: 1, inicioMin: 840, duracaoMin: 360 }, [], null, abertas), null);
+  // Dia sem atendimento: nada cabe. Sem grade: sem restrição.
+  assert.equal(motivoConflito({ posicao: 1, inicioMin: 660, duracaoMin: 60 }, [], null, []), FORA_DO_HORARIO);
+  assert.equal(motivoConflito({ posicao: 1, inicioMin: 120, duracaoMin: 60 }, [], null, null), null);
 });

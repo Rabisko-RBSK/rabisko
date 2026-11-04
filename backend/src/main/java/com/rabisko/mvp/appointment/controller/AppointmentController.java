@@ -8,6 +8,7 @@ import com.rabisko.mvp.appointment.domain.BusySlotDTO;
 import com.rabisko.mvp.appointment.domain.CheckInRequest;
 import com.rabisko.mvp.appointment.domain.ConflitoAgendaException;
 import com.rabisko.mvp.appointment.domain.CreateAppointmentRequest;
+import com.rabisko.mvp.appointment.domain.EditarServicoRequest;
 import com.rabisko.mvp.appointment.domain.SessaoListItemDTO;
 import com.rabisko.mvp.appointment.service.AppointmentService;
 import com.rabisko.mvp.appointment.service.TokenCheckinService;
@@ -40,6 +41,19 @@ public class AppointmentController {
             @AuthenticationPrincipal UsuarioLogado usuario,
             @RequestBody @Valid CreateAppointmentRequest request) {
         return appointmentService.criarAgendamento(usuario, request);
+    }
+
+    /**
+     * PUT /appointments/{id} — o tatuador edita o serviço: valor total e as
+     * sessões futuras não marcadas (remarca, adiciona, remove). O cliente
+     * recebe a grade atualizada no chat.
+     */
+    @PutMapping("/appointments/{id}")
+    public AppointmentDTO editar(
+            @AuthenticationPrincipal UsuarioLogado usuario,
+            @PathVariable UUID id,
+            @RequestBody @Valid EditarServicoRequest request) {
+        return appointmentService.editarServico(usuario, id, request);
     }
 
     /** GET /appointments/{id} — detalhe de um agendamento (participante do chat). */
