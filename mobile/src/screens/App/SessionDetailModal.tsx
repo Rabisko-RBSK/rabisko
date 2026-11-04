@@ -35,7 +35,7 @@ function formatPreco(valor: number): string {
   return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-const STATUS_LABELS: Record<string, string> = {
+export const STATUS_LABELS: Record<string, string> = {
   confirmada:   'Confirmada',
   agendada:     'Agendada',
   em_andamento: 'Em andamento',

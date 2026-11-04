@@ -69,7 +69,7 @@ test('iniciais do tatuador para o avatar', () => {
   assert.equal(iniciais(' ana '), 'A');
 });
 
-test('ação ao tocar: chat só para o tatuador; detalhes quando há sessão', () => {
+test('ação ao tocar: chat e serviço para o tatuador; detalhes da sessão para o estúdio', () => {
   const naoLida = card('mensagens_nao_lidas', { servicoId: null, naoLidas: 2 });
   assert.equal(acaoDoCard(naoLida, 'tatuador'), 'abrir_chat');
   assert.equal(acaoDoCard(naoLida, 'estudio'), null);
@@ -78,8 +78,10 @@ test('ação ao tocar: chat só para o tatuador; detalhes quando há sessão', (
   const sessao = { sessionId: 'r1', appointmentId: 's1', data: '2026-11-10', horario: '14:00:00',
     duracaoMinutos: 120, outroNome: 'Cliente A', outroFotoUrl: null, valorTotal: 500, status: 'confirmada' };
   for (const coluna of ['agendado', 'em_progresso', 'finalizado']) {
-    assert.equal(acaoDoCard(card(coluna, { sessao }), 'tatuador'), 'detalhes_sessao');
+    assert.equal(acaoDoCard(card(coluna, { sessao }), 'tatuador'), 'abrir_servico');
     assert.equal(acaoDoCard(card(coluna, { sessao }), 'estudio'), 'detalhes_sessao');
   }
-  assert.equal(acaoDoCard(card('agendado'), 'tatuador'), null);
+  assert.equal(acaoDoCard(card('agendado'), 'tatuador'), 'abrir_servico');
+  assert.equal(acaoDoCard(card('agendado'), 'estudio'), null);
+  assert.equal(acaoDoCard(card('agendado', { servicoId: null }), 'tatuador'), null);
 });

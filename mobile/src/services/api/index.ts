@@ -195,10 +195,14 @@ export interface AppointmentSessionDTO {
   horario: string;
   duracaoMinutos: number;
   posicao: number | null;
+  status: string;
+  /** Futura e não marcada: o tatuador pode remarcar ou remover. */
+  editavel: boolean;
 }
 
 /** Sessão já reservada no estúdio (gráfico de posições). */
 export interface ReservaPosicaoDTO {
+  sessionId: string;
   /** null em sessões antigas, sem posição. */
   posicao: number | null;
   data: string;
@@ -223,10 +227,23 @@ export interface AppointmentDTO {
   chatId: string;
   clienteId: string;
   tatuadorId: string;
+  clienteNome: string | null;
   status: 'agendada' | 'confirmada' | 'em_andamento' | 'concluida' | 'cancelada' | 'no_show';
+  finalizado: boolean;
   valorTotal: number;
+  /** Sessões não canceladas, em ordem de data. */
   sessoes: AppointmentSessionDTO[];
   dataCriacao: string;
+}
+
+export interface SessaoEditadaInput extends AppointmentSessionInput {
+  /** null = sessão nova. */
+  sessionId: string | null;
+}
+
+export interface EditarServicoDTO {
+  valorTotal: number;
+  sessoes: SessaoEditadaInput[];
 }
 
 export interface BusySlotDTO {
@@ -269,6 +286,16 @@ export const appointmentService = {
 
   async obter(id: string): Promise<AppointmentDTO> {
     const { data: res } = await api.get<AppointmentDTO>(`/appointments/${id}`);
+    return res;
+  },
+
+  /**
+   * Tatuador edita o serviço: valor total e o conjunto desejado das sessões
+   * editáveis (com `sessionId` = remarcar; sem = nova; omitida = cancelada).
+   * O cliente recebe a grade atualizada no chat.
+   */
+  async editar(id: string, dto: EditarServicoDTO): Promise<AppointmentDTO> {
+    const { data: res } = await api.put<AppointmentDTO>(`/appointments/${id}`, dto);
     return res;
   },
 

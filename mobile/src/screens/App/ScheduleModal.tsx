@@ -540,6 +540,7 @@ export function ScheduleModal({ visible, onClose, chatId, outroNome, onSent }: P
             duracaoMinutos={selectedDuration * 60}
             inicial={selectedTime && selectedPosicao ? { horario: selectedTime, posicao: selectedPosicao } : null}
             pendentes={pendentesNoDia}
+            horarios={horarios}
           />
         )}
       </View>
