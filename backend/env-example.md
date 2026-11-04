@@ -10,6 +10,12 @@
 SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
 
+# Endereço do Supabase visto pelo app, usado nas URLs públicas das imagens.
+# Em dev local com celular, use o IP da máquina na rede (o mesmo de
+# EXPO_PUBLIC_SUPABASE_URL do mobile, ex.: http://192.168.15.30:54321):
+# 127.0.0.1 é o próprio celular, e a foto salva não carrega. Vazio = SUPABASE_URL.
+SUPABASE_PUBLIC_URL=
+
 # Nota: DB_URL, DB_USER e DB_PASS não são necessários no profile local —
 # o arquivo application-local.yml já aponta para localhost:54322 com
 # postgres/postgres. Essas variáveis só precisam ser definidas em produção

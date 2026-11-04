@@ -173,7 +173,7 @@ function PessoaRow({
  * Quantidade de posições (macas/bancadas) que os tatuadores dividem ao agendar.
  * Só salva quando o valor é válido e diferente do atual.
  */
-function PosicoesCard({
+export function PosicoesCard({
   posicoes,
   loading,
   error,
