@@ -29,7 +29,7 @@ function mensagemDoErro(err: any): string {
 export function QrSessaoModal({ visible, sessionId, onClose }: Props) {
   const [token, setToken] = useState<string | null>(null);
   const [expiraEm, setExpiraEm] = useState<number | null>(null);
-  const [agora, setAgora] = useState(Date.now());
+  const [agora, setAgora] = useState(() => Date.now());
   const [erro, setErro] = useState<string | null>(null);
   const renovacao = useRef<ReturnType<typeof setTimeout> | null>(null);
 
