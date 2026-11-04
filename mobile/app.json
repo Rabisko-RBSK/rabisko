@@ -61,6 +61,14 @@
           }
         }
       ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "É necessário permitir o acesso à câmera para ler o QR code da sessão do cliente.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
       "expo-font",
       "expo-image",
       "expo-sharing",

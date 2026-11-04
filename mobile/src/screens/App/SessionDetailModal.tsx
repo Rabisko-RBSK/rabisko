@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { Image } from 'expo-image';
-import { X, CalendarDays, Clock, Banknote, UserCircle2 } from 'lucide-react-native';
+import { X, CalendarDays, Clock, Banknote, UserCircle2, QrCode, ScanLine } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SessaoListItemDTO, StatusSessaoMarcavel, appointmentService } from '../../services/api';
@@ -9,6 +9,8 @@ import { useAuthStore } from '../../store/authStore';
 import { acessoAnamnese } from '../../services/anamneseFlow';
 import { AnamneseButton } from '../../components/anamnese/AnamneseButton';
 import { studioDashboardTheme as theme } from '../../theme/studioDashboard';
+import { QrSessaoModal } from './QrSessaoModal';
+import { LerQrModal } from './LerQrModal';
 
 
 const PT_WEEKDAYS = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
@@ -44,11 +46,22 @@ const STATUS_LABELS: Record<string, string> = {
   no_show:      'Não compareceu',
 };
 
-/** A sessão já começou? Antes disso, o backend recusa a marcação. */
-function jaComecou(sessao: SessaoListItemDTO): boolean {
+function inicioDaSessao(sessao: SessaoListItemDTO): number {
   const [y, m, d] = sessao.data.split('-').map(Number);
   const [hh, mm] = sessao.horario.split(':').map(Number);
-  return new Date(y, m - 1, d, hh, mm).getTime() <= Date.now();
+  return new Date(y, m - 1, d, hh, mm).getTime();
+}
+
+/** A sessão já começou? Antes disso, o backend recusa a marcação manual. */
+function jaComecou(sessao: SessaoListItemDTO): boolean {
+  return inicioDaSessao(sessao) <= Date.now();
+}
+
+/** Janela do check-in por QR (igual à do backend): de 30 min antes a 6 h depois do início. */
+function naJanelaDoCheckin(sessao: SessaoListItemDTO): boolean {
+  const inicio = inicioDaSessao(sessao);
+  const agora = Date.now();
+  return agora >= inicio - 30 * 60_000 && agora <= inicio + 6 * 3_600_000;
 }
 
 function statusBadgeColors(status: string): { bg: string; text: string } {
@@ -78,10 +91,18 @@ interface Props {
 export function SessionDetailModal({ visible, onClose, sessao, onOpenAnamnese, onStatusAtualizado }: Props) {
   const perfil = useAuthStore((state) => state.role);
   const [marcando, setMarcando] = useState<StatusSessaoMarcavel | null>(null);
+  const [qrVisivel, setQrVisivel] = useState(false);
+  const [leitorVisivel, setLeitorVisivel] = useState(false);
   if (!sessao) return null;
 
   // O tatuador marca a sessão depois do horário dela; cancelada não muda.
   const podeMarcar = perfil === 'artista' && sessao.status !== 'cancelada' && jaComecou(sessao);
+  // Check-in por QR: o cliente mostra, o tatuador lê, dentro da janela da sessão.
+  const naJanela = naJanelaDoCheckin(sessao);
+  const podeLerQr = perfil === 'artista' && naJanela
+    && sessao.status !== 'cancelada' && sessao.status !== 'concluida';
+  const podeMostrarQr = perfil === 'cliente' && naJanela
+    && sessao.status !== 'cancelada' && sessao.status !== 'concluida' && sessao.status !== 'no_show';
 
   const marcar = async (status: StatusSessaoMarcavel) => {
     setMarcando(status);
@@ -160,7 +181,28 @@ export function SessionDetailModal({ visible, onClose, sessao, onOpenAnamnese, o
             </View>
             <DetailRow icon={<Banknote size={18} color="#602C66" />} label={formatPreco(sessao.valorTotal)} />
           </View>
-          {podeMarcar && (
+          {podeMostrarQr && (
+            <View style={{ marginTop: 24, padding: 16, gap: 12, backgroundColor: theme.colors.card,
+              borderRadius: theme.radius.row, width: '100%', maxWidth: 560, alignSelf: 'center' }}>
+              <Text style={{ fontFamily: theme.fonts.bold, fontSize: 18, lineHeight: 26, color: theme.colors.text }}>
+                Check-in da sessão
+              </Text>
+              <Text style={{ fontFamily: theme.fonts.regular, fontSize: 14, lineHeight: 22, color: theme.colors.text }}>
+                Ao chegar, mostre o QR ao seu tatuador para registrar a sessão.
+              </Text>
+              <View className="flex-row">
+                <BotaoMarcar
+                  titulo="Mostrar QR da sessão"
+                  principal
+                  icone={<QrCode size={18} color="#FFFFFF" />}
+                  carregando={false}
+                  desabilitado={false}
+                  onPress={() => setQrVisivel(true)}
+                />
+              </View>
+            </View>
+          )}
+          {(podeMarcar || podeLerQr) && (
             <View style={{ marginTop: 24, padding: 16, gap: 12, backgroundColor: theme.colors.card,
               borderRadius: theme.radius.row, width: '100%', maxWidth: 560, alignSelf: 'center' }}>
               <Text style={{ fontFamily: theme.fonts.bold, fontSize: 18, lineHeight: 26, color: theme.colors.text }}>
@@ -169,7 +211,19 @@ export function SessionDetailModal({ visible, onClose, sessao, onOpenAnamnese, o
               <Text style={{ fontFamily: theme.fonts.regular, fontSize: 14, lineHeight: 22, color: theme.colors.text }}>
                 Sessões realizadas entram no fechamento do estúdio (comissão).
               </Text>
-              <View className="flex-row" style={{ gap: 10 }}>
+              {podeLerQr && (
+                <View className="flex-row">
+                  <BotaoMarcar
+                    titulo="Ler QR do cliente"
+                    principal
+                    icone={<ScanLine size={18} color="#FFFFFF" />}
+                    carregando={false}
+                    desabilitado={marcando !== null}
+                    onPress={() => setLeitorVisivel(true)}
+                  />
+                </View>
+              )}
+              {podeMarcar && <View className="flex-row" style={{ gap: 10 }}>
                 {sessao.status !== 'concluida' && (
                   <BotaoMarcar
                     titulo="Sessão realizada"
@@ -187,7 +241,7 @@ export function SessionDetailModal({ visible, onClose, sessao, onOpenAnamnese, o
                     onPress={() => marcar('no_show')}
                   />
                 )}
-              </View>
+              </View>}
             </View>
           )}
           <View style={{ marginTop: 24, padding: 16, gap: 12, backgroundColor: theme.colors.card,
@@ -202,14 +256,22 @@ export function SessionDetailModal({ visible, onClose, sessao, onOpenAnamnese, o
               disabled={!acesso.permitido} onPress={onOpenAnamnese} />
           </View>
         </ScrollView>
+        <QrSessaoModal visible={qrVisivel} sessionId={sessao.sessionId} onClose={() => setQrVisivel(false)} />
+        <LerQrModal
+          visible={leitorVisivel}
+          sessionId={sessao.sessionId}
+          onClose={() => setLeitorVisivel(false)}
+          onRealizada={() => onStatusAtualizado?.(sessao.sessionId, 'concluida')}
+        />
       </SafeAreaView>
     </Modal>
   );
 }
 
-function BotaoMarcar({ titulo, principal, carregando, desabilitado, onPress }: {
+function BotaoMarcar({ titulo, principal, icone, carregando, desabilitado, onPress }: {
   titulo: string;
   principal?: boolean;
+  icone?: React.ReactNode;
   carregando: boolean;
   desabilitado: boolean;
   onPress: () => void;
@@ -227,7 +289,10 @@ function BotaoMarcar({ titulo, principal, carregando, desabilitado, onPress }: {
       {carregando ? (
         <ActivityIndicator color={principal ? '#FFFFFF' : '#602C66'} />
       ) : (
-        <Text className={`font-body-semibold text-[14px] ${principal ? 'text-white' : 'text-ink'}`}>{titulo}</Text>
+        <View className="flex-row items-center" style={{ gap: 8 }}>
+          {icone}
+          <Text className={`font-body-semibold text-[14px] ${principal ? 'text-white' : 'text-ink'}`}>{titulo}</Text>
+        </View>
       )}
     </TouchableOpacity>
   );

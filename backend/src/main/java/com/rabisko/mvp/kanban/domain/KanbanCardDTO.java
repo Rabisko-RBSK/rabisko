@@ -37,5 +37,6 @@ public record KanbanCardDTO(
     OffsetDateTime aguardandoDesde,
     OffsetDateTime ultimaMensagemEm,
     /** Sessão aberta ao tocar no card (mesmo formato do Gantt); null sem sessão ou em mensagens_nao_lidas. */
-    SessaoListItemDTO sessao
+    SessaoListItemDTO sessao,
+    boolean finalizado
 ) {}

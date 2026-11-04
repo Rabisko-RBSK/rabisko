@@ -198,22 +198,16 @@ ON CONFLICT ("tatuador_id") DO NOTHING;
 -- ----------------------------------------------------------------------------
 -- horarios_atendimento: grade semanal de cada estúdio
 -- (dia_semana ISO: 1 = segunda ... 7 = domingo). Cobre os casos da regra:
---   * Tinta Negra: dois intervalos por dia (pausa para almoço) + sábado até
---     a noite;
+--   * Tinta Negra: seg a sex em horário comercial + sábado até a noite;
 --   * Ateliê Carla Mendes: um intervalo por dia (ter a sex) + sábado curto.
 -- ----------------------------------------------------------------------------
 INSERT INTO "public"."horarios_atendimento" ("horario_id", "estudio_id", "dia_semana", "abre", "fecha") VALUES
-    -- Tinta Negra: seg a sex 10h-12h e 14h-20h, sáb 12h-22h
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee11', '33333333-3333-3333-3333-333333333301', 1, '10:00', '12:00'),
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee12', '33333333-3333-3333-3333-333333333301', 1, '14:00', '20:00'),
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee13', '33333333-3333-3333-3333-333333333301', 2, '10:00', '12:00'),
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee14', '33333333-3333-3333-3333-333333333301', 2, '14:00', '20:00'),
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee15', '33333333-3333-3333-3333-333333333301', 3, '10:00', '12:00'),
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee16', '33333333-3333-3333-3333-333333333301', 3, '14:00', '20:00'),
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee17', '33333333-3333-3333-3333-333333333301', 4, '10:00', '12:00'),
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee18', '33333333-3333-3333-3333-333333333301', 4, '14:00', '20:00'),
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee19', '33333333-3333-3333-3333-333333333301', 5, '10:00', '12:00'),
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee20', '33333333-3333-3333-3333-333333333301', 5, '14:00', '20:00'),
+    -- Tinta Negra: seg a sex 10h-20h, sáb 12h-22h (o app edita um intervalo por dia)
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee11', '33333333-3333-3333-3333-333333333301', 1, '10:00', '20:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee13', '33333333-3333-3333-3333-333333333301', 2, '10:00', '20:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee15', '33333333-3333-3333-3333-333333333301', 3, '10:00', '20:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee17', '33333333-3333-3333-3333-333333333301', 4, '10:00', '20:00'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee19', '33333333-3333-3333-3333-333333333301', 5, '10:00', '20:00'),
     ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee21', '33333333-3333-3333-3333-333333333301', 6, '12:00', '22:00'),
     -- Ateliê Carla Mendes: ter a sex 13h-20h, sáb 10h-14h
     ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee01', '33333333-3333-3333-3333-333333333302', 2, '13:00', '20:00'),
@@ -350,7 +344,7 @@ INSERT INTO "public"."servicos"
     ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa03', '88888888-8888-8888-8888-888888888803',
      '44444444-4444-4444-4444-444444444403', '22222222-2222-2222-2222-222222222201', '55555555-5555-5555-5555-555555555508',
      'Fechamento de costas com tema oriental (dragão e ondas)', 45.0, 'Costas inteiras',
-     4500.00, 900.00, true, NULL, 'confirmada'),
+     4500.00, 900.00, false, NULL, 'confirmada'),
     ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa04', '88888888-8888-8888-8888-888888888801',
      '44444444-4444-4444-4444-444444444401', '22222222-2222-2222-2222-222222222201', '55555555-5555-5555-5555-555555555505',
      'Fineline minimalista no pulso', 5.0, 'Pulso esquerdo',
@@ -502,5 +496,21 @@ CROSS JOIN LATERAL (
 ) AS x
 WHERE s.servico_id::text LIKE 'aaaaaaaa-aaaa-aaaa-aaaa-0000%'
 ON CONFLICT ("reserva_id") DO NOTHING;
+
+-- Histórico já encerrado: o Kanban só põe em "Finalizado" o serviço que o
+-- tatuador finalizou (flag finalizado). Os que ainda têm sessão pela frente
+-- continuam em andamento.
+UPDATE "public"."servicos" s
+   SET "finalizado" = true,
+       "status" = 'concluida',
+       "data_finalizacao" = r.fim
+  FROM (SELECT "servico_id", max("data_sessao" + make_interval(mins => "duracao_min")) AS fim
+          FROM "public"."reservas"
+         WHERE "status" <> 'cancelada'
+         GROUP BY "servico_id"
+        HAVING max("data_sessao" + make_interval(mins => "duracao_min")) < now()) AS r
+ WHERE r."servico_id" = s."servico_id"
+   AND s."servico_id"::text LIKE 'aaaaaaaa-aaaa-aaaa-aaaa-0000%'
+   AND s."status" <> 'cancelada';
 
 COMMIT;

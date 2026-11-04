@@ -13,9 +13,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { CalendarDays, CircleCheck, MessageCircle, type LucideIcon } from 'lucide-react-native';
+import { CalendarDays, CircleCheck, Flag, MessageCircle, type LucideIcon } from 'lucide-react-native';
 
 import { SessionDetailModal } from './SessionDetailModal';
+import { FinalizarServicoModal } from './FinalizarServicoModal';
 import type { ServicosStackParamList } from '../../routes/servicos.stack';
 import type { SessaoListItemDTO } from '../../services/api';
 
@@ -91,11 +92,13 @@ function AbaStatus({ coluna, total, ativa, onPress, onLayout }: {
   );
 }
 
-function CardServico({ card, visao, onPress }: {
+function CardServico({ card, visao, onPress, onFinalizar }: {
   card: KanbanCardDTO;
   visao: VisaoKanban;
   /** Ausente quando o card não tem ação — fica um View comum. */
   onPress?: () => void;
+  /** Só o tatuador, em serviço ainda não finalizado. */
+  onFinalizar?: () => void;
 }) {
   const { etiqueta, icone, meta } = textosDoCard(card);
   const Icone = ICONES[icone];
@@ -137,11 +140,27 @@ function CardServico({ card, visao, onPress }: {
           </View>
         </>
       )}
+      {onFinalizar && (
+        <>
+          <View className="h-px bg-surface" />
+          <TouchableOpacity
+            onPress={onFinalizar}
+            hitSlop={6}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={`Finalizar serviço de ${card.clienteNome}`}
+            className="flex-row items-center justify-center gap-1.5 py-1"
+          >
+            <Flag size={14} color="#602C66" strokeWidth={1.75} />
+            <Text className="font-body-semibold text-[12px] text-plum">Finalizar serviço</Text>
+          </TouchableOpacity>
+        </>
+      )}
     </Container>
   );
 }
 
-function Coluna({ coluna, cards, largura, visao, refreshing, onRefresh, aoTocar }: {
+function Coluna({ coluna, cards, largura, visao, refreshing, onRefresh, aoTocar, aoFinalizar }: {
   coluna: ColunaKanban;
   cards: KanbanCardDTO[];
   largura: number;
@@ -150,6 +169,8 @@ function Coluna({ coluna, cards, largura, visao, refreshing, onRefresh, aoTocar 
   onRefresh: () => void;
   /** undefined para cards sem ação. */
   aoTocar: (card: KanbanCardDTO) => (() => void) | undefined;
+  /** undefined para cards que não podem ser finalizados. */
+  aoFinalizar: (card: KanbanCardDTO) => (() => void) | undefined;
 }) {
   return (
     <View style={{ width: largura }} className="bg-surface-2 rounded-rd-lg p-3">
@@ -173,6 +194,7 @@ function Coluna({ coluna, cards, largura, visao, refreshing, onRefresh, aoTocar 
               card={card}
               visao={visao}
               onPress={aoTocar(card)}
+              onFinalizar={aoFinalizar(card)}
             />
           ))
         )}
@@ -206,6 +228,14 @@ export function ServicosScreen({ visao, onAbrirChat, onAbrirAnamnese }: Servicos
   const { width } = useWindowDimensions();
   const { cards, loading, refreshing, error, reload, refresh } = useKanbanServicos(visao);
   const [sessaoAberta, setSessaoAberta] = useState<SessaoListItemDTO | null>(null);
+  const [aFinalizar, setAFinalizar] = useState<KanbanCardDTO | null>(null);
+
+  // Finaliza a qualquer momento, inclusive antes da última sessão; só não há o
+  // que finalizar no card de chat (mensagens não lidas).
+  const aoFinalizar = (card: KanbanCardDTO) =>
+    visao === 'tatuador' && card.servicoId && card.coluna !== 'mensagens_nao_lidas' && !card.finalizado
+      ? () => setAFinalizar(card)
+      : undefined;
 
   const aoTocar = (card: KanbanCardDTO) => {
     switch (acaoDoCard(card, visao)) {
@@ -316,6 +346,7 @@ export function ServicosScreen({ visao, onAbrirChat, onAbrirAnamnese }: Servicos
                 refreshing={refreshing}
                 onRefresh={refresh}
                 aoTocar={aoTocar}
+                aoFinalizar={aoFinalizar}
               />
             ))}
           </ScrollView>
@@ -325,6 +356,12 @@ export function ServicosScreen({ visao, onAbrirChat, onAbrirAnamnese }: Servicos
 
       {/* Respiro acima da barra de abas (mesma folga das outras telas). */}
       <View style={{ height: 16 }} />
+
+      <FinalizarServicoModal
+        card={aFinalizar}
+        onClose={() => setAFinalizar(null)}
+        onFinalizado={reload}
+      />
 
       <SessionDetailModal
         visible={!!sessaoAberta}

@@ -1,4 +1,5 @@
 import api, { SessaoListItemDTO } from './index';
+import { multipartImage } from '../../utils/multipart';
 
 export type KanbanColuna = 'mensagens_nao_lidas' | 'agendado' | 'em_progresso' | 'finalizado';
 
@@ -34,6 +35,8 @@ export interface KanbanCardDTO {
    * mensagens_nao_lidas ou em serviço sem sessão.
    */
   sessao: SessaoListItemDTO | null;
+  /** O tatuador já encerrou o serviço (botão "Finalizar serviço" some). */
+  finalizado: boolean;
 }
 
 /** Kanban de serviços (somente leitura). Os cards já vêm ordenados por coluna. */
@@ -48,5 +51,23 @@ export const servicosService = {
   async doEstudio(): Promise<KanbanCardDTO[]> {
     const { data } = await api.get<KanbanCardDTO[]>('/studio/me/servicos');
     return data;
+  },
+
+  /**
+   * Tatuador encerra o serviço a qualquer momento; o backend cancela as
+   * sessões futuras não marcadas. A foto só vai quando entra no portfólio.
+   */
+  async finalizar(servicoId: string, adicionarAoPortfolio: boolean, fotoUri?: string): Promise<void> {
+    let form: FormData;
+    if (adicionarAoPortfolio && fotoUri) {
+      form = multipartImage(fotoUri, 'foto', { adicionarAoPortfolio: 'true' });
+    } else {
+      form = new FormData();
+      form.append('adicionarAoPortfolio', 'false');
+    }
+    await api.post(`/appointments/${servicoId}/finalizar`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 60000,
+    });
   },
 };

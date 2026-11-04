@@ -18,3 +18,5 @@ rabisko:
       habilitada: false
     reverificacao:
       cron: "0 * * * * *"
+  checkin:
+    secret: segredo-local-so-para-desenvolviment

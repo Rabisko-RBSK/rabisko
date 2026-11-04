@@ -246,6 +246,13 @@ export interface SessaoListItemDTO {
   status: string;
 }
 
+/** Token do QR code de check-in da sessão. */
+export interface TokenCheckin {
+  token: string;
+  /** ISO-8601, em UTC. */
+  expiraEm: string;
+}
+
 /** Status que o tatuador pode marcar numa sessão que já aconteceu. */
 export type StatusSessaoMarcavel = 'concluida' | 'no_show';
 
@@ -283,6 +290,20 @@ export const appointmentService = {
    */
   async marcarSessao(sessionId: string, status: StatusSessaoMarcavel): Promise<void> {
     await api.patch(`/appointments/sessoes/${sessionId}/status`, { status });
+  },
+
+  /**
+   * Cliente: token do QR da sessão (vale 2 minutos; peça outro antes de vencer).
+   * Só de 30 min antes a 6 h depois do início.
+   */
+  async qrCodeSessao(sessionId: string): Promise<TokenCheckin> {
+    const { data } = await api.get<TokenCheckin>(`/appointments/sessoes/${sessionId}/qrcode`);
+    return data;
+  },
+
+  /** Tatuador: leu o QR do cliente; a sessão vira realizada. */
+  async checkIn(token: string): Promise<void> {
+    await api.post('/appointments/sessoes/check-in', { token });
   },
 
   /** Posições do estúdio do tatuador logado e as reservas do dia. */

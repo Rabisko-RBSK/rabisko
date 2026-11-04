@@ -57,4 +57,11 @@ public class Appointment {
     @CreationTimestamp
     @Column(name = "data_criacao", updatable = false, nullable = false)
     private LocalDateTime dataCriacao;
+
+    @Column(name = "data_finalizacao")
+    private LocalDateTime dataFinalizacao;
+
+    @Column(name = "arte_final_url")
+    private String arteFinalUrl;
+
 }

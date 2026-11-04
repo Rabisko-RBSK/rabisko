@@ -79,6 +79,10 @@ export function textosDoCard(card: KanbanCardDTO, agora: Date = new Date()): Tex
     }
     case 'agendado':
     case 'em_progresso': {
+      // Todas as sessões já passaram e o tatuador ainda não finalizou.
+      if (card.coluna === 'em_progresso' && card.sessaoAtual === null && card.totalSessoes > 0) {
+        return { etiqueta: 'Aguardando finalização', icone: 'concluido', meta: 'Todas as sessões concluídas' };
+      }
       const etiqueta = card.totalSessoes === 0 ? null
         : card.totalSessoes === 1 ? 'Sessão única'
         : `Sessão ${card.sessaoAtual ?? 1} de ${card.totalSessoes}`;

@@ -10,7 +10,8 @@ import type { ReservaPosicaoDTO } from '../services/api';
  */
 
 export const INICIO_GRADE_MIN = 8 * 60;
-export const FIM_GRADE_MIN = 23 * 60;
+/** Até a meia-noite: uma sessão pode começar às 23:00 e terminar às 24:00. */
+export const FIM_GRADE_MIN = 24 * 60;
 export const PASSO_MIN = 30;
 
 export interface BlocoAgenda {
@@ -36,7 +37,8 @@ export function paraMinutos(hhmm: string): number {
 }
 
 export function paraHorario(min: number): string {
-  const h = Math.floor(min / 60);
+  // 24:00 (fim de uma sessão que termina à meia-noite) aparece como 00:00.
+  const h = Math.floor(min / 60) % 24;
   const m = min % 60;
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }

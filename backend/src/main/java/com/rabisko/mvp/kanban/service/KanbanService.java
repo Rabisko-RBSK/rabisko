@@ -117,7 +117,8 @@ public class KanbanService {
                     nomeDo(cliente), cliente == null ? null : cliente.getAuthId(),
                     c.getTatuadorId(), nomesTatuadores.getOrDefault(c.getTatuadorId(), "Tatuador"),
                     0, null, null, null,
-                    (int) n.naoLidas(), comFuso(n.primeiraNaoLida()), comFuso(n.ultimaNaoLida()), null);
+                    (int) n.naoLidas(), comFuso(n.primeiraNaoLida()), comFuso(n.ultimaNaoLida()), null,
+                    false);
             });
 
         Stream<KanbanCardDTO> cardsDeServico = servicos.stream()
@@ -132,7 +133,8 @@ public class KanbanService {
                     a.getTatuadorId(), nomesTatuadores.getOrDefault(a.getTatuadorId(), "Tatuador"),
                     s.totalSessoes(), s.sessaoAtual(), s.proximaSessao(), s.concluidoEm(),
                     null, null, null,
-                    referencia == null ? null : paraDetalhe(referencia, a, nomeDo(cliente)));
+                    referencia == null ? null : paraDetalhe(referencia, a, nomeDo(cliente)),
+                    a.isFinalizado());
             });
 
         return Stream.concat(cardsDeChat, cardsDeServico).sorted(ORDEM).toList();
@@ -151,7 +153,7 @@ public class KanbanService {
             Collection<Appointment> servicos, Map<UUID, List<AppointmentSession>> sessoes, LocalDateTime agora) {
         return servicos.stream().collect(Collectors.toMap(
             Appointment::getAppointmentId,
-            a -> ClassificadorKanban.doServico(a.getStatus(),
+            a -> ClassificadorKanban.doServico(a.isFinalizado(), a.getDataFinalizacao(),
                 sessoes.getOrDefault(a.getAppointmentId(), List.of()).stream()
                     .map(s -> new Sessao(s.getDataSessao(), s.getDuracaoMinutos()))
                     .toList(),

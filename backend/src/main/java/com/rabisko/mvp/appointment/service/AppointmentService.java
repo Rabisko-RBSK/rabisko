@@ -4,7 +4,9 @@ import com.rabisko.mvp.appointment.domain.*;
 import com.rabisko.mvp.appointment.repository.AppointmentRepository;
 import com.rabisko.mvp.appointment.repository.AppointmentSessionRepository;
 import com.rabisko.mvp.artist.domain.Artist;
+import com.rabisko.mvp.artist.domain.Portfolio;
 import com.rabisko.mvp.artist.repository.ArtistRepository;
+import com.rabisko.mvp.artist.repository.PortfolioImagemRepository;
 import com.rabisko.mvp.chat.domain.Chat;
 import com.rabisko.mvp.chat.repository.ChatRepository;
 import com.rabisko.mvp.chat.service.ChatService;
@@ -13,6 +15,7 @@ import com.rabisko.mvp.client.repository.ClientRepository;
 import com.rabisko.mvp.estilo.repository.EstiloRepository;
 import com.rabisko.mvp.horario.service.HorarioService;
 import com.rabisko.mvp.shared.infraestrutura.security.UsuarioLogado;
+import com.rabisko.mvp.shared.storage.StorageService;
 import com.rabisko.mvp.studio.domain.Studio;
 import com.rabisko.mvp.studio.repository.StudioRepository;
 import com.rabisko.mvp.studio.service.ContratoService;
@@ -23,6 +26,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
@@ -53,6 +57,10 @@ public class AppointmentService {
     private static final LocalDate SEM_LIMITE_INICIO = LocalDate.of(1970, 1, 1);
     private static final LocalDate SEM_LIMITE_FIM = LocalDate.of(9999, 12, 31);
 
+    /** Janela em que o cliente pode mostrar o QR: de 30 min antes a 6 h depois do início. */
+    private static final int CHECKIN_ANTES_MIN = 30;
+    private static final int CHECKIN_DEPOIS_HORAS = 6;
+
     @Autowired private StudioRepository studioRepository;
     @Autowired private AppointmentRepository appointmentRepository;
     @Autowired private AppointmentSessionRepository sessionRepository;
@@ -63,6 +71,9 @@ public class AppointmentService {
     @Autowired private HorarioService horarioService;
     @Autowired private ContratoService contratoService;
     @Autowired private ChatService chatService;
+    @Autowired private TokenCheckinService tokenCheckIn;
+    @Autowired private PortfolioImagemRepository portfolioImagemRepository;
+    @Autowired private StorageService storageService;
 
     /** Sessão já gravada junto com o tatuador do serviço (a sessão não guarda mais o tatuador). */
     private record SessaoDoTatuador(AppointmentSession sessao, Appointment servico) {
@@ -430,6 +441,118 @@ public class AppointmentService {
             throw new AgendamentoInvalidoException("A sessão ainda não aconteceu.");
         }
 
-        sessao.setStatus(status);
+        if (status == AppointmentStatus.concluida) {
+            marcarRealizada(sessao, "manual");
+        } else {
+            sessao.setStatus(status);
+            sessao.setCheckinEm(null);
+            sessao.setCheckinOrigem(null);
+        }
+
+    }
+
+    private void marcarRealizada(AppointmentSession sessao, String origem) {
+        sessao.setStatus(AppointmentStatus.concluida);
+        sessao.setCheckinEm(LocalDateTime.now());
+        sessao.setCheckinOrigem(origem);
+    }
+
+    public TokenCheckinService.TokenCheckin gerarQrCode(UsuarioLogado logado, UUID sessionId) {
+        if (!"cliente".equals(logado.papel())) {
+            throw new AccessDeniedException("Apenas o cliente gera o QR da sessão");
+        }
+        Client cliente = clientRepository.findByAuthId(logado.authId())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Perfil cliente não encontrado"));
+        AppointmentSession sessao = sessionRepository.findById(sessionId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Sessão não encontrada"));
+        Appointment servico = appointmentRepository.findById(sessao.getAppointmentId())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Serviço não encontrado"));
+
+        if (!servico.getClienteId().equals(cliente.getClientId())) {
+            throw new AccessDeniedException("Você não participa desta sessão");
+        }
+        if (sessao.getStatus() == AppointmentStatus.cancelada) {
+            throw new ConflitoAgendaException("Sessão cancelada.");
+        }
+        LocalDateTime agora = LocalDateTime.now();
+        if (agora.isBefore(sessao.getDataSessao().minusMinutes(CHECKIN_ANTES_MIN))
+                || agora.isAfter(sessao.getDataSessao().plusHours(CHECKIN_DEPOIS_HORAS))) {
+            throw new AgendamentoInvalidoException("O QR fica disponível a partir de 30 minutos antes da sessão.");
+        }
+        return tokenCheckIn.gerar(sessionId, cliente.getClientId());
+    }
+
+    @Transactional
+    public void checkIn(UsuarioLogado logado, String token) {
+        if (!"tatuador".equals(logado.papel())) {
+            throw new AccessDeniedException("Apenas o tatuador lê o QR da sessão");
+        }
+        TokenCheckinService.DadosToken dados = tokenCheckIn.validar(token);
+
+        Artist artista = artistRepository.findByAuthId(logado.authId())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Perfil tatuador não encontrado"));
+        AppointmentSession sessao = sessionRepository.findById(dados.sessionId())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Sessão não encontrada"));
+        Appointment servico = appointmentRepository.findById(sessao.getAppointmentId())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Serviço não encontrado"));
+
+        if (!servico.getTatuadorId().equals(artista.getTatuadorId())) {
+            throw new AccessDeniedException("Esta sessão não é sua");
+        }
+        if (!servico.getClienteId().equals(dados.clienteId())) {
+            throw new AgendamentoInvalidoException("QR code inválido.");
+        }
+        if (sessao.getStatus() == AppointmentStatus.cancelada) {
+            throw new ConflitoAgendaException("Sessão cancelada não pode ser marcada.");
+        }
+        marcarRealizada(sessao, "qrcode");
+    }
+
+    @Transactional
+    public void finalizarServico(UsuarioLogado logado, UUID servicoId, boolean adicionarAoPortfolio, MultipartFile foto) {
+        if (!"tatuador".equals(logado.papel())) {
+            throw new AccessDeniedException("Apenas o tatuador finaliza o serviço");
+        }
+        Artist artista = artistRepository.findByAuthId(logado.authId())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Perfil tatuador não encontrado"));
+        Appointment servico = appointmentRepository.findById(servicoId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Serviço não encontrado"));
+
+        if (!servico.getTatuadorId().equals(artista.getTatuadorId())) {
+            throw new AccessDeniedException("Este serviço não é seu");
+        }
+        if (servico.isFinalizado()) {
+            throw new ConflitoAgendaException("Este serviço já foi finalizado.");
+        }
+        if (servico.getStatus() == AppointmentStatus.cancelada) {
+            throw new ConflitoAgendaException("Serviço cancelado não pode ser finalizado.");
+        }
+        boolean temFoto = foto != null && !foto.isEmpty();
+        if (adicionarAoPortfolio && !temFoto) {
+            throw new AgendamentoInvalidoException("Envie a foto do trabalho para adicionar ao portfólio.");
+        }
+
+        LocalDateTime agora = LocalDateTime.now();
+        for (AppointmentSession s : sessionRepository.findByAppointmentId(servicoId)) {
+            boolean futura = s.getDataSessao().isAfter(agora);
+            boolean marcada = s.getStatus() == AppointmentStatus.concluida || s.getStatus() == AppointmentStatus.no_show;
+            if (futura && !marcada && s.getStatus() != AppointmentStatus.cancelada) {
+                s.setStatus(AppointmentStatus.cancelada);
+            }
+        }
+
+        if (adicionarAoPortfolio) {
+            String url = storageService.uploadPortfolio(foto);
+            servico.setArteFinalUrl(url);
+            portfolioImagemRepository.save(Portfolio.builder()
+                .tatuadorId(artista.getTatuadorId())
+                .url(url)
+                .estiloId(servico.getEstiloId())
+                .build());
+        }
+
+        servico.setStatus(AppointmentStatus.concluida);
+        servico.setFinalizado(true);
+        servico.setDataFinalizacao(agora);
     }
 }

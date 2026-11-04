@@ -1,6 +1,5 @@
 package com.rabisko.mvp.kanban.service;
 
-import com.rabisko.mvp.appointment.domain.AppointmentStatus;
 import com.rabisko.mvp.kanban.domain.KanbanColuna;
 import com.rabisko.mvp.kanban.service.ClassificadorKanban.Sessao;
 import com.rabisko.mvp.kanban.service.ClassificadorKanban.Situacao;
@@ -21,7 +20,7 @@ class ClassificadorKanbanTest {
     }
 
     private static Situacao classificar(List<Sessao> sessoes) {
-        return ClassificadorKanban.doServico(AppointmentStatus.confirmada, sessoes, AGORA);
+        return ClassificadorKanban.doServico(false, null, sessoes, AGORA);
     }
 
     @Test
@@ -50,17 +49,26 @@ class ClassificadorKanbanTest {
     }
 
     @Test
-    void todasAsSessoesTerminadasEFinalizado() {
+    void todasAsSessoesTerminadasSemFinalizarAguardaFinalizacao() {
         Situacao s = classificar(List.of(sessao("2026-10-20T14:00"), sessao("2026-10-28T09:00")));
-        assertEquals(KanbanColuna.finalizado, s.coluna());
-        assertEquals(LocalDate.parse("2026-10-28"), s.concluidoEm());
+        assertEquals(KanbanColuna.em_progresso, s.coluna());
+        assertTrue(s.aguardandoFinalizacao());
         assertNull(s.sessaoAtual());
+        assertNull(s.proximaSessao());
     }
 
     @Test
-    void statusConcluidaFinalizaMesmoComSessaoFutura() {
-        List<Sessao> futura = List.of(sessao("2026-11-20T14:00"));
-        assertEquals(KanbanColuna.finalizado,
-            ClassificadorKanban.doServico(AppointmentStatus.concluida, futura, AGORA).coluna());
+    void finalizadoPeloTatuadorMesmoComSessaoFutura() {
+        Situacao s = ClassificadorKanban.doServico(true, LocalDateTime.parse("2026-11-09T18:00"),
+            List.of(sessao("2026-11-20T14:00")), AGORA);
+        assertEquals(KanbanColuna.finalizado, s.coluna());
+        assertEquals(LocalDate.parse("2026-11-09"), s.concluidoEm());
+    }
+
+    @Test
+    void finalizadoSemDataUsaFimDaUltimaSessao() {
+        Situacao s = ClassificadorKanban.doServico(true, null,
+            List.of(sessao("2026-10-20T14:00"), sessao("2026-10-28T09:00")), AGORA);
+        assertEquals(LocalDate.parse("2026-10-28"), s.concluidoEm());
     }
 }
