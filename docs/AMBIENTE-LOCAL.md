@@ -135,7 +135,6 @@ O `supabase-up.sh` chama `.devcontainer/scripts/gen-backend-env.sh` (que você t
 |---|---|
 | `SUPABASE_URL` | `http://127.0.0.1:54321` (`API_URL` do `supabase status`) |
 | `SUPABASE_SERVICE_ROLE_KEY` | `SERVICE_ROLE_KEY` do `supabase status` (JWT `eyJ...`) |
-| `JWT_SECRET` | aleatório (`openssl rand -hex 32`), usado para assinar os tokens da API do backend |
 
 Não são gerados, porque o profile `local` já tem defaults que funcionam:
 
@@ -145,7 +144,6 @@ Não são gerados, porque o profile `local` já tem defaults que funcionam:
 Atenção:
 
 - O Storage precisa da **`SERVICE_ROLE_KEY`** (JWT). A chave `sb_secret_...` (`SECRET_KEY`) é rejeitada pelo Storage local com `403 Invalid Compact JWS`.
-- O `JWT_SECRET` que aparece no `supabase status` é o do Supabase, **não** o do backend.
 - Se o seu `backend/.env` veio do guia antigo, com `host.docker.internal`, o script mostra um aviso. Apague as linhas `DB_URL` e `SUPABASE_URL` e rode `npm run env:backend` de novo.
 
 Para regenerar tudo do zero: apague `backend/.env` e rode `npm run env:backend`.
@@ -186,6 +184,23 @@ npx supabase migration up --local
 ```
 
 Os buckets `profile_images`, `portfolio_images` e `chat_images` (públicos) são declarados em `supabase/config.toml` (`[storage.buckets.*]`) e criados pelo `start`/`db reset` local.
+
+### Contas de teste do seed
+
+Todas entram com a senha **`senha12345`**.
+
+| Conta | Papel | Situação no seed |
+|---|---|---|
+| `e@e.com` | estúdio | Tinta Negra Studio (3 posições), com Diego, Filipe e João na equipe |
+| `carla.mendes@example.com` | tatuadora | dona do Ateliê Carla Mendes (modo estúdio) e com convite pendente do Tinta Negra |
+| `diego.fernandes@example.com` | tatuador | colaborador do Tinta Negra (comissão de 30%) |
+| `filipe.ribeiro@example.com` | tatuador | colaborador do Tinta Negra (aluguel mensal) |
+| `j@j.com` | tatuador | João Santos, colaborador do Tinta Negra (salário mensal) |
+| `rita.alves@example.com` | tatuadora | sem estúdio: não aparece na busca e não agenda |
+| `ana.souza@example.com`, `bruno.lima@example.com`, `t@t.com` | cliente | com chats e sessões |
+| `admin@rabisko.com` | admin | só no Supabase Auth, sem perfil no app |
+
+As contas só existem depois do seed (`npm run db:reset`). Contas criadas pelo app, no cadastro, usam a senha escolhida no cadastro.
 
 > Os scripts em `backend/src/main/resources/db/migration` **não** são aplicados por nada (o projeto não usa Flyway). A fonte de verdade do schema é `supabase/migrations`.
 

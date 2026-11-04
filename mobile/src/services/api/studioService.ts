@@ -1,5 +1,6 @@
-import api from './index';
-import { ConviteDTO, ConviteDetalheDTO, ContratoDTO, ContratoInput } from './artistService';
+import api, { type EnderecoInput } from './index';
+import { multipartImage } from '../../utils/multipart';
+import { ConviteDTO, ConviteDetalheDTO, ContratoDTO, ContratoInput, EnderecoDTO, HorarioDTO } from './artistService';
 
 /** Tatuador da equipe do estúdio (GET /studio/me/colaboradores). */
 export interface ColaboradorDTO {
@@ -13,7 +14,8 @@ export interface ColaboradorDTO {
 
 /**
  * Resultado da busca de tatuadores para convite (GET /studio/tatuadores).
- * O backend só devolve tatuadores ativos e sem estúdio.
+ * O backend só devolve tatuadores ativos que não são colaboradores de nenhum
+ * estúdio (quem só tem estúdio próprio pode ser convidado).
  */
 export interface TatuadorBuscaDTO {
   tatuadorId: string;
@@ -26,16 +28,44 @@ export interface TatuadorBuscaDTO {
 export interface StudioDTO {
   estudioId: string;
   nome: string;
-  email: string;
   cnpj: string | null;
   telefone: string | null;
   enderecoId: string | null;
   fotoPerfilUrl: string | null;
   /** Posições (macas/bancadas) de atendimento, de 1 a 50. */
   posicoes: number;
+  /**
+   * Conformidade do CNPJ na Receita Federal (ativo + CNAE de tatuagem):
+   * pendente = ainda não consultado; irregular = deixou de estar conforme.
+   * O backend confere de novo todo dia.
+   */
+  cnpjStatus: CnpjStatus;
 }
 
-/** Rotas `/studio/**` — exigem role ESTUDIO no backend. */
+export type CnpjStatus = 'verificado' | 'pendente' | 'irregular';
+
+/** Dados editáveis do estúdio (GET/PATCH /studio/me/perfil). CNPJ é só leitura. */
+export interface EstudioPerfil {
+  nome: string;
+  cnpj: string | null;
+  cnpjStatus: CnpjStatus;
+  /** Só dígitos; null sem telefone. */
+  telefone: string | null;
+  fotoUrl: string | null;
+  endereco: EnderecoDTO | null;
+  posicoes: number;
+}
+
+export interface AtualizarPerfilEstudioDTO {
+  nome: string;
+  telefone: string | null;
+  endereco: EnderecoInput;
+}
+
+/**
+ * Rotas `/studio/**` — conta de estúdio, ou tatuador dono gerenciando o próprio
+ * estúdio (modo estúdio).
+ */
 export const studioService = {
   async meuEstudio(): Promise<StudioDTO> {
     const { data } = await api.get<StudioDTO>('/studio/me');
@@ -95,6 +125,38 @@ export const studioService = {
 
   async cancelarPropostaContrato(tatuadorId: string): Promise<ContratoDTO> {
     const { data } = await api.delete<ContratoDTO>(`/studio/me/colaboradores/${tatuadorId}/contratos/proposta`);
+    return data;
+  },
+
+  /** Grade de atendimento do estúdio. Lista vazia = sem restrição. */
+  async meuPerfil(): Promise<EstudioPerfil> {
+    const { data } = await api.get<EstudioPerfil>('/studio/me/perfil');
+    return data;
+  },
+
+  async atualizarPerfil(dto: AtualizarPerfilEstudioDTO): Promise<EstudioPerfil> {
+    const { data } = await api.patch<EstudioPerfil>('/studio/me/perfil', dto);
+    return data;
+  },
+
+  /** Envia a foto do estúdio (multipart) e o backend já grava; devolve a URL. */
+  async enviarFoto(localUri: string): Promise<string> {
+    const form = multipartImage(localUri, 'file');
+    const { data } = await api.post<{ url: string }>('/studio/me/foto', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 60000,
+    });
+    return data.url;
+  },
+
+  async meusHorarios(): Promise<HorarioDTO[]> {
+    const { data } = await api.get<HorarioDTO[]>('/studio/me/horarios');
+    return data;
+  },
+
+  /** Substitui a semana inteira; lista vazia remove a grade. */
+  async atualizarHorarios(horarios: HorarioDTO[]): Promise<HorarioDTO[]> {
+    const { data } = await api.put<HorarioDTO[]>('/studio/me/horarios', horarios);
     return data;
   },
 };

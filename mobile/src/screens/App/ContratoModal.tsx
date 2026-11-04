@@ -16,15 +16,16 @@ import { FilterChip } from '../../components/common/Chip';
 import { Input } from '../../components/common/Input';
 import {
   ContratoInput,
-  ContratoModelo,
+  ModeloProposto,
   ContratoPeriodicidade,
 } from '../../services/api/artistService';
 import { MODELO_LABELS, PERIODICIDADE_LABELS, formatarContrato } from '../../utils/contrato';
 
-const MODELOS = Object.keys(MODELO_LABELS) as ContratoModelo[];
+// "dono" (estúdio próprio) não é proposto a colaboradores.
+const MODELOS: ModeloProposto[] = ['comissao', 'aluguel', 'salario'];
 const PERIODICIDADES = Object.keys(PERIODICIDADE_LABELS) as ContratoPeriodicidade[];
 
-const AJUDA: Record<ContratoModelo, string> = {
+const AJUDA: Record<ModeloProposto, string> = {
   comissao: 'O estúdio fica com esse percentual do valor bruto de cada trabalho.',
   aluguel: 'O tatuador paga esse valor ao estúdio e fica com 100% dos trabalhos.',
   salario: 'O estúdio paga esse valor ao tatuador e fica com a receita dos trabalhos.',
@@ -53,7 +54,7 @@ const duasCasas = (n: number) => Math.round(n * 100) / 100;
  * (o backend recusa, por exemplo, comissão com valorFixo). null = inválido.
  */
 function montarInput(
-  modelo: ContratoModelo,
+  modelo: ModeloProposto,
   percentual: string,
   valor: string,
   periodicidade: ContratoPeriodicidade,
@@ -117,7 +118,7 @@ function ContratoForm({
   textoBotao = 'Enviar convite',
   onConfirmar,
 }: Pick<Props, 'enviando' | 'textoBotao' | 'onConfirmar'>) {
-  const [modelo, setModelo] = useState<ContratoModelo>('comissao');
+  const [modelo, setModelo] = useState<ModeloProposto>('comissao');
   const [percentual, setPercentual] = useState('');
   const [valor, setValor] = useState('');
   const [periodicidade, setPeriodicidade] = useState<ContratoPeriodicidade>('mensal');

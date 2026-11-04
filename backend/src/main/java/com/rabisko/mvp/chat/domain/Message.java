@@ -38,11 +38,11 @@ public class Message {
     @Column(name = "chat_id", updatable = false, nullable = false)
     private UUID chatId;
 
-    /** userId de quem ENVIOU. */
+    /** authId (auth.users.id) de quem ENVIOU. */
     @Column(name = "remetente_id", updatable = false, nullable = false)
     private UUID remetenteId;
 
-    /** userId de quem vai RECEBER. */
+    /** authId (auth.users.id) de quem vai RECEBER. */
     @Column(name = "destinatario_id", updatable = false, nullable = false)
     private UUID destinatarioId;
 

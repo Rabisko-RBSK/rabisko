@@ -1,12 +1,12 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
-  createStudioDemoBookings, emptyStudioDashboard, monthRange, percentageChange, periodDate, periodDays,
-  summarizeStudioBookings, type StudioDashboard, type StudioPeriod,
+  emptyStudioDashboard, monthRange, percentageChange, periodDate, periodDays,
+  type StudioDashboard, type StudioPeriod,
 } from '../services/studioDashboard';
 import { studioDashboardService } from '../services/api/studioDashboardService';
 
 interface StudioDashboardData {
-  dashboard: Omit<StudioDashboard, 'styles'>;
+  dashboard: StudioDashboard;
   previousRevenue: number;
   previousAppointments: number;
 }
@@ -15,7 +15,6 @@ interface StudioDashboardData {
  * Carrega o dashboard do estúdio logado das rotas /studio/me/dashboard/**.
  * Período: mês atual até hoje, ou o mês anterior inteiro. A variação
  * "vs mês anterior" compara com o mês inteiro antes do período.
- * "Estilos mais procurados" continua com dados de demonstração (sem dados no banco).
  */
 function useStudioDashboardState() {
   const [period, setPeriod] = useState<StudioPeriod>('current');
@@ -27,10 +26,6 @@ function useStudioDashboardState() {
 
   const month = useMemo(() => periodDate(period, now), [period, now]);
   const days = periodDays(period, now);
-  const styles = useMemo(
-    () => summarizeStudioBookings(createStudioDemoBookings(now), month, days).styles,
-    [now, month, days],
-  );
 
   useEffect(() => {
     let active = true;
@@ -48,11 +43,13 @@ function useStudioDashboardState() {
       studioDashboardService.agenda(agendaRange),
       studioDashboardService.receitaTotal(previousRange),
       studioDashboardService.agendamentos(previousRange),
+      studioDashboardService.estilos(range),
+      studioDashboardService.financeiro(range),
     ])
-      .then(([agendamentos, receita, evolucao, artists, bookings, previousReceita, previousAgendamentos]) => {
+      .then(([agendamentos, receita, evolucao, artists, bookings, previousReceita, previousAgendamentos, styles, financeiro]) => {
         if (!active) return;
         setData({
-          dashboard: { ...agendamentos, ...receita, ...evolucao, artists, bookings },
+          dashboard: { ...agendamentos, ...receita, ...evolucao, artists, bookings, styles, financeiro },
           previousRevenue: previousReceita.revenue,
           previousAppointments: previousAgendamentos.appointments,
         });
@@ -70,14 +67,14 @@ function useStudioDashboardState() {
   }, [month, days]);
 
   const result = useMemo(() => {
-    const dashboard: StudioDashboard = { ...(data?.dashboard ?? emptyStudioDashboard(days)), styles };
+    const dashboard: StudioDashboard = data?.dashboard ?? emptyStudioDashboard(days);
     return {
       dashboard, month,
       monthLabel: month.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
       revenueChange: data ? percentageChange(dashboard.revenue, data.previousRevenue) : null,
       bookingChange: data ? percentageChange(dashboard.appointments, data.previousAppointments) : null,
     };
-  }, [data, days, styles, month]);
+  }, [data, days, month]);
   return { ...result, period, setPeriod, refresh, loading, error };
 }
 

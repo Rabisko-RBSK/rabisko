@@ -3,6 +3,7 @@ package com.rabisko.mvp.studio.service;
 import com.rabisko.mvp.studio.domain.ContratoColaborador;
 import com.rabisko.mvp.studio.domain.ContratoDTO;
 import com.rabisko.mvp.studio.domain.ContratoInputDTO;
+import com.rabisko.mvp.studio.domain.ContratoModelo;
 import com.rabisko.mvp.studio.domain.ContratoStatus;
 import com.rabisko.mvp.studio.domain.ConviteDetalheDTO;
 import com.rabisko.mvp.studio.repository.ContratoColaboradorRepository;
@@ -15,9 +16,11 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -77,6 +80,43 @@ public class ContratoService {
                 .ifPresent(c -> responder(c, novoStatus, agora));
     }
 
+    public Optional<UUID> estudioColaborador(UUID tatuadorId) {
+        return contratoRepository.findByTatuadorIdAndStatus(tatuadorId, ativo).stream()
+            .filter(c -> c.getModelo() != ContratoModelo.dono)
+            .findFirst()
+            .map(ContratoColaborador::getEstudioId);
+    }
+
+    public Optional<UUID> estudioProprio(UUID tatuadorId) {
+        return contratoRepository.findByTatuadorIdAndStatus(tatuadorId, ativo).stream()
+            .filter(c -> c.getModelo() == ContratoModelo.dono)
+            .findFirst()
+            .map(ContratoColaborador::getEstudioId);
+    }
+
+    public Optional<UUID> estudioDeAtendimento(UUID tatuadorId) {
+        return estudioColaborador(tatuadorId).or(() -> estudioProprio(tatuadorId));
+    }
+
+    /** Tatuador com contrato "dono" ativo no estúdio (null em estúdio de conta própria sem dono). */
+    public Optional<UUID> donoDoEstudio(UUID estudioId) {
+        return contratoRepository.findByEstudioIdAndStatus(estudioId, ativo).stream()
+            .filter(c -> c.getModelo() == ContratoModelo.dono)
+            .min(Comparator.comparing(ContratoColaborador::getDataCriacao))
+            .map(ContratoColaborador::getTatuadorId);
+    }
+
+    @Transactional
+    public ContratoColaborador criarDono(UUID estudioId, UUID tatuadorId) {
+        return contratoRepository.save(ContratoColaborador.builder()
+            .estudioId(estudioId)
+            .tatuadorId(tatuadorId)
+            .modelo(ContratoModelo.dono)
+            .status(ativo)
+            .dataResposta(LocalDateTime.now())
+            .build());
+    }
+
     @Transactional
     public ContratoColaborador aceitarRenegociacao(UUID estudioId, UUID tatuadorId) {
         ContratoColaborador proposta = exigirProposta(estudioId, tatuadorId);
@@ -116,7 +156,8 @@ public class ContratoService {
         LocalDateTime agora = LocalDateTime.now();
 
         contratoRepository.findByEstudioIdAndTatuadorIdAndStatus(estudioId, tatuadorId, ativo)
-                .ifPresent(c -> encerrar(c, agora));
+            .filter(c -> c.getModelo() != ContratoModelo.dono)
+            .ifPresent(c -> encerrar(c, agora));
 
         contratoRepository.findByEstudioIdAndTatuadorIdAndStatus(estudioId, tatuadorId, proposto)
                 .ifPresent(c -> responder(c, cancelado, agora));

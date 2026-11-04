@@ -2,11 +2,6 @@
 # Crie um arquivo backend/.env com estas chaves preenchidas.
 # O Spring Boot importa esse arquivo automaticamente via spring.config.import.
 
-# Chave usada para assinar e validar os tokens JWT (HMAC256).
-# Qualquer string longa e aleatória serve para desenvolvimento local.
-# Se ausente, o backend usa o fallback inseguro "my-secret-key".
-JWT_SECRET=
-
 # Supabase Storage — necessário para upload de imagens (perfil e portfólio).
 # Após rodar `supabase start` na raiz do repositório, use os valores exibidos:
 #   SUPABASE_URL             -> "API URL"          (ex.: http://127.0.0.1:54321)
@@ -14,6 +9,12 @@ JWT_SECRET=
 # Sem essas variáveis os endpoints de upload falham silenciosamente.
 SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
+
+# Endereço do Supabase visto pelo app, usado nas URLs públicas das imagens.
+# Em dev local com celular, use o IP da máquina na rede (o mesmo de
+# EXPO_PUBLIC_SUPABASE_URL do mobile, ex.: http://192.168.15.30:54321):
+# 127.0.0.1 é o próprio celular, e a foto salva não carrega. Vazio = SUPABASE_URL.
+SUPABASE_PUBLIC_URL=
 
 # Nota: DB_URL, DB_USER e DB_PASS não são necessários no profile local —
 # o arquivo application-local.yml já aponta para localhost:54322 com

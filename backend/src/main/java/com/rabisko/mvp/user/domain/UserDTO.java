@@ -9,6 +9,8 @@ import lombok.Setter;
 
 import java.time.LocalDate;
 
+import org.hibernate.validator.constraints.br.CPF;
+
 
 @Getter
 @Setter
@@ -29,6 +31,8 @@ public class UserDTO {
 
     private LocalDate dataNasc;
 
+    @NotBlank
+    @CPF
     private String cpf;
 
     @AssertTrue(message = "Voce deve aceitar os termos de uso")

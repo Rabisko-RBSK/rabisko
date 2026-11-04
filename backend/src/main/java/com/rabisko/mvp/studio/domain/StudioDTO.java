@@ -5,23 +5,23 @@ import java.util.UUID;
 public record StudioDTO(
     UUID estudioId,
     String nome,
-    String email,
     String cnpj,
     String telefone,
     UUID enderecoId,
     String fotoPerfilUrl,
-    int posicoes
+    int posicoes,
+    CnpjStatus cnpjStatus
 ) {
     public static StudioDTO from(Studio s) {
         return new StudioDTO(
             s.getEstudioId(),
             s.getNome(),
-            s.getEmail(),
             s.getCnpj(),
             s.getTelefone(),
             s.getEnderecoId(),
             s.getFotoPerfilUrl(),
-            s.getPosicoes()
+            s.getPosicoes(),
+            s.getCnpjStatus()
         );
     }
 }

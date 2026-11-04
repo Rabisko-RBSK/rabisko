@@ -1,0 +1,197 @@
+#
+# A fatal error has been detected by the Java Runtime Environment:
+#
+#  SIGSEGV (0xb) at pc=0x0000794d4a334727, pid=17062, tid=17259
+#
+# JRE version: OpenJDK Runtime Environment Microsoft-11933203 (21.0.8+9) (build 21.0.8+9-LTS)
+# Java VM: OpenJDK 64-Bit Server VM Microsoft-11933203 (21.0.8+9-LTS, mixed mode, sharing, tiered, compressed oops, compressed class ptrs, g1 gc, linux-amd64)
+# Problematic frame:
+# C  [libonnxruntime.so+0xee4727]
+#
+# Core dump will be written. Default location: Core dumps may be processed with "/wsl-capture-crash %t %E %p %s" (or dumping to /workspaces/rabisko/backend/core.17062)
+#
+# If you would like to submit a bug report, please visit:
+#   https://github.com/microsoft/openjdk/issues
+# The crash happened outside the Java Virtual Machine in native code.
+# See problematic frame for where to report the bug.
+#
+
+---------------  S U M M A R Y ------------
+
+Command Line: target/rabisko-0.0.3-SNAPSHOT.jar --spring.profiles.active=local --server.port=18080 --spring.jpa.show-sql=false --rabisko.cnpj.validacao.habilitada=true
+
+Host: Intel(R) Core(TM) i5-10400F CPU @ 2.90GHz, 12 cores, 7G, Debian GNU/Linux 11 (bullseye)
+Time: Mon Nov  2 04:14:31 2026 UTC elapsed time: 20.333504 seconds (0d 0h 0m 20s)
+
+---------------  T H R E A D  ---------------
+
+Current thread (0x0000794c9c000e70):  JavaThread "ForkJoinPool-1-worker-2" daemon [_thread_in_native, id=17259, stack(0x0000794ca7dfe000,0x0000794ca7eff000) (1028K)]
+
+Stack: [0x0000794ca7dfe000,0x0000794ca7eff000],  sp=0x0000794ca7efc870,  free space=1018k
+Native frames: (J=compiled Java code, j=interpreted, Vv=VM code, C=native code)
+C  [libonnxruntime.so+0xee4727]
+Java frames: (J=compiled Java code, j=interpreted, Vv=VM code)
+j  ai.onnxruntime.OrtSession.createSession(JJLjava/lang/String;J)J+0
+j  ai.onnxruntime.OrtSession.<init>(Lai/onnxruntime/OrtEnvironment;Ljava/lang/String;Lai/onnxruntime/OrtAllocator;Lai/onnxruntime/OrtSession$SessionOptions;)V+14
+j  ai.onnxruntime.OrtEnvironment.createSession(Ljava/lang/String;Lai/onnxruntime/OrtAllocator;Lai/onnxruntime/OrtSession$SessionOptions;)Lai/onnxruntime/OrtSession;+15
+j  ai.onnxruntime.OrtEnvironment.createSession(Ljava/lang/String;Lai/onnxruntime/OrtSession$SessionOptions;)Lai/onnxruntime/OrtSession;+7
+j  com.rabisko.mvp.simulation.service.OnnxModel.session()Lai/onnxruntime/OrtSession;+63
+j  com.rabisko.mvp.simulation.service.OnnxModel.lambda$preloadInBackground$0()V+1
+j  com.rabisko.mvp.simulation.service.OnnxModel$$Lambda+0x0000794d50d0b580.run()V+4
+j  java.lang.Thread.runWith(Ljava/lang/Object;Ljava/lang/Runnable;)V+5 java.base@21.0.8
+j  java.lang.VirtualThread.run(Ljava/lang/Runnable;)V+66 java.base@21.0.8
+j  java.lang.VirtualThread$VThreadContinuation$1.run()V+8 java.base@21.0.8
+j  jdk.internal.vm.Continuation.enter0()V+4 java.base@21.0.8
+j  jdk.internal.vm.Continuation.enter(Ljdk/internal/vm/Continuation;Z)V+1 java.base@21.0.8
+J 8995  jdk.internal.vm.Continuation.enterSpecial(Ljdk/internal/vm/Continuation;ZZ)V java.base@21.0.8 (0 bytes) @ 0x0000794db4641e5c [0x0000794db4641d20+0x000000000000013c]
+j  jdk.internal.vm.Continuation.run()V+122 java.base@21.0.8
+j  java.lang.VirtualThread.runContinuation()V+72 java.base@21.0.8
+j  java.lang.VirtualThread$$Lambda+0x0000794d50bd0c08.run()V+4 java.base@21.0.8
+j  java.util.concurrent.ForkJoinTask$RunnableExecuteAction.exec()Z+4 java.base@21.0.8
+j  java.util.concurrent.ForkJoinTask.doExec()I+10 java.base@21.0.8
+j  java.util.concurrent.ForkJoinPool$WorkQueue.topLevelExec(Ljava/util/concurrent/ForkJoinTask;Ljava/util/concurrent/ForkJoinPool$WorkQueue;)V+19 java.base@21.0.8
+j  java.util.concurrent.ForkJoinPool.scan(Ljava/util/concurrent/ForkJoinPool$WorkQueue;II)I+211 java.base@21.0.8
+j  java.util.concurrent.ForkJoinPool.runWorker(Ljava/util/concurrent/ForkJoinPool$WorkQueue;)V+35 java.base@21.0.8
+j  java.util.concurrent.ForkJoinWorkerThread.run()V+31 java.base@21.0.8
+v  ~StubRoutines::call_stub 0x0000794db3db6cc6
+
+siginfo: si_signo: 11 (SIGSEGV), si_code: 1 (SEGV_MAPERR), si_addr: 0x0000000000000018
+
+Registers:
+RAX=0x0000000000000000, RBX=0x0000794d9c3276d8, RCX=0x0000794ca7efcbe0, RDX=0x0000794c94003978
+RSP=0x0000794ca7efc870, RBP=0x0000794dc7212f20, RSI=0x0000794ca7efc8f0, RDI=0x0000794dc7212f20
+R8 =0x0000000000000000, R9 =0x00e1acd919265287, R10=0x00007ffe415c8080, R11=0x00007ffe415c8080
+R12=0x0000794ca7efc8f0, R13=0x0000794c94003978, R14=0x0000794d4aff78b8, R15=0x0000794ca7efcbe0
+RIP=0x0000794d4a334727, EFLAGS=0x0000000000010206, CSGSFS=0x002b000000000033, ERR=0x0000000000000004
+  TRAPNO=0x000000000000000e
+
+XMM[0]=0x0000000000000000 0x0000000000000000
+XMM[1]=0x0000794d9c327538 0x0000794d9c3276f0
+XMM[2]=0x0000000000000000 0x0000000000000000
+XMM[3]=0x656d69746e757278 0x6e6e6f2074736e6f
+XMM[4]=0x622073616820656e 0x6f6e207475622072
+XMM[5]=0x206f742074706d65 0x7474412029287265
+XMM[6]=0x616e614d676e6967 0x676f4c3a3a676e69
+XMM[7]=0x0000000000000000 0x0000000000000000
+XMM[8]=0x622073616820656e 0x6f6e207475622072
+XMM[9]=0x0000000000000000 0x0000000000000000
+XMM[10]=0x0000000000000000 0x00000000406b56f1
+XMM[11]=0x61a3c33661a3c336 0x61a3c336655bc9e3
+XMM[12]=0x0000000000000000 0x0000000003b806ad
+XMM[13]=0x0000000000000000 0x0000000000000000
+XMM[14]=0x0000000000000000 0x0000000000000000
+XMM[15]=0x0000000000000000 0x000000008c1101b0
+  MXCSR=0x00001fa2
+
+
+Register to memory mapping:
+
+RAX=0x0 is null
+RBX=0x0000794d9c3276d8: _ZTVNSt7__cxx1119basic_ostringstreamIcSt11char_traitsIcESaIcEEE+0x0000000000000000 in /usr/lib/x86_64-linux-gnu/libstdc++.so.6 at 0x0000794d9c163000
+RCX=0x0000794ca7efcbe0 is pointing into the stack for thread: 0x0000794c9c000e70
+RDX=0x0000794c94003978 points into unknown readable memory: 0x0000794c94003988 | 88 39 00 94 4c 79 00 00
+RSP=0x0000794ca7efc870 is pointing into the stack for thread: 0x0000794c9c000e70
+RBP=0x0000794dc7212f20 points into unknown readable memory: 0x0000000000000000 | 00 00 00 00 00 00 00 00
+RSI=0x0000794ca7efc8f0 is pointing into the stack for thread: 0x0000794c9c000e70
+RDI=0x0000794dc7212f20 points into unknown readable memory: 0x0000000000000000 | 00 00 00 00 00 00 00 00
+R8 =0x0 is null
+R9 =0x00e1acd919265287 is an unknown value
+R10=0x00007ffe415c8080 points into unknown readable memory: 0x00000003000ee3aa | aa e3 0e 00 03 00 00 00
+R11=0x00007ffe415c8080 points into unknown readable memory: 0x00000003000ee3ac | ac e3 0e 00 03 00 00 00
+R12=0x0000794ca7efc8f0 is pointing into the stack for thread: 0x0000794c9c000e70
+R13=0x0000794c94003978 points into unknown readable memory: 0x0000794c94003988 | 88 39 00 94 4c 79 00 00
+R14=0x0000794d4aff78b8: <offset 0x0000000001ba78b8> in /tmp/onnxruntime-java13331844063565809160/libonnxruntime.so at 0x0000794d49450000
+R15=0x0000794ca7efcbe0 is pointing into the stack for thread: 0x0000794c9c000e70
+
+Top of Stack: (sp=0x0000794ca7efc870)
+0x0000794ca7efc870:   0000794d9c3276f0 0000794d9c327538
+0x0000794ca7efc880:   6f69747065637845 0000794ca7efc8b0
+0x0000794ca7efc890:   0000794d9c3276f0 0000794d9c327538
+0x0000794ca7efc8a0:   000000000000000e 000000006ae80e27
+0x0000794ca7efc8b0:   0000000e0000001f 0000000200000004
+0x0000794ca7efc8c0:   0000007e0000000a 0000013100000001
+0x0000794ca7efc8d0:   0000000000000000 0000000000000000
+0x0000794ca7efc8e0:   0000794dc4001f60 0000000000000104
+0x0000794ca7efc8f0:   18e41f369f89aa2d 0000000200000004
+0x0000794ca7efc900:   0000007e0000000a 0000013100000001
+0x0000794ca7efc910:   0000000000000000 0000000000000000
+0x0000794ca7efc920:   0000794dc4001f60 776ab5ef46256c00
+0x0000794ca7efc930:   0000794c940046f8 0000794ca7efca50
+0x0000794ca7efc940:   0000794ca7efce10 0000794ca7efca28
+0x0000794ca7efc950:   0000794ca7efcb80 0000794ca7efcbe0
+0x0000794ca7efc960:   0000794ca7efce28 0000794d49558bf3
+0x0000794ca7efc970:   0000000000000028 0000794c94005da0
+0x0000794ca7efc980:   0000794c94003e50 776ab5ef46256c00
+0x0000794ca7efc990:   0000794c94003bb0 0000794c94003c00
+0x0000794ca7efc9a0:   0000794ca7efcaa0 0000794ca7efcb20
+0x0000794ca7efc9b0:   0000794ca7efca38 0000794ca7efca60
+0x0000794ca7efc9c0:   0000000000000000 0000794c94003c28
+0x0000794ca7efc9d0:   0000794ca7efcb00 0000794ca7efcae0
+0x0000794ca7efc9e0:   0000794ca7efcac0 0000794ca7efcb60
+0x0000794ca7efc9f0:   0000794c97d24580 0000794ca7efca50
+0x0000794ca7efca00:   0000794ca7efca70 0000000000000000
+0x0000794ca7efca10:   0000794ca7efcbe0 0000794c94003c00
+0x0000794ca7efca20:   0000000000000000 0000794c940ffc10
+0x0000794ca7efca30:   0000794c94138310 0000000000000000
+0x0000794ca7efca40:   0000000000000000 0000794c940d7270
+0x0000794ca7efca50:   0000000000000000 0000000000000000
+0x0000794ca7efca60:   0000794c94003bb0 0000000000000011 
+
+Instructions: (pc=0x0000794d4a334727)
+0x0000794d4a334627:   ae 1e ff 48 89 c5 e9 6a ff ff ff 66 0f 1f 44 00
+0x0000794d4a334637:   00 be 22 00 00 00 48 89 ef e8 eb a4 1e ff eb 95
+0x0000794d4a334647:   66 0f 1f 84 00 00 00 00 00 48 89 df e8 28 a3 1e
+0x0000794d4a334657:   ff 48 8b 03 be 0a 00 00 00 48 89 df ff 50 30 0f
+0x0000794d4a334667:   be f0 eb 94 e8 d0 9f 1e ff f3 0f 1e fa 41 57 41
+0x0000794d4a334677:   56 41 55 41 54 55 53 48 81 ec c8 00 00 00 48 8b
+0x0000794d4a334687:   1d c4 84 cb 00 64 4c 8b 3c 25 28 00 00 00 4c 89
+0x0000794d4a334697:   bc 24 b8 00 00 00 49 89 ff 48 8d 43 18 66 48 0f
+0x0000794d4a3346a7:   6e c8 48 8b 05 30 84 cb 00 48 83 c0 10 66 48 0f
+0x0000794d4a3346b7:   6e d0 48 8b 07 66 0f 6c ca 48 85 c0 74 6a 4c 8d
+0x0000794d4a3346c7:   68 08 48 8b 00 4c 8d a4 24 80 00 00 00 48 8b 28
+0x0000794d4a3346d7:   0f b6 05 da 31 cc 00 84 c0 0f 84 8a 01 00 00 0f
+0x0000794d4a3346e7:   29 0c 24 e8 f1 a7 1e ff 48 8b 35 ba 31 cc 00 4c
+0x0000794d4a3346f7:   89 f9 48 89 ef 48 ba 00 58 47 f8 0d 00 00 00 48
+0x0000794d4a334707:   0f af 56 10 48 2b 06 48 03 46 08 4c 89 e6 48 01
+0x0000794d4a334717:   d0 4c 89 ea 48 89 84 24 80 00 00 00 48 8b 45 00
+0x0000794d4a334727:   ff 50 18 66 0f 6f 0c 24 48 8d 43 40 49 8b bf d0
+0x0000794d4a334737:   00 00 00 41 0f 11 8f 80 00 00 00 49 89 87 f0 00
+0x0000794d4a334747:   00 00 49 8d 87 e0 00 00 00 48 39 c7 74 10 49 8b
+0x0000794d4a334757:   87 e0 00 00 00 48 8d 70 01 e8 9b 9a 1e ff 48 8b
+0x0000794d4a334767:   05 64 86 cb 00 49 8d bf c0 00 00 00 48 83 c0 10
+0x0000794d4a334777:   49 89 87 88 00 00 00 e8 cd ad 1e ff 48 8b 05 6e
+0x0000794d4a334787:   85 cb 00 49 8d bf f0 00 00 00 48 8b 50 08 48 8b
+0x0000794d4a334797:   40 10 49 89 97 80 00 00 00 48 8b 52 e8 49 89 84
+0x0000794d4a3347a7:   17 80 00 00 00 48 8b 05 8d 86 cb 00 48 83 c0 10
+0x0000794d4a3347b7:   49 89 87 f0 00 00 00 e8 ed a6 1e ff 49 8b 6f 70
+0x0000794d4a3347c7:   49 8b 5f 68 48 39 dd 74 26 48 8b 3b 48 8d 43 10
+0x0000794d4a3347d7:   48 39 c7 74 0d 48 8b 43 10 48 8d 70 01 e8 17 9a
+0x0000794d4a3347e7:   1e ff 48 83 c3 20 48 39 dd 75 de 49 8b 5f 68 48
+0x0000794d4a3347f7:   85 db 74 0f 49 8b 77 78 48 89 df 48 29 de e8 f6
+0x0000794d4a334807:   99 1e ff 49 8b 7f 48 49 8d 47 58 48 39 c7 74 0d
+0x0000794d4a334817:   49 8b 47 58 48 8d 70 01 e8 dc 99 1e ff 49 8b 7f 
+
+
+Stack slot to memory mapping:
+
+stack at sp + 0 slots: 0x0000794d9c3276f0: _ZTVNSt7__cxx1119basic_ostringstreamIcSt11char_traitsIcESaIcEEE+0x0000000000000018 in /usr/lib/x86_64-linux-gnu/libstdc++.so.6 at 0x0000794d9c163000
+stack at sp + 1 slots: 0x0000794d9c327538: _ZTVNSt7__cxx1115basic_stringbufIcSt11char_traitsIcESaIcEEE+0x0000000000000010 in /usr/lib/x86_64-linux-gnu/libstdc++.so.6 at 0x0000794d9c163000
+stack at sp + 2 slots: 0x6f69747065637845 is an unknown value
+stack at sp + 3 slots: 0x0000794ca7efc8b0 is pointing into the stack for thread: 0x0000794c9c000e70
+stack at sp + 4 slots: 0x0000794d9c3276f0: _ZTVNSt7__cxx1119basic_ostringstreamIcSt11char_traitsIcESaIcEEE+0x0000000000000018 in /usr/lib/x86_64-linux-gnu/libstdc++.so.6 at 0x0000794d9c163000
+stack at sp + 5 slots: 0x0000794d9c327538: _ZTVNSt7__cxx1115basic_stringbufIcSt11char_traitsIcESaIcEEE+0x0000000000000010 in /usr/lib/x86_64-linux-gnu/libstdc++.so.6 at 0x0000794d9c163000
+stack at sp + 6 slots: 0x000000000000000e is an unknown value
+stack at sp + 7 slots: 0x000000006ae80e27 is an unknown value
+
+
+Compiled method (n/a) 20620 8995     n 0       jdk.internal.vm.Continuation::enterSpecial (native)
+ total in heap  [0x0000794db4641b90,0x0000794db4641f18] = 904
+ relocation     [0x0000794db4641ce8,0x0000794db4641d10] = 40
+ main code      [0x0000794db4641d20,0x0000794db4641ef8] = 472
+ stub code      [0x0000794db4641ef8,0x0000794db4641f18] = 32
+
+[Constant Pool (empty)]
+
+[MachCode]
+[Entry Point]
+  # {method} {0x0000794d4f07d0c8} 

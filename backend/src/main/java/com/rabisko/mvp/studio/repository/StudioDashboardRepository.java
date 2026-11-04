@@ -3,6 +3,8 @@ package com.rabisko.mvp.studio.repository;
 import com.rabisko.mvp.studio.domain.Studio;
 import com.rabisko.mvp.studio.domain.dashboard.DashboardAgendaProjection;
 import com.rabisko.mvp.studio.domain.dashboard.DashboardAgendamentosProjection;
+import com.rabisko.mvp.studio.domain.dashboard.DashboardEstiloProjection;
+import com.rabisko.mvp.studio.domain.dashboard.DashboardFinanceiroProjection;
 import com.rabisko.mvp.studio.domain.dashboard.DashboardTatuadorProjection;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
@@ -48,4 +50,18 @@ public interface StudioDashboardRepository extends Repository<Studio, UUID> {
     List<DashboardAgendaProjection> agenda(@Param("estudioId") UUID estudioId,
                                            @Param("inicio") LocalDate inicio,
                                            @Param("fim") LocalDate fim);
+
+    @Query(value = "SELECT * FROM public.dashboard_estudio_estilos(:estudioId, :inicio, :fim)",
+            nativeQuery = true)
+    List<DashboardEstiloProjection> estilos(@Param("estudioId") UUID estudioId,
+                                            @Param("inicio") LocalDate inicio,
+                                            @Param("fim") LocalDate fim);
+
+    
+    @Query(value = "SELECT * FROM public.dashboard_estudio_financeiro(:estudioId, :inicio, :fim)",
+                nativeQuery = true)
+    List<DashboardFinanceiroProjection> financeiro(@Param("estudioId") UUID estudioId,
+                                                @Param("inicio") LocalDate inicio,
+                                                @Param("fim") LocalDate fim);
+
 }

@@ -61,4 +61,16 @@ public class Chat {
      */
     @Column(name = "ultima_mensagem_em")
     private OffsetDateTime ultimaMensagemEm;
+
+    /**
+     * Até quando cada participante leu a conversa (mensagens enviadas depois
+     * disso estão não lidas para ele). Só mudam pelas queries de
+     * ChatRepository — fora do save() para um Chat carregado antes não
+     * sobrescrever a leitura (nem o ultima_mensagem_em da trigger).
+     */
+    @Column(name = "cliente_leu_em", insertable = false, updatable = false)
+    private LocalDateTime clienteLeuEm;
+
+    @Column(name = "tatuador_leu_em", insertable = false, updatable = false)
+    private LocalDateTime tatuadorLeuEm;
 }

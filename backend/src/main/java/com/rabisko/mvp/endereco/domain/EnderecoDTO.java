@@ -46,11 +46,8 @@ public record EnderecoDTO(
         return (latitude == null) == (longitude == null);
     }
 
-    public Endereco toEntity(UUID ownerId, EnderecoOwnerType ownerType) {
-        Endereco endereco = Endereco.builder()
-                .ownerId(ownerId)
-                .ownerType(ownerType)
-                .build();
+    public Endereco toEntity() {
+        Endereco endereco = Endereco.builder().build();
         aplicarEm(endereco);
         return endereco;
     }

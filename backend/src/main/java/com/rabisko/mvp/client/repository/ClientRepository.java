@@ -12,5 +12,5 @@ public interface ClientRepository extends JpaRepository<Client, UUID> {
      * Busca o perfil cliente pelo User. Optional permite tratar "nao
      * existe" sem null check explicito (.orElseThrow / .ifPresent / etc.).
      */
-    Optional<Client> findByUserId(UUID userId);
+    Optional<Client> findByAuthId(UUID userId);
 }

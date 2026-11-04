@@ -2,11 +2,13 @@ package com.rabisko.mvp.studio.controller;
 
 import com.rabisko.mvp.studio.domain.dashboard.DashboardAgendaProjection;
 import com.rabisko.mvp.studio.domain.dashboard.DashboardAgendamentosProjection;
+import com.rabisko.mvp.studio.domain.dashboard.DashboardEstiloProjection;
+import com.rabisko.mvp.studio.domain.dashboard.DashboardFinanceiroProjection;
 import com.rabisko.mvp.studio.domain.dashboard.DashboardTatuadorProjection;
 import com.rabisko.mvp.studio.domain.dashboard.PeriodoDashboard;
 import com.rabisko.mvp.studio.domain.dashboard.PeriodoDashboard.PeriodoInvalidoException;
 import com.rabisko.mvp.studio.service.StudioDashboardService;
-import com.rabisko.mvp.user.domain.User;
+import com.rabisko.mvp.shared.infraestrutura.security.UsuarioLogado;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -34,7 +36,7 @@ public class StudioDashboardController {
 
     @GetMapping("/receita-total")
     public ResponseEntity<String> receitaTotal(
-            @AuthenticationPrincipal User logado,
+            @AuthenticationPrincipal UsuarioLogado logado,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate
     ) {
@@ -46,7 +48,7 @@ public class StudioDashboardController {
 
     @GetMapping("/agendamentos")
     public ResponseEntity<DashboardAgendamentosProjection> agendamentos(
-            @AuthenticationPrincipal User logado,
+            @AuthenticationPrincipal UsuarioLogado logado,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate
     ) {
@@ -55,7 +57,7 @@ public class StudioDashboardController {
 
     @GetMapping("/evolucao-receita")
     public ResponseEntity<String> evolucaoReceita(
-            @AuthenticationPrincipal User logado,
+            @AuthenticationPrincipal UsuarioLogado logado,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate
     ) {
@@ -67,7 +69,7 @@ public class StudioDashboardController {
 
     @GetMapping("/tatuadores")
     public ResponseEntity<List<DashboardTatuadorProjection>> tatuadores(
-            @AuthenticationPrincipal User logado,
+            @AuthenticationPrincipal UsuarioLogado logado,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate
     ) {
@@ -77,16 +79,35 @@ public class StudioDashboardController {
     /** Parcial: sem o campo "style" do mock (nao existe no banco). */
     @GetMapping("/agenda")
     public ResponseEntity<List<DashboardAgendaProjection>> agenda(
-            @AuthenticationPrincipal User logado,
+            @AuthenticationPrincipal UsuarioLogado logado,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate
     ) {
         return ResponseEntity.ok(dashboardService.agenda(logado, PeriodoDashboard.of(startDate, endDate)));
     }
 
+    /** Estilos mais procurados: [{ name, count, percent }], do mais procurado ao menos. */
+    @GetMapping("/estilos")
+    public ResponseEntity<List<DashboardEstiloProjection>> estilos(
+            @AuthenticationPrincipal UsuarioLogado logado,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate
+    ) {
+        return ResponseEntity.ok(dashboardService.estilos(logado, PeriodoDashboard.of(startDate, endDate)));
+    }
+
     /** 400 com a mensagem no corpo (o handler padrao do Spring esconde a mensagem). */
     @ExceptionHandler(PeriodoInvalidoException.class)
     public ResponseEntity<String> periodoInvalido(PeriodoInvalidoException e) {
         return ResponseEntity.badRequest().contentType(MediaType.TEXT_PLAIN).body(e.getMessage());
+    }
+
+    @GetMapping("/financeiro")
+    public ResponseEntity<List<DashboardFinanceiroProjection>> financeiro(
+            @AuthenticationPrincipal UsuarioLogado logado,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate
+    ) {
+        return ResponseEntity.ok(dashboardService.financeiro(logado, PeriodoDashboard.of(startDate, endDate)));
     }
 }

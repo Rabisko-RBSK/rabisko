@@ -9,8 +9,10 @@ import type { ReservaPosicaoDTO } from '../services/api';
  * no dia anterior e ainda estão em andamento ficam com início negativo.
  */
 
-export const INICIO_GRADE_MIN = 8 * 60;
-export const FIM_GRADE_MIN = 23 * 60;
+/** O dia inteiro (00:00 às 24:00); fora do horário do estúdio fica escurecido. */
+export const INICIO_GRADE_MIN = 0;
+/** Até a meia-noite: uma sessão pode começar às 23:00 e terminar às 24:00. */
+export const FIM_GRADE_MIN = 24 * 60;
 export const PASSO_MIN = 30;
 
 export interface BlocoAgenda {
@@ -22,6 +24,31 @@ export interface BlocoAgenda {
   rotulo: string;
   /** Sessão ainda não enviada, de outra parte da mesma proposta. */
   pendente?: boolean;
+}
+
+/** Faixa do dia em minutos, [inicio, fim). */
+export interface FaixaMin {
+  inicio: number;
+  fim: number;
+}
+
+export const FORA_DO_HORARIO = 'Fora do horário de atendimento do estúdio.';
+
+/**
+ * Faixas do dia em que o estúdio não atende: o complemento dos intervalos
+ * abertos dentro de 00:00–24:00. `abertas` null = estúdio sem grade (sem
+ * restrição); lista vazia = não atende neste dia (o dia todo fechado).
+ */
+export function faixasFechadas(abertas: FaixaMin[] | null): FaixaMin[] {
+  if (abertas === null) return [];
+  const fechadas: FaixaMin[] = [];
+  let cursor = 0;
+  for (const a of [...abertas].sort((x, y) => x.inicio - y.inicio)) {
+    if (a.inicio > cursor) fechadas.push({ inicio: cursor, fim: a.inicio });
+    cursor = Math.max(cursor, a.fim);
+  }
+  if (cursor < 24 * 60) fechadas.push({ inicio: cursor, fim: 24 * 60 });
+  return fechadas;
 }
 
 export interface Candidato {
@@ -36,7 +63,8 @@ export function paraMinutos(hhmm: string): number {
 }
 
 export function paraHorario(min: number): string {
-  const h = Math.floor(min / 60);
+  // 24:00 (fim de uma sessão que termina à meia-noite) aparece como 00:00.
+  const h = Math.floor(min / 60) % 24;
   const m = min % 60;
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
@@ -78,9 +106,18 @@ export function motivoConflito(
   blocos: BlocoAgenda[],
   /** Minuto atual quando o dia exibido é hoje (ver minutosAgoraSeHoje). */
   agoraMin: number | null = null,
+  /**
+   * Intervalos em que o estúdio atende no dia; null = sem restrição. A sessão
+   * inteira precisa caber num deles (mesma regra do HorarioService do backend).
+   */
+  abertas: FaixaMin[] | null = null,
 ): string | null {
   if (agoraMin !== null && candidato.inicioMin <= agoraMin) {
     return 'Esse horário já passou.';
+  }
+  const fim = candidato.inicioMin + candidato.duracaoMin;
+  if (abertas !== null && !abertas.some((a) => candidato.inicioMin >= a.inicio && fim <= a.fim)) {
+    return FORA_DO_HORARIO;
   }
   for (const b of blocos) {
     if (!sobrepoe(candidato.inicioMin, candidato.duracaoMin, b.inicioMin, b.duracaoMin)) continue;

@@ -4,22 +4,26 @@ import com.rabisko.mvp.artist.domain.ArtistDashboardDTO;
 import com.rabisko.mvp.artist.domain.ArtistProfileDTO;
 import com.rabisko.mvp.artist.domain.ArtistSearchResultDTO;
 import com.rabisko.mvp.artist.domain.AvaliacaoDTO;
+import com.rabisko.mvp.artist.domain.EstudioSoloDTO;
 import com.rabisko.mvp.artist.domain.PortfolioImagemDTO;
 import com.rabisko.mvp.artist.domain.UploadResponseDTO;
 import com.rabisko.mvp.artist.service.ArtistService;
-import com.rabisko.mvp.endereco.domain.EnderecoDTO;
 import com.rabisko.mvp.horario.domain.HorarioDTO;
+import com.rabisko.mvp.horario.service.HorarioService;
 import com.rabisko.mvp.studio.domain.ContratoDTO;
 import com.rabisko.mvp.studio.domain.ConviteDTO;
 import com.rabisko.mvp.studio.domain.ConviteDetalheDTO;
-import com.rabisko.mvp.user.domain.User;
+import com.rabisko.mvp.studio.domain.StudioDTO;
+import com.rabisko.mvp.studio.service.ContratoService;
 
 import jakarta.validation.Valid;
 
+import com.rabisko.mvp.shared.infraestrutura.security.UsuarioLogado;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -42,6 +46,12 @@ public class ArtistController {
 
     @Autowired
     private ArtistService artistService;
+
+    @Autowired
+    private ContratoService contratoService;
+
+    @Autowired
+    private HorarioService horarioService;
 
     /**
      * GET /artist/search
@@ -68,14 +78,16 @@ public class ArtistController {
      * valida que o role e tatuador antes de calcular as metricas.
      */
     @GetMapping("/dashboard")
-    public ResponseEntity<ArtistDashboardDTO> dashboard(@AuthenticationPrincipal User logado) {
+    public ResponseEntity<ArtistDashboardDTO> dashboard(@AuthenticationPrincipal UsuarioLogado logado) {
         return ResponseEntity.ok(artistService.dashboard(logado));
     }
 
 
     /** Devolve o perfil completo do tatuador logado (nome, foto, bio, portfolio). */
     @GetMapping("/me")
-    public ResponseEntity<ArtistProfileDTO> obterMeuPerfil(@AuthenticationPrincipal User user) {
+    public ResponseEntity<ArtistProfileDTO> obterMeuPerfil(
+        @AuthenticationPrincipal UsuarioLogado user
+    ) {
         return ResponseEntity.ok(artistService.obterPerfil(user));
     }
 
@@ -88,30 +100,28 @@ public class ArtistController {
      */
     @PatchMapping("/me")
     public ResponseEntity<ArtistProfileDTO> atualizarMeuPerfil(
-            @AuthenticationPrincipal User user,
+            @AuthenticationPrincipal UsuarioLogado user,
             @RequestBody(required = false) Map<String, Object> payload
     ) {
         return ResponseEntity.ok(artistService.atualizarPerfil(user, payload));
     }
 
-    @GetMapping("/me/horarios")
-    public ResponseEntity<List<HorarioDTO>> meusHorarios(@AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(artistService.meusHorarios(user));
+    @PostMapping("/me/estudio")
+    public ResponseEntity<StudioDTO> criarEstudioProprio(
+            @AuthenticationPrincipal UsuarioLogado user,
+            @RequestBody @Valid EstudioSoloDTO body
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(artistService.criarEstudioProprio(user, body));
     }
 
-    @PutMapping ("/me/horarios")
-    public ResponseEntity<List<HorarioDTO>> atualizarHorarios(
-        @AuthenticationPrincipal User user,
-        @RequestBody List<@Valid HorarioDTO> listaHorarios
-    ) {
-        return ResponseEntity.ok(artistService.atualizarHorarios(user, listaHorarios));
-    }
 
     @GetMapping("/{tatuadorId}/horarios")
     public ResponseEntity<List<HorarioDTO>> horariosDoTatuador(
         @PathVariable UUID tatuadorId
     ) {
-        return ResponseEntity.ok(artistService.horariosDoTatuador(tatuadorId));
+        return ResponseEntity.ok(contratoService.estudioDeAtendimento(tatuadorId)
+        .map(horarioService::listar)
+        .orElse(List.of()));
     }
 
     /**
@@ -120,7 +130,7 @@ public class ArtistController {
      */
     @PostMapping("/me/foto")
     public ResponseEntity<UploadResponseDTO> uploadFotoPerfil(
-            @AuthenticationPrincipal User user,
+            @AuthenticationPrincipal UsuarioLogado user,
             @RequestParam("file") MultipartFile file
     ) {
         String url = artistService.uploadFotoPerfil(user, file);
@@ -133,16 +143,17 @@ public class ArtistController {
      */
     @PostMapping("/me/portfolio")
     public ResponseEntity<PortfolioImagemDTO> adicionarImagemPortfolio(
-            @AuthenticationPrincipal User user,
-            @RequestParam("file") MultipartFile file
+            @AuthenticationPrincipal UsuarioLogado user,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("estiloId") UUID estiloId
     ) {
-        return ResponseEntity.ok(artistService.adicionarImagemPortfolio(user, file));
+        return ResponseEntity.ok(artistService.adicionarImagemPortfolio(user, file, estiloId));
     }
 
     /** Remove imagem do portfolio (apaga linha + tenta apagar do Storage). */
     @DeleteMapping("/me/portfolio/{imagemId}")
     public ResponseEntity<Void> removerImagemPortfolio(
-            @AuthenticationPrincipal User user,
+            @AuthenticationPrincipal UsuarioLogado user,
             @PathVariable UUID imagemId
     ) {
         artistService.removerImagemPortfolio(user, imagemId);
@@ -161,13 +172,13 @@ public class ArtistController {
     }
 
     @GetMapping("/me/convites")
-    public ResponseEntity<List<ConviteDetalheDTO>> listarConvitesPendentes(@AuthenticationPrincipal User user) {
+    public ResponseEntity<List<ConviteDetalheDTO>> listarConvitesPendentes(@AuthenticationPrincipal UsuarioLogado user) {
         return ResponseEntity.ok(artistService.encontrarConvitesPendentes(user));
     }
 
     @PostMapping("/me/convites/{conviteId}/aceitar")
     public ResponseEntity<ConviteDTO> aceitarConvite(
-            @AuthenticationPrincipal User user,
+            @AuthenticationPrincipal UsuarioLogado user,
             @PathVariable UUID conviteId
     ) {
         return ResponseEntity.ok(artistService.aceitarConvite(user, conviteId));
@@ -175,7 +186,7 @@ public class ArtistController {
 
     @PostMapping("/me/convites/{conviteId}/recusar")
     public ResponseEntity<ConviteDTO> recusarConvite(
-            @AuthenticationPrincipal User user,
+            @AuthenticationPrincipal UsuarioLogado user,
             @PathVariable UUID conviteId
     ) {
         return ResponseEntity.ok(artistService.recusarConvite(user, conviteId));
@@ -183,32 +194,24 @@ public class ArtistController {
 
     @DeleteMapping("/me/estudio")
     public ResponseEntity<Void> sairEstudio(
-            @AuthenticationPrincipal User user
+            @AuthenticationPrincipal UsuarioLogado user
     ) {
         artistService.sairEstudio(user);
         return ResponseEntity.noContent().build();
     }
-
-    @PutMapping("/me/endereco")
-    public ResponseEntity<EnderecoDTO> alterarEndereco(
-            @AuthenticationPrincipal User user,
-            @RequestBody @Valid EnderecoDTO body
-    ) {
-        return ResponseEntity.ok(artistService.atualizarEndereco(user, body));
-    }
-
+    
     @GetMapping("/me/contratos")
-    public ResponseEntity<List<ContratoDTO>> meusContratos(@AuthenticationPrincipal User user) {
+    public ResponseEntity<List<ContratoDTO>> meusContratos(@AuthenticationPrincipal UsuarioLogado user) {
         return ResponseEntity.ok(artistService.meusContratos(user));
     }
 
     @PostMapping("/me/contratos/proposta/aceitar")
-    public ResponseEntity<ContratoDTO> aceitarPropostaContrato(@AuthenticationPrincipal User user) {
+    public ResponseEntity<ContratoDTO> aceitarPropostaContrato(@AuthenticationPrincipal UsuarioLogado user) {
         return ResponseEntity.ok(artistService.aceitarPropostaContrato(user));
     }
 
     @PostMapping("/me/contratos/proposta/recusar")
-    public ResponseEntity<ContratoDTO> recusarPropostaContrato(@AuthenticationPrincipal User user) {
+    public ResponseEntity<ContratoDTO> recusarPropostaContrato(@AuthenticationPrincipal UsuarioLogado user) {
         return ResponseEntity.ok(artistService.recusarPropostaContrato(user));
     }
 }

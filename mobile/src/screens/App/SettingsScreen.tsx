@@ -1,8 +1,11 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, Switch } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   User,
   HelpCircle,
+  Store,
   ChevronRight,
   LogOut,
   type LucideIcon,
@@ -10,10 +13,16 @@ import {
 
 import { useAuthStore } from '../../store/authStore';
 import { Header } from '../../components/common/Header';
+import { sair } from '../../services/supabase';
+import type { SettingsStackParamList } from '../../routes/settings.stack';
 
 /**
  * Settings (DESIGN.md §10 #14 / Screens.jsx#SettingsScreen). Single cream-surface list.
  * Sign-out is rendered as a separate, low-emphasis link below the list.
+ * Tatuador com estúdio próprio ganha o switch "Modo estúdio", que troca as
+ * abas do artista pelas do estúdio (a mesma tela aparece nos dois fluxos).
+ * "Meu Perfil" abre o perfil de quem está logado: cliente, tatuador ou, no
+ * fluxo do estúdio (conta de estúdio ou modo estúdio), o perfil do estúdio.
  */
 
 interface SettingRow {
@@ -24,10 +33,25 @@ interface SettingRow {
 }
 
 export function SettingsScreen() {
-  const { role, logout } = useAuthStore();
+  const navigation = useNavigation<NativeStackNavigationProp<SettingsStackParamList>>();
+  const { role, logout, estudioProprioId, modo, setModo } = useAuthStore();
+  const podeAlternarModo = role === 'artista' && !!estudioProprioId;
+  const fluxoEstudio = role === 'estudio' || (podeAlternarModo && modo === 'estudio');
+
+  // Encerra a sessão no Supabase; se falhar (ex.: sem rede), limpa o app mesmo assim.
+  const handleLogout = () => {
+    sair().catch(() => {}).finally(logout);
+  };
 
   const rows: SettingRow[] = [
-    ...(role !== 'artista' ? [{ id: 'profile', label: 'Meu Perfil', icon: User }] : []),
+    fluxoEstudio
+      ? { id: 'profile', label: 'Perfil do estúdio', icon: Store, onPress: () => navigation.navigate('PerfilEstudio') }
+      : {
+          id: 'profile',
+          label: 'Meu Perfil',
+          icon: User,
+          onPress: () => navigation.navigate(role === 'artista' ? 'PerfilTatuador' : 'PerfilCliente'),
+        },
     {
       id: 'help',
       label: 'Ajuda',
@@ -52,6 +76,29 @@ export function SettingsScreen() {
         <Text className="font-body text-[14px] text-fg-2 mt-1 mb-6">
           Gerencie sua conta e preferências
         </Text>
+
+        {podeAlternarModo && (
+          <View
+            className="bg-surface rounded-rd-lg flex-row items-center px-[18px] py-4 mb-4"
+            style={{ gap: 14 }}
+          >
+            <Store size={22} color="#000000" />
+            <View className="flex-1">
+              <Text className="font-body text-[16px] text-ink">Modo estúdio</Text>
+              <Text className="font-body text-[12px] text-fg-2 mt-0.5">
+                {modo === 'estudio'
+                  ? 'Você está gerenciando o seu estúdio.'
+                  : 'Gerencie a equipe, a agenda e o horário do seu estúdio.'}
+              </Text>
+            </View>
+            <Switch
+              value={modo === 'estudio'}
+              onValueChange={(ativo) => setModo(ativo ? 'estudio' : 'artista')}
+              trackColor={{ true: '#602C66' }}
+              accessibilityLabel="Modo estúdio"
+            />
+          </View>
+        )}
 
         <View className="bg-surface rounded-rd-lg overflow-hidden">
           {rows.map((row, i) => {
@@ -79,7 +126,7 @@ export function SettingsScreen() {
         </View>
 
         <TouchableOpacity
-          onPress={logout}
+          onPress={handleLogout}
           activeOpacity={0.7}
           className="flex-row items-center justify-center mt-8 py-3"
           accessibilityRole="button"

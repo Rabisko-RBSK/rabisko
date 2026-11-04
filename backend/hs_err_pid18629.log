@@ -1,0 +1,305 @@
+#
+# A fatal error has been detected by the Java Runtime Environment:
+#
+#  SIGSEGV (0xb) at pc=0x000071b41a132727, pid=18629, tid=18846
+#
+# JRE version: OpenJDK Runtime Environment Microsoft-11933203 (21.0.8+9) (build 21.0.8+9-LTS)
+# Java VM: OpenJDK 64-Bit Server VM Microsoft-11933203 (21.0.8+9-LTS, mixed mode, sharing, tiered, compressed oops, compressed class ptrs, g1 gc, linux-amd64)
+# Problematic frame:
+# C  [libonnxruntime.so+0xee4727]
+#
+# Core dump will be written. Default location: Core dumps may be processed with "/wsl-capture-crash %t %E %p %s" (or dumping to /workspaces/rabisko/backend/core.18629)
+#
+# If you would like to submit a bug report, please visit:
+#   https://github.com/microsoft/openjdk/issues
+# The crash happened outside the Java Virtual Machine in native code.
+# See problematic frame for where to report the bug.
+#
+
+---------------  S U M M A R Y ------------
+
+Command Line: target/rabisko-0.0.3-SNAPSHOT.jar --spring.profiles.active=local --server.port=18080 --spring.jpa.show-sql=false --rabisko.cnpj.validacao.habilitada=true --rabisko.cnpj.api-url=http://127.0.0.1:9 --rabisko.cnpj.timeout-ms=2000
+
+Host: Intel(R) Core(TM) i5-10400F CPU @ 2.90GHz, 12 cores, 7G, Debian GNU/Linux 11 (bullseye)
+Time: Mon Nov  2 04:16:36 2026 UTC elapsed time: 17.229132 seconds (0d 0h 0m 17s)
+
+---------------  T H R E A D  ---------------
+
+Current thread (0x000071b4975d0330):  JavaThread "ForkJoinPool-1-worker-2" daemon [_thread_in_native, id=18846, stack(0x000071b37f8f9000,0x000071b37f9fa000) (1028K)]
+
+Stack: [0x000071b37f8f9000,0x000071b37f9fa000],  sp=0x000071b37f9f7870,  free space=1018k
+Native frames: (J=compiled Java code, j=interpreted, Vv=VM code, C=native code)
+C  [libonnxruntime.so+0xee4727]
+Java frames: (J=compiled Java code, j=interpreted, Vv=VM code)
+j  ai.onnxruntime.OrtSession.createSession(JJLjava/lang/String;J)J+0
+j  ai.onnxruntime.OrtSession.<init>(Lai/onnxruntime/OrtEnvironment;Ljava/lang/String;Lai/onnxruntime/OrtAllocator;Lai/onnxruntime/OrtSession$SessionOptions;)V+14
+j  ai.onnxruntime.OrtEnvironment.createSession(Ljava/lang/String;Lai/onnxruntime/OrtAllocator;Lai/onnxruntime/OrtSession$SessionOptions;)Lai/onnxruntime/OrtSession;+15
+j  ai.onnxruntime.OrtEnvironment.createSession(Ljava/lang/String;Lai/onnxruntime/OrtSession$SessionOptions;)Lai/onnxruntime/OrtSession;+7
+j  com.rabisko.mvp.simulation.service.OnnxModel.session()Lai/onnxruntime/OrtSession;+63
+j  com.rabisko.mvp.simulation.service.OnnxModel.lambda$preloadInBackground$0()V+1
+j  com.rabisko.mvp.simulation.service.OnnxModel$$Lambda+0x000071b420d09a10.run()V+4
+j  java.lang.Thread.runWith(Ljava/lang/Object;Ljava/lang/Runnable;)V+5 java.base@21.0.8
+j  java.lang.VirtualThread.run(Ljava/lang/Runnable;)V+66 java.base@21.0.8
+j  java.lang.VirtualThread$VThreadContinuation$1.run()V+8 java.base@21.0.8
+j  jdk.internal.vm.Continuation.enter0()V+4 java.base@21.0.8
+j  jdk.internal.vm.Continuation.enter(Ljdk/internal/vm/Continuation;Z)V+1 java.base@21.0.8
+J 9214  jdk.internal.vm.Continuation.enterSpecial(Ljdk/internal/vm/Continuation;ZZ)V java.base@21.0.8 (0 bytes) @ 0x000071b4844bcddc [0x000071b4844bcca0+0x000000000000013c]
+j  jdk.internal.vm.Continuation.run()V+122 java.base@21.0.8
+j  java.lang.VirtualThread.runContinuation()V+72 java.base@21.0.8
+j  java.lang.VirtualThread$$Lambda+0x000071b420bd0c08.run()V+4 java.base@21.0.8
+j  java.util.concurrent.ForkJoinTask$RunnableExecuteAction.exec()Z+4 java.base@21.0.8
+j  java.util.concurrent.ForkJoinTask.doExec()I+10 java.base@21.0.8
+j  java.util.concurrent.ForkJoinPool$WorkQueue.topLevelExec(Ljava/util/concurrent/ForkJoinTask;Ljava/util/concurrent/ForkJoinPool$WorkQueue;)V+19 java.base@21.0.8
+j  java.util.concurrent.ForkJoinPool.scan(Ljava/util/concurrent/ForkJoinPool$WorkQueue;II)I+211 java.base@21.0.8
+j  java.util.concurrent.ForkJoinPool.runWorker(Ljava/util/concurrent/ForkJoinPool$WorkQueue;)V+35 java.base@21.0.8
+j  java.util.concurrent.ForkJoinWorkerThread.run()V+31 java.base@21.0.8
+v  ~StubRoutines::call_stub 0x000071b483db6cc6
+
+siginfo: si_signo: 11 (SIGSEGV), si_code: 1 (SEGV_MAPERR), si_addr: 0x0000000000000018
+
+Registers:
+RAX=0x0000000000000000, RBX=0x000071b4192456d8, RCX=0x000071b37f9f7be0, RDX=0x000071b36400a288
+RSP=0x000071b37f9f7870, RBP=0x000071b4971e0dc0, RSI=0x000071b37f9f78f0, RDI=0x000071b4971e0dc0
+R8 =0x0000000000000000, R9 =0x00e1acd919265287, R10=0x00007ffc7d198080, R11=0x00007ffc7d198080
+R12=0x000071b37f9f78f0, R13=0x000071b36400a288, R14=0x000071b41adf58b8, R15=0x000071b37f9f7be0
+RIP=0x000071b41a132727, EFLAGS=0x0000000000010202, CSGSFS=0x002b000000000033, ERR=0x0000000000000004
+  TRAPNO=0x000000000000000e
+
+XMM[0]=0x0000000000000000 0x0000000000000000
+XMM[1]=0x000071b419245538 0x000071b4192456f0
+XMM[2]=0x0000000000000000 0x0000000000000000
+XMM[3]=0x656d69746e757278 0x6e6e6f2074736e6f
+XMM[4]=0x622073616820656e 0x6f6e207475622072
+XMM[5]=0x206f742074706d65 0x7474412029287265
+XMM[6]=0x616e614d676e6967 0x676f4c3a3a676e69
+XMM[7]=0x0000000000000000 0x0000000000000000
+XMM[8]=0x622073616820656e 0x6f6e207475622072
+XMM[9]=0x0000000000000000 0x0000000000000000
+XMM[10]=0x0000000000000000 0x00000000406b56f1
+XMM[11]=0x61a3c33661a3c336 0x61a3c336655bc9e3
+XMM[12]=0x0000000000000000 0x0000000003b806ad
+XMM[13]=0x0000000000000000 0x0000000089824218
+XMM[14]=0x0000000000000000 0x0000000000000000
+XMM[15]=0x0000000000000000 0x0000000000000001
+  MXCSR=0x00001fa2
+
+
+Register to memory mapping:
+
+RAX=0x0 is null
+RBX=0x000071b4192456d8: _ZTVNSt7__cxx1119basic_ostringstreamIcSt11char_traitsIcESaIcEEE+0x0000000000000000 in /usr/lib/x86_64-linux-gnu/libstdc++.so.6 at 0x000071b419081000
+RCX=0x000071b37f9f7be0 is pointing into the stack for thread: 0x000071b4975d0330
+RDX=0x000071b36400a288 points into unknown readable memory: 0x000071b36400a298 | 98 a2 00 64 b3 71 00 00
+RSP=0x000071b37f9f7870 is pointing into the stack for thread: 0x000071b4975d0330
+RBP=0x000071b4971e0dc0 points into unknown readable memory: 0x0000000000000000 | 00 00 00 00 00 00 00 00
+RSI=0x000071b37f9f78f0 is pointing into the stack for thread: 0x000071b4975d0330
+RDI=0x000071b4971e0dc0 points into unknown readable memory: 0x0000000000000000 | 00 00 00 00 00 00 00 00
+R8 =0x0 is null
+R9 =0x00e1acd919265287 is an unknown value
+R10=0x00007ffc7d198080 points into unknown readable memory: 0x00000003000fca76 | 76 ca 0f 00 03 00 00 00
+R11=0x00007ffc7d198080 points into unknown readable memory: 0x00000003000fca78 | 78 ca 0f 00 03 00 00 00
+R12=0x000071b37f9f78f0 is pointing into the stack for thread: 0x000071b4975d0330
+R13=0x000071b36400a288 points into unknown readable memory: 0x000071b36400a298 | 98 a2 00 64 b3 71 00 00
+R14=0x000071b41adf58b8: <offset 0x0000000001ba78b8> in /tmp/onnxruntime-java4490497858980683649/libonnxruntime.so at 0x000071b41924e000
+R15=0x000071b37f9f7be0 is pointing into the stack for thread: 0x000071b4975d0330
+
+Top of Stack: (sp=0x000071b37f9f7870)
+0x000071b37f9f7870:   000071b4192456f0 000071b419245538
+0x000071b37f9f7880:   6f69747065637845 000071b37f9f78b0
+0x000071b37f9f7890:   000071b4192456f0 000071b419245538
+0x000071b37f9f78a0:   000000000000000e 000000006ae80ea4
+0x000071b37f9f78b0:   0000001000000024 0000000200000004
+0x000071b37f9f78c0:   0000007e0000000a 0000013100000001
+0x000071b37f9f78d0:   0000000000000000 0000000000000000
+0x000071b37f9f78e0:   000071b494001f60 0000000000000104
+0x000071b37f9f78f0:   18e41f53c0a0058c 0000000200000004
+0x000071b37f9f7900:   0000007e0000000a 0000013100000001
+0x000071b37f9f7910:   0000000000000000 0000000000000000
+0x000071b37f9f7920:   000071b494001f60 a48d42f57d5c9500
+0x000071b37f9f7930:   0000000000000000 000071b37f9f7a50
+0x000071b37f9f7940:   000071b37f9f7e10 000071b37f9f7a28
+0x000071b37f9f7950:   000071b37f9f7b80 000071b37f9f7be0
+0x000071b37f9f7960:   000071b37f9f7e28 000071b419356bf3
+0x000071b37f9f7970:   0000000000000028 000071b37f9f7aa0
+0x000071b37f9f7980:   000071b36400c370 a48d42f57d5c9500
+0x000071b37f9f7990:   000071b36400a3e0 0000000000000000
+0x000071b37f9f79a0:   000071b37f9f7ae0 000071b37f9f7ac0
+0x000071b37f9f79b0:   0000000000000000 000071b36400c4e0
+0x000071b37f9f79c0:   000071b36400c9e0 000071b36400c148
+0x000071b37f9f79d0:   000071b37f9f7b00 000071b37f9f7ae0
+0x000071b37f9f79e0:   000071b37f9f7ac0 000071b37f9f7b60
+0x000071b37f9f79f0:   000071b366d69310 000071b37f9f7a50
+0x000071b37f9f7a00:   000071b37f9f7a70 0000000000000000
+0x000071b37f9f7a10:   000071b37f9f7be0 000071b36400c120
+0x000071b37f9f7a20:   0000000000000000 000071b364121910
+0x000071b37f9f7a30:   000071b36412cc40 0000000000000000
+0x000071b37f9f7a40:   0000000000000000 000071b366f32450
+0x000071b37f9f7a50:   0000000000000000 0000000000000000
+0x000071b37f9f7a60:   000071b36400a3e0 0000000000000011 
+
+Instructions: (pc=0x000071b41a132727)
+0x000071b41a132627:   ae 1e ff 48 89 c5 e9 6a ff ff ff 66 0f 1f 44 00
+0x000071b41a132637:   00 be 22 00 00 00 48 89 ef e8 eb a4 1e ff eb 95
+0x000071b41a132647:   66 0f 1f 84 00 00 00 00 00 48 89 df e8 28 a3 1e
+0x000071b41a132657:   ff 48 8b 03 be 0a 00 00 00 48 89 df ff 50 30 0f
+0x000071b41a132667:   be f0 eb 94 e8 d0 9f 1e ff f3 0f 1e fa 41 57 41
+0x000071b41a132677:   56 41 55 41 54 55 53 48 81 ec c8 00 00 00 48 8b
+0x000071b41a132687:   1d c4 84 cb 00 64 4c 8b 3c 25 28 00 00 00 4c 89
+0x000071b41a132697:   bc 24 b8 00 00 00 49 89 ff 48 8d 43 18 66 48 0f
+0x000071b41a1326a7:   6e c8 48 8b 05 30 84 cb 00 48 83 c0 10 66 48 0f
+0x000071b41a1326b7:   6e d0 48 8b 07 66 0f 6c ca 48 85 c0 74 6a 4c 8d
+0x000071b41a1326c7:   68 08 48 8b 00 4c 8d a4 24 80 00 00 00 48 8b 28
+0x000071b41a1326d7:   0f b6 05 da 31 cc 00 84 c0 0f 84 8a 01 00 00 0f
+0x000071b41a1326e7:   29 0c 24 e8 f1 a7 1e ff 48 8b 35 ba 31 cc 00 4c
+0x000071b41a1326f7:   89 f9 48 89 ef 48 ba 00 58 47 f8 0d 00 00 00 48
+0x000071b41a132707:   0f af 56 10 48 2b 06 48 03 46 08 4c 89 e6 48 01
+0x000071b41a132717:   d0 4c 89 ea 48 89 84 24 80 00 00 00 48 8b 45 00
+0x000071b41a132727:   ff 50 18 66 0f 6f 0c 24 48 8d 43 40 49 8b bf d0
+0x000071b41a132737:   00 00 00 41 0f 11 8f 80 00 00 00 49 89 87 f0 00
+0x000071b41a132747:   00 00 49 8d 87 e0 00 00 00 48 39 c7 74 10 49 8b
+0x000071b41a132757:   87 e0 00 00 00 48 8d 70 01 e8 9b 9a 1e ff 48 8b
+0x000071b41a132767:   05 64 86 cb 00 49 8d bf c0 00 00 00 48 83 c0 10
+0x000071b41a132777:   49 89 87 88 00 00 00 e8 cd ad 1e ff 48 8b 05 6e
+0x000071b41a132787:   85 cb 00 49 8d bf f0 00 00 00 48 8b 50 08 48 8b
+0x000071b41a132797:   40 10 49 89 97 80 00 00 00 48 8b 52 e8 49 89 84
+0x000071b41a1327a7:   17 80 00 00 00 48 8b 05 8d 86 cb 00 48 83 c0 10
+0x000071b41a1327b7:   49 89 87 f0 00 00 00 e8 ed a6 1e ff 49 8b 6f 70
+0x000071b41a1327c7:   49 8b 5f 68 48 39 dd 74 26 48 8b 3b 48 8d 43 10
+0x000071b41a1327d7:   48 39 c7 74 0d 48 8b 43 10 48 8d 70 01 e8 17 9a
+0x000071b41a1327e7:   1e ff 48 83 c3 20 48 39 dd 75 de 49 8b 5f 68 48
+0x000071b41a1327f7:   85 db 74 0f 49 8b 77 78 48 89 df 48 29 de e8 f6
+0x000071b41a132807:   99 1e ff 49 8b 7f 48 49 8d 47 58 48 39 c7 74 0d
+0x000071b41a132817:   49 8b 47 58 48 8d 70 01 e8 dc 99 1e ff 49 8b 7f 
+
+
+Stack slot to memory mapping:
+
+stack at sp + 0 slots: 0x000071b4192456f0: _ZTVNSt7__cxx1119basic_ostringstreamIcSt11char_traitsIcESaIcEEE+0x0000000000000018 in /usr/lib/x86_64-linux-gnu/libstdc++.so.6 at 0x000071b419081000
+stack at sp + 1 slots: 0x000071b419245538: _ZTVNSt7__cxx1115basic_stringbufIcSt11char_traitsIcESaIcEEE+0x0000000000000010 in /usr/lib/x86_64-linux-gnu/libstdc++.so.6 at 0x000071b419081000
+stack at sp + 2 slots: 0x6f69747065637845 is an unknown value
+stack at sp + 3 slots: 0x000071b37f9f78b0 is pointing into the stack for thread: 0x000071b4975d0330
+stack at sp + 4 slots: 0x000071b4192456f0: _ZTVNSt7__cxx1119basic_ostringstreamIcSt11char_traitsIcESaIcEEE+0x0000000000000018 in /usr/lib/x86_64-linux-gnu/libstdc++.so.6 at 0x000071b419081000
+stack at sp + 5 slots: 0x000071b419245538: _ZTVNSt7__cxx1115basic_stringbufIcSt11char_traitsIcESaIcEEE+0x0000000000000010 in /usr/lib/x86_64-linux-gnu/libstdc++.so.6 at 0x000071b419081000
+stack at sp + 6 slots: 0x000000000000000e is an unknown value
+stack at sp + 7 slots: 0x000000006ae80ea4 is an unknown value
+
+
+Compiled method (n/a) 17413 9214     n 0       jdk.internal.vm.Continuation::enterSpecial (native)
+ total in heap  [0x000071b4844bcb10,0x000071b4844bce98] = 904
+ relocation     [0x000071b4844bcc68,0x000071b4844bcc90] = 40
+ main code      [0x000071b4844bcca0,0x000071b4844bce78] = 472
+ stub code      [0x000071b4844bce78,0x000071b4844bce98] = 32
+
+[Constant Pool (empty)]
+
+[MachCode]
+[Entry Point]
+  # {method} {0x000071b41f07d0c8} 'enterSpecial' '(Ljdk/internal/vm/Continuation;ZZ)V' in 'jdk/internal/vm/Continuation'
+  # parm0:    rsi:rsi   = 'jdk/internal/vm/Continuation'
+  # parm1:    rdx       = boolean
+  # parm2:    rcx       = boolean
+  #           [sp+0x50]  (sp of caller)
+  0x000071b4844bcca0: 5848 8b74 | 2410 8b54 | 2408 8b0c | 2448 83e4 | f050 493b | a738 0500 | 0076 0749 | 89a7 3805 
+  0x000071b4844bccc0: 0000 5548 | 8bec 4883 | ec40 498b | 8730 0500 | 0048 8944 | 2408 4989 | a730 0500 | 0048 8974 
+  0x000071b4844bcce0: 2410 894c | 2420 48c7 | 4424 1800 | 0000 00c7 | 4424 2400 | 0000 00c7 | 4424 3800 | 0000 0049 
+  0x000071b4844bcd00: 8b87 3805 | 0000 4889 | 4424 2849 | 8b87 4805 | 0000 4889 | 4424 3049 | c787 3805 | 0000 0000 
+  0x000071b4844bcd20: 0000 49c7 | 8748 0500 | 0000 0000 | 0048 85d2 | 0f85 b000 
+
+  0x000071b4844bcd34: ;   {static_call}
+  0x000071b4844bcd34: 0000 90e8 | 447c 94ff 
+
+  0x000071b4844bcd3c: ;   {other}
+  0x000071b4844bcd3c: 0f1f 8400 | 2c02 0000 | e9aa 0000 | 0066 6666 | 0f1f 8400 | 0000 0000 | 6666 6690 | 0f1f 8400 
+  0x000071b4844bcd5c: 0000 0000 
+[Verified Entry Point]
+  0x000071b4844bcd60: 5548 8bec | 4883 ec40 | 498b 8730 | 0500 0048 | 8944 2408 | 4989 a730 | 0500 0048 | 8974 2410 
+  0x000071b4844bcd80: 894c 2420 | 48c7 4424 | 1800 0000 | 00c7 4424 | 2400 0000 | 00c7 4424 | 3800 0000 | 0049 8b87 
+  0x000071b4844bcda0: 3805 0000 | 4889 4424 | 2849 8b87 | 4805 0000 | 4889 4424 | 3049 c787 | 3805 0000 | 0000 0000 
+  0x000071b4844bcdc0: 49c7 8748 | 0500 0000 | 0000 0048 | 85d2 7516 | 0f1f 8000 
+
+  0x000071b4844bcdd4: ;   {static_call}
+  0x000071b4844bcdd4: 0000 00e8 | ab00 0000 
+
+  0x000071b4844bcddc: ;   {other}
+  0x000071b4844bcddc: 0f1f 8400 | cc02 0001 
+
+  0x000071b4844bcde4: ;   {runtime_call StubRoutines (continuation stubs)}
+  0x000071b4844bcde4: eb0d e895 
+
+  0x000071b4844bcde8: ; ImmutableOopMap {}
+                      ;   {other}
+  0x000071b4844bcde8: f78f ff0f | 1f84 00db | 0200 0248 | 8b5c 2428 | 4989 9f38 | 0500 0048 | 8b5c 2430 | 4989 9f48 
+  0x000071b4844bce08: 0500 0048 | 8b5c 2408 | 4989 9f30 | 0500 0048 | 83c4 405d | c348 8b5c | 2428 4989 | 9f38 0500 
+  0x000071b4844bce28: 0048 8b5c | 2430 4989 | 9f48 0500 | 0048 8b5c | 2408 4989 | 9f30 0500 | 0048 83c4 | 405d 498b 
+  0x000071b4844bce48: ff48 8b34 | 2450 40f6 | c40f 0f84 | 1200 0000 | 4883 ec08 
+
+  0x000071b4844bce5c: ;   {runtime_call SharedRuntime::exception_handler_for_return_address(JavaThread*, unsigned char*)}
+  0x000071b4844bce5c: e89f e481 | 1848 83c4 | 08e9 0500 
+
+  0x000071b4844bce68: ;   {runtime_call SharedRuntime::exception_handler_for_return_address(JavaThread*, unsigned char*)}
+  0x000071b4844bce68: 0000 e891 | e481 1848 | 8bd8 585a | ffe3 f4f4 
+[Stub Code]
+  0x000071b4844bce78: ;   {no_reloc}
+  0x000071b4844bce78: 48bb 0000 | 0000 0000 
+
+  0x000071b4844bce80: ;   {runtime_call native nmethod}
+  0x000071b4844bce80: 0000 e9fb 
+
+  0x000071b4844bce84: ;   {static_stub}
+  0x000071b4844bce84: ffff ff48 | bb70 d007 | 1fb4 7100 
+
+  0x000071b4844bce90: ;   {runtime_call I2C/C2I adapters}
+  0x000071b4844bce90: 00e9 d0c7 | 94ff f4f4 
+[/MachCode]
+
+
+---------------  P R O C E S S  ---------------
+
+Threads class SMR info:
+_java_thread_list=0x000071b2dc007500, length=25, elements={
+0x000071b494166430, 0x000071b494167ab0, 0x000071b494169230, 0x000071b49416a860,
+0x000071b49416bdf0, 0x000071b49416d900, 0x000071b49416eff0, 0x000071b49417ae80,
+0x000071b49417dda0, 0x000071b4941d6480, 0x000071b495dc1910, 0x000071b4975cf880,
+0x000071b4975d0330, 0x000071b360005580, 0x000071b364001680, 0x000071b49402a590,
+0x000071b3982689c0, 0x000071b398288ba0, 0x000071b39c0cc350, 0x000071b39c0cd690,
+0x000071b3bc78d530, 0x000071b39000c770, 0x000071b390011290, 0x000071b2fc0019e0,
+0x000071b404000ed0
+}
+
+Java Threads: ( => current thread )
+  0x000071b494166430 JavaThread "Reference Handler"          [_thread_blocked, id=18640, stack(0x000071b46db17000,0x000071b46dc18000) (1028K)]
+  0x000071b494167ab0 JavaThread "Finalizer"                  [_thread_blocked, id=18641, stack(0x000071b46da16000,0x000071b46db17000) (1028K)]
+  0x000071b494169230 JavaThread "Signal Dispatcher"          [_thread_blocked, id=18642, stack(0x000071b46d915000,0x000071b46da16000) (1028K)]
+  0x000071b49416a860 JavaThread "Service Thread"             [_thread_blocked, id=18643, stack(0x000071b46d814000,0x000071b46d915000) (1028K)]
+  0x000071b49416bdf0 JavaThread "Monitor Deflation Thread"   [_thread_blocked, id=18644, stack(0x000071b46d713000,0x000071b46d814000) (1028K)]
+  0x000071b49416d900 JavaThread "C2 CompilerThread0"         [_thread_blocked, id=18645, stack(0x000071b46d612000,0x000071b46d713000) (1028K)]
+  0x000071b49416eff0 JavaThread "C1 CompilerThread0"         [_thread_blocked, id=18646, stack(0x000071b46d511000,0x000071b46d612000) (1028K)]
+  0x000071b49417ae80 JavaThread "Notification Thread"        [_thread_blocked, id=18647, stack(0x000071b46d340000,0x000071b46d441000) (1028K)]
+  0x000071b49417dda0 JavaThread "Common-Cleaner"             [_thread_blocked, id=18648, stack(0x000071b46d23f000,0x000071b46d340000) (1028K)]
+  0x000071b4941d6480 JavaThread "Cleaner-0"                  [_thread_blocked, id=18649, stack(0x000071b46d13e000,0x000071b46d23f000) (1028K)]
+  0x000071b495dc1910 JavaThread "Cleaner-1"                  [_thread_blocked, id=18753, stack(0x000071b46c001000,0x000071b46c102000) (1028K)]
+  0x000071b4975cf880 JavaThread "ForkJoinPool-1-worker-1"    [_thread_blocked, id=18845, stack(0x000071b37f9fa000,0x000071b37fafb000) (1028K)]
+=>0x000071b4975d0330 JavaThread "ForkJoinPool-1-worker-2"    [_thread_in_native, id=18846, stack(0x000071b37f8f9000,0x000071b37f9fa000) (1028K)]
+  0x000071b360005580 JavaThread "ForkJoinPool-1-worker-3"    [_thread_blocked, id=18847, stack(0x000071b37f7f8000,0x000071b37f8f9000) (1028K)]
+  0x000071b364001680 JavaThread "ForkJoinPool-1-worker-4"    [_thread_blocked, id=18848, stack(0x000071b37f6f7000,0x000071b37f7f8000) (1028K)]
+  0x000071b49402a590 JavaThread "DestroyJavaVM"              [_thread_blocked, id=18632, stack(0x000071b49bcbc000,0x000071b49bdbd000) (1028K)]
+  0x000071b3982689c0 JavaThread "HttpClient-1-SelectorManager" [_thread_in_native, id=18885, stack(0x000071b41adfe000,0x000071b41aeff000) (1028K)]
+  0x000071b398288ba0 JavaThread "HttpClient-1-Worker-0"      [_thread_blocked, id=18886, stack(0x000071b46c607000,0x000071b46c708000) (1028K)]
+  0x000071b39c0cc350 JavaThread "HttpClient-1-Worker-1"      [_thread_blocked, id=18887, stack(0x000071b37c5f0000,0x000071b37c6f1000) (1028K)]
+  0x000071b39c0cd690 JavaThread "HttpClient-1-Worker-2"      [_thread_blocked, id=18888, stack(0x000071b37c4ef000,0x000071b37c5f0000) (1028K)]
+  0x000071b3bc78d530 JavaThread "ForkJoinPool.commonPool-worker-1" [_thread_blocked, id=18890, stack(0x000071b37c3ee000,0x000071b37c4ef000) (1028K)]
+  0x000071b39000c770 JavaThread "HttpClient-2-SelectorManager" [_thread_in_native, id=18893, stack(0x000071b37c2ed000,0x000071b37c3ee000) (1028K)]
+  0x000071b390011290 JavaThread "HttpClient-2-Worker-0"      [_thread_blocked, id=18894, stack(0x000071b37c1ec000,0x000071b37c2ed000) (1028K)]
+  0x000071b2fc0019e0 JavaThread "HttpClient-2-Worker-1"      [_thread_blocked, id=18895, stack(0x000071b37c0eb000,0x000071b37c1ec000) (1028K)]
+  0x000071b404000ed0 JavaThread "SIGTERM handler"            [_thread_blocked, id=18914, stack(0x000071b3555fa000,0x000071b3556fb000) (1028K)]
+Total: 25
+
+Other Threads:
+  0x000071b49415cfd0 VMThread "VM Thread"                           [id=18639, stack(0x000071b46df00000,0x000071b46e000000) (1024K)]
+  0x000071b494081c30 WorkerThread "GC Thread#0"                     [id=18633, stack(0x000071b498872000,0x000071b498972000) (1024K)]
+  0x000071b414008220 WorkerThread "GC Thread#1"                     [id=18654, stack(0x000071b46d03e000,0x000071b46d13e000) (1024K)]
+  0x000071b414008910 WorkerThread "GC Thread#2"                     [id=18655, stack(0x000071b46cf3d000,0x000071b46d03d000) (1024K)]
+  0x000071b414010b30 WorkerThread "GC Thread#3"                     [id=18684, stack(0x000071b46cd3b000,0x000071b46ce3b000) (1024K)]
+  0x000071b41400d720 WorkerThread "GC Thread#4"                     [id=18685, stack(0x000071b46cb0d000,0x000071b46cc0d000) (1024K)]
+  0x000071b414015ad0 WorkerThread "GC Thread#5"                     [id=18692, stack(0x000071b46ca0c000,0x000071b46cb0c000) (1024K)]
+  0x000071b414016340 WorkerThread "GC Thread#6"                    

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { useAuthStore } from '../../store/authStore';
+import { supabase } from '../supabase';
 import { multipartImage } from '../../utils/multipart';
 
 const api = axios.create({
@@ -10,18 +10,16 @@ const api = axios.create({
   }
 });
 
-api.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().token;
+// Token do Supabase Auth. getSession() devolve a sessão já renovada quando o
+// access_token venceu (ex.: app voltando do segundo plano).
+api.interceptors.request.use(async (config) => {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
-
-export interface LoginData {
-  login: string;
-  senha: string;
-}
 
 export interface RegisterClienteData {
   nome: string;
@@ -29,7 +27,7 @@ export interface RegisterClienteData {
   senha: string;
   telefone?: string;
   dataNasc?: string;
-  cpf?: string;
+  cpf: string;
   termosAceitos: boolean;
 }
 
@@ -39,12 +37,19 @@ export interface RegisterArtistaData {
   senha: string;
   telefone?: string;
   dataNasc?: string;
-  cnpj?: string;
+  cpf: string;
   bio?: string;
   instagram?: string;
-  endereco: EnderecoInput;
-  estilos?: string[];
+  /** Estúdio próprio (solo): cria o estúdio e o contrato "dono" junto com a conta. */
+  estudioSolo?: EstudioSoloInput;
   termosAceitos: boolean;
+}
+
+export interface EstudioSoloInput {
+  nome: string;
+  /** Conferido na Receita Federal pelo backend (ativo + CNAE 9609-2/06). */
+  cnpj: string;
+  endereco: EnderecoInput;
 }
 
 export interface EnderecoInput {
@@ -64,7 +69,8 @@ export interface RegisterEstudioData {
   email: string;
   senha: string;
   telefone?: string;
-  cnpj?: string;
+  /** Conferido na Receita Federal pelo backend (ativo + CNAE 9609-2/06). */
+  cnpj: string;
   /** Quantidade de posições (macas/bancadas) de atendimento, de 1 a 50. */
   posicoes: number;
   endereco: EnderecoInput;
@@ -78,6 +84,8 @@ export interface UserMeResponse {
   telefone?: string;
   dataNasc?: string;
   role: 'admin' | 'cliente' | 'tatuador' | 'estudio';
+  /** Estúdio próprio do tatuador (contrato "dono"); null nos demais casos. */
+  estudioProprioId: string | null;
 }
 
 export interface ChatDTO {
@@ -87,6 +95,8 @@ export interface ChatDTO {
   ultimaMensagem: string | null;
   dataUltimaMensagem: string | null;
   ativo: boolean;
+  /** A última mensagem é para o usuário logado e ainda não foi lida. */
+  naoLida: boolean;
 }
 
 export interface MensagemDTO {
@@ -109,28 +119,20 @@ export interface Page<T> {
   last: boolean;
 }
 
-export interface AuthResponse {
-  token: string;
-}
-
+/**
+ * Cadastro e perfil. O login em si é feito no Supabase Auth (services/supabase.ts):
+ * o cadastro cria a conta e o perfil e responde 201 sem token — a tela entra
+ * com o mesmo e-mail e senha logo depois.
+ */
 export const authService = {
-  
-  async login(data: LoginData): Promise<AuthResponse> {
-    const response = await api.post<AuthResponse>('/auth/login', data);
-    return response.data;
+  async registerCliente(data: RegisterClienteData): Promise<void> {
+    await api.post('/user/cadastro/cliente', data);
   },
-
-  async registerCliente(data: RegisterClienteData): Promise<AuthResponse> {
-    const { data: res } = await api.post<AuthResponse>('/user/cadastro/cliente', data);
-    return res;
+  async registerArtista(data: RegisterArtistaData): Promise<void> {
+    await api.post('/user/cadastro/artista', data);
   },
-  async registerArtista(data: RegisterArtistaData): Promise<AuthResponse> {
-    const { data: res } = await api.post<AuthResponse>('/user/cadastro/artista', data);
-    return res;
-  },
-  async registerEstudio(data: RegisterEstudioData): Promise<AuthResponse> {
-    const { data: res } = await api.post<AuthResponse>('/user/cadastro/estudio', data);
-    return res;
+  async registerEstudio(data: RegisterEstudioData): Promise<void> {
+    await api.post('/user/cadastro/estudio', data);
   },
 
   async me(): Promise<UserMeResponse> {
@@ -158,6 +160,11 @@ export const chatService = {
     return data;
   },
 
+  /** Marca a conversa como lida até agora (alimenta "Mensagens não lidas" do Kanban). */
+  async marcarComoLido(chatId: string): Promise<void> {
+    await api.post(`/chats/${chatId}/leitura`);
+  },
+
   /**
    * Envia uma imagem local (`file://`) no chat, com legenda opcional.
    * A mensagem criada também chega pelo WebSocket (/user/queue/messages).
@@ -178,7 +185,7 @@ export interface AppointmentSessionInput {
   data: string;
   horario: string;
   duracaoMinutos: number;
-  /** Obrigatória quando o tatuador é vinculado a um estúdio. */
+  /** Posição do estúdio; o backend usa 1 quando o estúdio só tem uma. */
   posicao?: number;
 }
 
@@ -188,10 +195,14 @@ export interface AppointmentSessionDTO {
   horario: string;
   duracaoMinutos: number;
   posicao: number | null;
+  status: string;
+  /** Futura e não marcada: o tatuador pode remarcar ou remover. */
+  editavel: boolean;
 }
 
 /** Sessão já reservada no estúdio (gráfico de posições). */
 export interface ReservaPosicaoDTO {
+  sessionId: string;
   /** null em sessões antigas, sem posição. */
   posicao: number | null;
   data: string;
@@ -216,10 +227,23 @@ export interface AppointmentDTO {
   chatId: string;
   clienteId: string;
   tatuadorId: string;
+  clienteNome: string | null;
   status: 'agendada' | 'confirmada' | 'em_andamento' | 'concluida' | 'cancelada' | 'no_show';
+  finalizado: boolean;
   valorTotal: number;
+  /** Sessões não canceladas, em ordem de data. */
   sessoes: AppointmentSessionDTO[];
   dataCriacao: string;
+}
+
+export interface SessaoEditadaInput extends AppointmentSessionInput {
+  /** null = sessão nova. */
+  sessionId: string | null;
+}
+
+export interface EditarServicoDTO {
+  valorTotal: number;
+  sessoes: SessaoEditadaInput[];
 }
 
 export interface BusySlotDTO {
@@ -239,9 +263,20 @@ export interface SessaoListItemDTO {
   status: string;
 }
 
+/** Token do QR code de check-in da sessão. */
+export interface TokenCheckin {
+  token: string;
+  /** ISO-8601, em UTC. */
+  expiraEm: string;
+}
+
+/** Status que o tatuador pode marcar numa sessão que já aconteceu. */
+export type StatusSessaoMarcavel = 'concluida' | 'no_show';
+
 export const appointmentService = {
   async criar(data: {
     chatId: string;
+    estiloId: string;
     sessoes: AppointmentSessionInput[];
     valorTotal: number;
   }): Promise<AppointmentDTO> {
@@ -251,6 +286,16 @@ export const appointmentService = {
 
   async obter(id: string): Promise<AppointmentDTO> {
     const { data: res } = await api.get<AppointmentDTO>(`/appointments/${id}`);
+    return res;
+  },
+
+  /**
+   * Tatuador edita o serviço: valor total e o conjunto desejado das sessões
+   * editáveis (com `sessionId` = remarcar; sem = nova; omitida = cancelada).
+   * O cliente recebe a grade atualizada no chat.
+   */
+  async editar(id: string, dto: EditarServicoDTO): Promise<AppointmentDTO> {
+    const { data: res } = await api.put<AppointmentDTO>(`/appointments/${id}`, dto);
     return res;
   },
 
@@ -264,6 +309,28 @@ export const appointmentService = {
   async listarSessoes(params?: { de?: string; ate?: string }): Promise<SessaoListItemDTO[]> {
     const { data: res } = await api.get<SessaoListItemDTO[]>('/appointments/minhas-sessoes', { params });
     return res;
+  },
+
+  /**
+   * O tatuador marca a sessão como realizada ou falta do cliente, depois do
+   * horário dela. Só sessões realizadas entram na comissão do estúdio.
+   */
+  async marcarSessao(sessionId: string, status: StatusSessaoMarcavel): Promise<void> {
+    await api.patch(`/appointments/sessoes/${sessionId}/status`, { status });
+  },
+
+  /**
+   * Cliente: token do QR da sessão (vale 2 minutos; peça outro antes de vencer).
+   * Só de 30 min antes a 6 h depois do início.
+   */
+  async qrCodeSessao(sessionId: string): Promise<TokenCheckin> {
+    const { data } = await api.get<TokenCheckin>(`/appointments/sessoes/${sessionId}/qrcode`);
+    return data;
+  },
+
+  /** Tatuador: leu o QR do cliente; a sessão vira realizada. */
+  async checkIn(token: string): Promise<void> {
+    await api.post('/appointments/sessoes/check-in', { token });
   },
 
   /** Posições do estúdio do tatuador logado e as reservas do dia. */

@@ -3,11 +3,13 @@ package com.rabisko.mvp.studio.service;
 import com.rabisko.mvp.studio.domain.Studio;
 import com.rabisko.mvp.studio.domain.dashboard.DashboardAgendaProjection;
 import com.rabisko.mvp.studio.domain.dashboard.DashboardAgendamentosProjection;
+import com.rabisko.mvp.studio.domain.dashboard.DashboardEstiloProjection;
+import com.rabisko.mvp.studio.domain.dashboard.DashboardFinanceiroProjection;
 import com.rabisko.mvp.studio.domain.dashboard.DashboardTatuadorProjection;
 import com.rabisko.mvp.studio.domain.dashboard.PeriodoDashboard;
 import com.rabisko.mvp.studio.repository.StudioDashboardRepository;
 import com.rabisko.mvp.studio.repository.StudioRepository;
-import com.rabisko.mvp.user.domain.User;
+import com.rabisko.mvp.shared.infraestrutura.security.UsuarioLogado;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -29,36 +31,46 @@ public class StudioDashboardService {
     @Autowired
     private StudioDashboardRepository dashboardRepository;
 
+    @Autowired
+    private StudioService studioService;
+
     /** JSON: { revenue, daily: [{ day, value }] } */
-    public String receitaTotal(User logado, PeriodoDashboard periodo) {
+    public String receitaTotal(UsuarioLogado logado, PeriodoDashboard periodo) {
         return dashboardRepository.receitaTotal(estudioId(logado), periodo.inicio(), periodo.fim());
     }
 
-    public DashboardAgendamentosProjection agendamentos(User logado, PeriodoDashboard periodo) {
+    public DashboardAgendamentosProjection agendamentos(UsuarioLogado logado, PeriodoDashboard periodo) {
         return dashboardRepository.agendamentos(estudioId(logado), periodo.inicio(), periodo.fim());
     }
 
     /** JSON: { daily: [{ day, value }], peak: { day, value }, average } */
-    public String evolucaoReceita(User logado, PeriodoDashboard periodo) {
+    public String evolucaoReceita(UsuarioLogado logado, PeriodoDashboard periodo) {
         return dashboardRepository.evolucaoReceita(estudioId(logado), periodo.inicio(), periodo.fim());
     }
 
-    public List<DashboardTatuadorProjection> tatuadores(User logado, PeriodoDashboard periodo) {
+    public List<DashboardTatuadorProjection> tatuadores(UsuarioLogado logado, PeriodoDashboard periodo) {
         return dashboardRepository.tatuadores(estudioId(logado), periodo.inicio(), periodo.fim());
     }
 
-    public List<DashboardAgendaProjection> agenda(User logado, PeriodoDashboard periodo) {
+    public List<DashboardAgendaProjection> agenda(UsuarioLogado logado, PeriodoDashboard periodo) {
         return dashboardRepository.agenda(estudioId(logado), periodo.inicio(), periodo.fim());
     }
 
-    private UUID estudioId(User user) {
+    public List<DashboardEstiloProjection> estilos(UsuarioLogado logado, PeriodoDashboard periodo) {
+        return dashboardRepository.estilos(estudioId(logado), periodo.inicio(), periodo.fim());
+    }
+
+    private UUID estudioId(UsuarioLogado user) {
         if (user == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sem usuario autenticado");
         }
-        return studioRepository.findByUserId(user.getUserId())
-                .map(Studio::getEstudioId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Usuario nao possui perfil de estudio"
-                ));
+        
+        Studio studio = studioService.exigirEstudioDoUser(user);
+
+        return studio.getEstudioId();
+    }
+
+    public List<DashboardFinanceiroProjection> financeiro(UsuarioLogado logado, PeriodoDashboard periodo) {
+        return dashboardRepository.financeiro(estudioId(logado), periodo.inicio(), periodo.fim());
     }
 }

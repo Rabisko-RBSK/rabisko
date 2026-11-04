@@ -19,8 +19,4 @@ public record IntervaloSessao(UUID tatuadorId, LocalDateTime inicio, int duracao
     public boolean sobrepoe(IntervaloSessao outro) {
         return inicio.isBefore(outro.fim()) && outro.inicio.isBefore(fim());
     }
-
-    public static IntervaloSessao de(AppointmentSession s) {
-        return new IntervaloSessao(s.getTatuadorId(), s.getDataSessao(), s.getDuracaoMinutos(), s.getPosicao());
-    }
 }

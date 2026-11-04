@@ -22,6 +22,10 @@ public class StorageService {
     @Value("${supabase.url}")
     private String supabaseUrl;
 
+    /** Base das URLs publicas devolvidas ao app; vazia = a mesma de supabaseUrl. */
+    @Value("${supabase.public-url:}")
+    private String publicUrl;
+
     @Value("${supabase.service-key}")
     private String serviceKey;
 
@@ -100,7 +104,8 @@ public class StorageService {
             throw new RuntimeException("Erro ao subir imagem para o Supabase Storage.", e);
         }
 
-        return supabaseUrl + "/storage/v1/object/public/" + bucket + "/" + objectName;
+        String base = publicUrl == null || publicUrl.isBlank() ? supabaseUrl : publicUrl;
+        return base + "/storage/v1/object/public/" + bucket + "/" + objectName;
     }
 
     private void deleteByUrl(String bucket, String url) {

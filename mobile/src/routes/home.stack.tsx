@@ -9,10 +9,12 @@ import { ConfirmedScreen } from '../screens/App/ConfirmedScreen';
 import { ChatThreadScreen } from '../screens/App/ChatThreadScreen';
 import { SearchResultsScreen } from '../screens/App/SearchResultsScreen';
 import { FavoritesScreen } from '../screens/App/FavoritesScreen';
+import { StudioPublicProfileScreen } from '../screens/App/StudioPublicProfileScreen';
 
 export type HomeStackParamList = {
   HomeList: undefined;
   EstablishmentProfile: { id: string };
+  StudioPublicProfile: { id: string };
   BookingFlow: { id: string };
   Payment: { bookingId: string };
   Confirmed: { artistName?: string; dateTime?: string; total?: string } | undefined;
@@ -28,6 +30,7 @@ export function HomeStack() {
     <Navigator screenOptions={{ headerShown: false }}>
       <Screen name="HomeList" component={HomeScreen} />
       <Screen name="EstablishmentProfile" component={EstablishmentProfileScreen} />
+      <Screen name="StudioPublicProfile" component={StudioPublicProfileScreen} />
       <Screen name="BookingFlow" component={BookingScreen} />
       <Screen name="Payment" component={PaymentScreen} />
       <Screen

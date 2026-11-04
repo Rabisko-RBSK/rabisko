@@ -41,6 +41,40 @@ export interface StudioArtistResumo {
   revenue: number;
 }
 
+/** Estilo mais procurado no período; percent de 0 a 100 sobre o total de serviços. */
+export interface StudioEstiloResumo {
+  name: string;
+  count: number;
+  percent: number;
+}
+
+/**
+ * Resultado financeiro de um contrato da equipe no período
+ * (GET /studio/me/dashboard/financeiro). Cada contrato conta só no trecho em
+ * que esteve ativo; quem trocou de contrato no período tem uma linha por contrato.
+ */
+export interface StudioFinanceiroLinha {
+  contratoId: string;
+  tatuadorId: string;
+  nome: string;
+  modelo: 'comissao' | 'aluguel' | 'salario';
+  percentualEstudio: number | null;
+  valorFixo: number | null;
+  periodicidade: 'diaria' | 'semanal' | 'mensal' | null;
+  /** Trecho ativo dentro do período (YYYY-MM-DD, inclusivo). */
+  inicio: string;
+  fim: string;
+  /** Dias cobrados no aluguel/salário. */
+  dias: number;
+  /** Sessões realizadas (concluídas) no trecho e o valor delas. */
+  sessoes: number;
+  valorSessoes: number;
+  /** Comissão ou aluguel: o tatuador paga ao estúdio. */
+  aReceber: number;
+  /** Salário: o estúdio paga ao tatuador. */
+  aPagar: number;
+}
+
 export type StudioSessaoStatus = 'agendada' | 'confirmada' | 'em_andamento' | 'concluida' | 'no_show';
 
 /** Sessão da agenda. Não há estilo por sessão no banco, então não vem `style`. */
@@ -79,6 +113,17 @@ export const studioDashboardService = {
 
   async agenda(params: StudioDashboardPeriodo): Promise<StudioAgendaItem[]> {
     const { data } = await api.get<StudioAgendaItem[]>('/studio/me/dashboard/agenda', { params });
+    return data;
+  },
+
+  async financeiro(params: StudioDashboardPeriodo): Promise<StudioFinanceiroLinha[]> {
+    const { data } = await api.get<StudioFinanceiroLinha[]>('/studio/me/dashboard/financeiro', { params });
+    return data;
+  },
+
+  /** Estilo do serviço (servicos.estilo_id), do mais procurado ao menos. */
+  async estilos(params: StudioDashboardPeriodo): Promise<StudioEstiloResumo[]> {
+    const { data } = await api.get<StudioEstiloResumo[]>('/studio/me/dashboard/estilos', { params });
     return data;
   },
 };

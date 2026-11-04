@@ -4,6 +4,8 @@ import com.rabisko.mvp.artist.domain.Artist;
 import com.rabisko.mvp.artist.domain.ArtistSearchProjection;
 import com.rabisko.mvp.artist.domain.ArtistStudioSearch;
 import com.rabisko.mvp.studio.domain.ColaboradorDTO;
+import com.rabisko.mvp.studio.domain.ContratoStatus;
+
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -18,10 +20,7 @@ import java.util.UUID;
 public interface ArtistRepository extends JpaRepository<Artist, UUID> {
 
     /** Busca o perfil tatuador a partir do User. */
-    Optional<Artist> findByUserId(UUID userId);
-
-    /** Tatuadores vinculados a um estudio (equipe que divide as posicoes). */
-    List<Artist> findByEstudioId(UUID estudioId);
+    Optional<Artist> findByAuthId(UUID userId);
 
     /**
      * SELECT ... FOR UPDATE no tatuador. Serializa os agendamentos de quem nao
@@ -41,9 +40,11 @@ public interface ArtistRepository extends JpaRepository<Artist, UUID> {
      *    Senao -> calcula distancia entre (lat, lng) e a coordenada do
      *             tatuador via Haversine; aceita se <= raioKm
      *
-     * Endereco/coordenada do tatuador: se ele e vinculado a um estudio, vale
-     * o endereco do ESTUDIO; se e autonomo, vale o endereco proprio. Ambos
-     * ficam na tabela `enderecos` (via endereco_id).
+     * Estudio de atendimento: o do contrato de colaborador ativo; se nao
+     * houver, o estudio proprio (contrato "dono") — mesma regra de
+     * ContratoService.estudioDeAtendimento. Tatuador sem estudio nao atende e
+     * fica fora do resultado (JOIN LATERAL sem linha). Endereco/coordenada
+     * sao os desse estudio (estudios.endereco_id).
      *
      * 6371 = raio medio da Terra em km. LEAST(1.0, ...) protege contra
      * imprecisao numerica que poderia fazer acos receber > 1.0 (NaN).
@@ -53,27 +54,46 @@ public interface ArtistRepository extends JpaRepository<Artist, UUID> {
      */
     @Query(value = """
             SELECT t.tatuador_id AS tatuadorId,
-                   u.nome        AS nome,
-                   u.email       AS email,
+                   t.nome        AS nome,
+                   au.email       AS email,
                    CASE WHEN en.endereco_id IS NULL THEN NULL
                         ELSE en.logradouro
                              || COALESCE(', ' || en.numero, '')
                              || COALESCE(' - ' || en.bairro, '')
                              || ', ' || en.cidade || '/' || en.uf
-                   END           AS endereco
+                   END           AS endereco,
+                   t.foto_perfil_url AS fotoPerfilUrl,
+                   (SELECT ROUND(AVG(sv.avaliacao_nota), 1)
+                      FROM servicos sv
+                     WHERE sv.tatuador_id = t.tatuador_id
+                       AND sv.avaliacao_nota IS NOT NULL) AS notaMedia,
+                   (SELECT COUNT(*)
+                      FROM servicos sv
+                     WHERE sv.tatuador_id = t.tatuador_id
+                       AND sv.avaliacao_nota IS NOT NULL) AS totalAvaliacoes,
+                    ARRAY(SELECT DISTINCT e.nome FROM portfolio p JOIN estilos e ON e.estilo_id = p.estilo_id
+                    WHERE p.tatuador_id = t.tatuador_id ORDER BY e.nome) AS estilos
             FROM tatuadores t
-            JOIN users u ON u.user_id = t.user_id
-            LEFT JOIN estudios s ON s.estudio_id = t.estudio_id
-            LEFT JOIN enderecos en ON en.endereco_id = COALESCE(s.endereco_id, t.endereco_id)
-            WHERE u.status_ativo = TRUE
+            JOIN auth.users au ON au.id = t.auth_id
+            JOIN LATERAL (
+                SELECT c.estudio_id
+                FROM contratos_colaborador c
+                WHERE c.tatuador_id = t.tatuador_id
+                AND c.status = 'ativo'
+                ORDER BY (c.modelo = 'dono')
+                LIMIT 1
+            ) atendimento ON TRUE
+            JOIN estudios s ON s.estudio_id = atendimento.estudio_id
+            LEFT JOIN enderecos en ON en.endereco_id = s.endereco_id
+            WHERE t.status_ativo = TRUE
               AND (
                     :semEstilo = TRUE
                     OR EXISTS (
                         SELECT 1
-                        FROM tatuador_estilos te
-                        JOIN estilos e ON e.estilo_id = te.estilo_id
-                        WHERE te.tatuador_id = t.tatuador_id
-                          AND LOWER(e.nome) IN (:estilos)
+                        FROM portfolio p
+                        JOIN estilos e ON e.estilo_id = p.estilo_id
+                        WHERE p.tatuador_id = t.tatuador_id
+                        AND LOWER(e.nome) IN (:estilos)
                     )
                   )
               AND (
@@ -90,7 +110,7 @@ public interface ArtistRepository extends JpaRepository<Artist, UUID> {
                         ) <= :raioKm
                     )
                   )
-            ORDER BY u.nome
+            ORDER BY t.nome
             """, nativeQuery = true)
     List<ArtistSearchProjection> buscar(
             @Param("semEstilo") boolean semEstilo,
@@ -103,29 +123,37 @@ public interface ArtistRepository extends JpaRepository<Artist, UUID> {
 
     @Query("""
         SELECT new com.rabisko.mvp.studio.domain.ColaboradorDTO(
-            t.tatuadorId, u.nome, t.fotoPerfilUrl, t.instagram)
-        FROM Artist t
-        JOIN User u ON u.userId = t.userId
-        WHERE t.estudioId = :estudioId
-        ORDER BY u.nome
+            t.tatuadorId, t.nome, t.fotoPerfilUrl, t.instagram)
+        FROM Artist t, ContratoColaborador c
+        WHERE c.tatuadorId = t.tatuadorId
+        AND c.estudioId = :estudioId
+        AND c.status = :ativo
+        ORDER BY t.nome
         """)
-    List<ColaboradorDTO> listarColaboradores(@Param("estudioId") UUID estudioId);
+    List<ColaboradorDTO> listarColaboradores(@Param("estudioId") UUID estudioId, @Param("ativo") ContratoStatus ativo);
+
 
     @Query(value = """
         SELECT t.tatuador_id     AS tatuadorId,
-               u.nome            AS nome,
+               t.nome            AS nome,
                t.instagram       AS instagram,
                t.foto_perfil_url AS fotoPerfilUrl
         FROM tatuadores t
-        JOIN users u ON u.user_id = t.user_id
-        WHERE u.status_ativo = TRUE
-          AND t.estudio_id IS NULL
+        JOIN auth.users au ON au.id = t.auth_id
+        WHERE t.status_ativo = TRUE
           AND (
-                u.nome      ILIKE '%' || :termo || '%'
-             OR u.email     ILIKE '%' || :termo || '%'
+                t.nome      ILIKE '%' || :termo || '%'
+             OR au.email     ILIKE '%' || :termo || '%'
              OR t.instagram ILIKE '%' || :termo || '%'
           )
-        ORDER BY u.nome
+          AND NOT EXISTS (
+            SELECT 1 FROM contratos_colaborador c
+            WHERE c.tatuador_id = t.tatuador_id
+            AND c.status = 'ativo'
+            AND c.modelo <> 'dono'
+          )
+
+        ORDER BY t.nome
         LIMIT 20
         """, nativeQuery = true)
     List<ArtistStudioSearch> buscarParaConvite(@Param("termo") String termo);

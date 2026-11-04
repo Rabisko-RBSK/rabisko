@@ -12,19 +12,24 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
 
 import { appointmentService, AgendaEstudioDTO } from '../../services/api';
+import type { HorarioDTO } from '../../services/api/artistService';
 import {
   BlocoAgenda,
   Candidato,
   FIM_GRADE_MIN,
+  FORA_DO_HORARIO,
+  FaixaMin,
   INICIO_GRADE_MIN,
   PASSO_MIN,
   blocosDoDia,
   encaixarNoPasso,
+  faixasFechadas,
   minutosAgoraSeHoje,
   motivoConflito,
   paraHorario,
   paraMinutos,
 } from '../../utils/agendaEstudio';
+import { intervalosDoDia, paraMinutos as minutosDaHora } from '../../utils/horario';
 
 /**
  * Tela de posições do estúdio (gráfico de Gantt) — aberta pelo ScheduleModal
@@ -53,6 +58,8 @@ const C = {
   success: '#1F7A4D',
   /** Faixa de horários de hoje que já passaram. */
   passado: 'rgba(107,107,107,0.14)',
+  /** Fora do horário de atendimento do estúdio: não pode ser reservado. */
+  fechado: 'rgba(26,26,26,0.32)',
 };
 
 export interface PosicaoSelecionada {
@@ -70,6 +77,13 @@ interface Props {
   inicial?: PosicaoSelecionada | null;
   /** Outras sessões desta mesma proposta no mesmo dia (ainda não enviadas). */
   pendentes?: BlocoAgenda[];
+  /**
+   * Reservas gravadas que não bloqueiam (edição do serviço: as sessões dele,
+   * que entram em `pendentes` com a posição atual, ainda não salva).
+   */
+  ignorarSessionIds?: string[];
+  /** Grade de atendimento do estúdio; vazia ou ausente = sem restrição de horário. */
+  horarios?: HorarioDTO[];
 }
 
 function isoDate(d: Date): string {
@@ -79,7 +93,7 @@ function isoDate(d: Date): string {
 const xDe = (min: number) => (min - INICIO_GRADE_MIN) * PX_POR_MIN;
 
 export function StudioPositionsModal({
-  visible, onClose, onConfirm, data, duracaoMinutos, inicial, pendentes = [],
+  visible, onClose, onConfirm, data, duracaoMinutos, inicial, pendentes = [], ignorarSessionIds, horarios,
 }: Props) {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
@@ -119,20 +133,34 @@ export function StudioPositionsModal({
   }
 
   const blocos = useMemo(
-    () => [...(agenda ? blocosDoDia(agenda.reservas, dataIso) : []), ...pendentes],
-    [agenda, dataIso, pendentes],
+    () => [
+      ...(agenda
+        ? blocosDoDia(agenda.reservas.filter((r) => !ignorarSessionIds?.includes(r.sessionId)), dataIso)
+        : []),
+      ...pendentes,
+    ],
+    [agenda, dataIso, pendentes, ignorarSessionIds],
   );
   const semPosicaoProprios = blocos.filter((b) => b.posicao === null && b.propria);
   // Hoje: horários até agora não podem ser reservados (o backend também recusa).
   const agoraMin = minutosAgoraSeHoje(data);
-  const conflito = candidato ? motivoConflito(candidato, blocos, agoraMin) : null;
+  // Horário do estúdio no dia: fora dele, escurecido e sem reserva (o backend também recusa).
+  const abertas = useMemo<FaixaMin[] | null>(
+    () => (horarios && horarios.length > 0
+      ? intervalosDoDia(horarios, data).map((h) => ({ inicio: minutosDaHora(h.abre), fim: minutosDaHora(h.fecha) }))
+      : null),
+    [horarios, data],
+  );
+  const fechadas = useMemo(() => faixasFechadas(abertas), [abertas]);
+  const conflito = candidato ? motivoConflito(candidato, blocos, agoraMin, abertas) : null;
   const posicoes = agenda?.posicoes ?? 0;
 
-  // Rola até a seleção (ou à primeira reserva, ou 09:00) quando os dados chegam.
+  // Rola até a seleção (ou à primeira reserva, à abertura do estúdio, ou 09:00) quando os dados chegam.
   useEffect(() => {
     if (!agenda) return;
     const foco = candidato?.inicioMin
       ?? blocos.filter((b) => b.posicao !== null).map((b) => b.inicioMin).sort((a, b) => a - b)[0]
+      ?? abertas?.map((a) => a.inicio).sort((a, b) => a - b)[0]
       ?? 9 * 60;
     const x = Math.max(0, xDe(Math.max(foco, INICIO_GRADE_MIN)) - 24);
     requestAnimationFrame(() => scrollRef.current?.scrollTo({ x, animated: false }));
@@ -248,6 +276,18 @@ export function StudioPositionsModal({
                           />
                         ))}
 
+                        {fechadas.map((f) => (
+                          <View
+                            key={`fechado-${f.inicio}`}
+                            pointerEvents="none"
+                            style={{
+                              position: 'absolute', left: xDe(f.inicio), top: 0, bottom: 0,
+                              width: (f.fim - f.inicio) * PX_POR_MIN,
+                              backgroundColor: C.fechado,
+                            }}
+                          />
+                        ))}
+
                         {agoraMin !== null && agoraMin > INICIO_GRADE_MIN && (
                           <View
                             pointerEvents="none"
@@ -303,7 +343,7 @@ export function StudioPositionsModal({
                               style={{ color: conflito ? C.error : '#FFFFFF' }}
                               numberOfLines={1}
                             >
-                              {conflito ? 'Conflito' : 'Sua sessão'}
+                              {conflito ? (conflito === FORA_DO_HORARIO ? 'Fora do horário' : 'Conflito') : 'Sua sessão'}
                             </Text>
                           </View>
                         )}
@@ -322,6 +362,7 @@ export function StudioPositionsModal({
                 <Legenda cor={C.plum} label="Sua sessão" />
                 <Legenda cor="#FFFFFF" borda label="Livre" />
                 {agoraMin !== null && <Legenda cor={C.passado} label="Já passou" />}
+                {fechadas.length > 0 && <Legenda cor={C.fechado} label="Estúdio fechado" />}
               </View>
               {semPosicaoProprios.length > 0 && (
                 <Text className="font-body text-[12px] text-fg-3 mt-2">

@@ -223,7 +223,60 @@ function EstudioVinculadoCard({
   );
 }
 
-/** Atalho para a edição de nome, telefone, instagram e endereço. */
+/**
+ * Estúdio próprio do tatuador (contrato "dono"), com o atalho para o modo
+ * estúdio. `nome` só é conhecido quando ele atende lá (sem contrato de
+ * colaborador em outro estúdio).
+ */
+function EstudioProprioCard({ nome, onGerenciar }: { nome: string | null; onGerenciar: () => void }) {
+  return (
+    <View className="bg-surface rounded-rd-lg p-5 flex-row items-center">
+      <View className="w-12 h-12 rounded-rd-pill bg-surface-2 items-center justify-center mr-3">
+        <Store size={22} color="#6B6B6B" strokeWidth={1.5} />
+      </View>
+      <View className="flex-1">
+        <Text className="font-body-semibold text-[15px] text-ink" numberOfLines={1}>
+          {nome ?? 'Seu estúdio'}
+        </Text>
+        <Text className="font-body text-[12px] text-fg-3">Estúdio próprio</Text>
+      </View>
+      <TouchableOpacity
+        onPress={onGerenciar}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel="Gerenciar meu estúdio"
+      >
+        <Text className="font-body-semibold text-[12px] text-plum">Gerenciar</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+/** Convite para abrir o estúdio próprio, para quem ainda não tem. */
+function AbrirEstudioCard({ onPress }: { onPress: () => void }) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.85}
+      className="bg-surface rounded-rd-lg p-5 flex-row items-center"
+      accessibilityRole="button"
+      accessibilityLabel="Abrir meu estúdio"
+    >
+      <View className="w-12 h-12 rounded-rd-pill bg-surface-2 items-center justify-center mr-3">
+        <Store size={22} color="#602C66" strokeWidth={1.5} />
+      </View>
+      <View className="flex-1">
+        <Text className="font-body-semibold text-[15px] text-ink">Abrir meu estúdio</Text>
+        <Text className="font-body text-[12px] text-fg-3">
+          Atenda e gerencie o seu próprio estúdio
+        </Text>
+      </View>
+      <ChevronRight size={20} color="#6B6B6B" />
+    </TouchableOpacity>
+  );
+}
+
+/** Atalho para a edição de nome, telefone e instagram. */
 function DadosCadastraisCard({ resumo, onPress }: { resumo: string; onPress: () => void }) {
   return (
     <TouchableOpacity
@@ -383,6 +436,8 @@ export function ArtistProfileScreen() {
   const route = useRoute<ArtistProfileRoute>();
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
+  const estudioProprioId = useAuthStore((s) => s.estudioProprioId);
+  const setModo = useAuthStore((s) => s.setModo);
 
   const {
     profile,
@@ -392,6 +447,9 @@ export function ArtistProfileScreen() {
   } = useArtistProfile();
 
   const tatuadorId = route.params?.tatuadorId ?? profile?.tatuadorId;
+  // O perfil traz o estúdio onde ele atende: o de colaborador ou, sem ele, o próprio.
+  const estudioColaboradorId =
+    profile?.estudioId && profile.estudioId !== estudioProprioId ? profile.estudioId : null;
   const {
     avaliacoes,
     loading: avaliacoesLoading,
@@ -411,7 +469,7 @@ export function ArtistProfileScreen() {
     ativo: contratoAtivo,
     proposta: propostaContrato,
     reload: reloadContratos,
-  } = useMeusContratos(profile?.estudioId ?? null);
+  } = useMeusContratos(estudioColaboradorId);
 
   // Ao voltar da tela de Convites (aceite/recusa) ou do contrato, perfil,
   // contagem e contrato mudam.
@@ -434,7 +492,9 @@ export function ArtistProfileScreen() {
     const nomeEstudio = profile?.nomeEstudio ?? 'estúdio';
     Alert.alert(
       `Sair do ${nomeEstudio}?`,
-      'Você deixará de fazer parte da equipe e voltará a atender como autônomo.',
+      estudioProprioId
+        ? 'Você deixará de fazer parte da equipe e voltará a atender no seu estúdio.'
+        : 'Você deixará de fazer parte da equipe e só poderá agendar sessões quando entrar em outro estúdio.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -721,7 +781,19 @@ export function ArtistProfileScreen() {
 
         {profileReady && !editing ? (
           <View className="px-6 mt-4">
-            {profile?.estudioId ? (
+            {estudioProprioId ? (
+              <View className="mb-3">
+                <EstudioProprioCard
+                  nome={estudioColaboradorId ? null : profile?.nomeEstudio ?? null}
+                  onGerenciar={() => setModo('estudio')}
+                />
+              </View>
+            ) : (
+              <View className="mb-3">
+                <AbrirEstudioCard onPress={() => navigation.navigate('CriarEstudio')} />
+              </View>
+            )}
+            {estudioColaboradorId && profile ? (
               <EstudioVinculadoCard
                 nome={profile.nomeEstudio ?? 'Estúdio'}
                 fotoUrl={profile.fotoEstudioUrl}
@@ -731,7 +803,7 @@ export function ArtistProfileScreen() {
                 propostaPendente={propostaContrato !== null}
                 onVerContrato={() =>
                   navigation.navigate('MeuContrato', {
-                    estudioId: profile.estudioId!,
+                    estudioId: estudioColaboradorId,
                     nomeEstudio: profile.nomeEstudio ?? 'Estúdio',
                   })
                 }
@@ -748,7 +820,7 @@ export function ArtistProfileScreen() {
                 resumo={
                   profile?.endereco
                     ? `${profile.endereco.cidade} - ${profile.endereco.uf}`
-                    : 'Endereço e contato não informados'
+                    : 'Nome, telefone e Instagram'
                 }
                 onPress={() => navigation.navigate('EditarPerfil')}
               />
@@ -779,10 +851,17 @@ export function ArtistProfileScreen() {
             />
           </View>
         ) : (
-          <PortfolioCarousel
-            images={portfolio}
-            onImagePress={editing ? undefined : abrirPortfolioCompleto}
-          />
+          <>
+            <PortfolioCarousel
+              images={portfolio}
+              onImagePress={editing ? undefined : abrirPortfolioCompleto}
+            />
+            {portfolio.length === 0 && (
+              <Text className="font-body text-[12px] text-fg-3 px-6 mt-2 leading-[16px]">
+                Adicione trabalhos ao portfólio para aparecer nas buscas por estilo.
+              </Text>
+            )}
+          </>
         )}
 
         <SectionHeader

@@ -12,10 +12,9 @@ import com.rabisko.mvp.chat.repository.ChatRepository;
 import com.rabisko.mvp.chat.repository.MessageRepository;
 import com.rabisko.mvp.client.domain.Client;
 import com.rabisko.mvp.client.repository.ClientRepository;
+import com.rabisko.mvp.shared.infraestrutura.security.UsuarioLogado;
 import com.rabisko.mvp.shared.storage.StorageService;
-import com.rabisko.mvp.user.domain.User;
-import com.rabisko.mvp.user.domain.UserRole;
-import com.rabisko.mvp.user.repository.UserRepository;
+import com.rabisko.mvp.studio.service.ContratoService;
 
 import jakarta.persistence.EntityNotFoundException;
 
@@ -31,7 +30,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -44,8 +45,8 @@ public class ChatService {
     @Autowired private MessageRepository messageRepository;
     @Autowired private ClientRepository clientRepository;
     @Autowired private ArtistRepository artistRepository;
-    @Autowired private UserRepository userRepository;
     @Autowired private StorageService storageService;
+    @Autowired private ContratoService contratoService;
 
     @Autowired private SimpMessagingTemplate messagingTemplate;
 
@@ -55,70 +56,80 @@ public class ChatService {
      * A UNIQUE em (cliente_id, tatuador_id) no banco garante 1 chat unico
      * por par — esse metodo nunca cria duplicado.
      */
-    public ChatDTO abrirOuObterChat(User logado, AbrirChatRequest req) {
+    public ChatDTO abrirOuObterChat(UsuarioLogado logado, AbrirChatRequest req) {
         UUID clienteId;
         UUID tatuadorId;
-        UUID outroUserId;
+        UUID outroAuthId;
+        String outroNome;
 
-        if (logado.getRole() == UserRole.cliente) {
-            Client meuPerfil = clientRepository.findByUserId(logado.getUserId())
+        if ("cliente".equals(logado.papel())) {
+            Client meuPerfil = clientRepository.findByAuthId(logado.authId())
                 .orElseThrow(() -> new EntityNotFoundException("Perfil cliente não encontrado"));
             Artist outro = artistRepository.findById(req.outroPerfilId())
                 .orElseThrow(() -> new EntityNotFoundException("Tatuador não encontrado"));
 
             clienteId = meuPerfil.getClientId();
             tatuadorId = outro.getTatuadorId();
-            outroUserId = outro.getUserId();
+            outroAuthId = outro.getAuthId();
+            outroNome = outro.getNome();
 
-        } else if (logado.getRole() == UserRole.tatuador) {
-            Artist meuPerfil = artistRepository.findByUserId(logado.getUserId())
+        } else if ("tatuador".equals(logado.papel())) {
+            Artist meuPerfil = artistRepository.findByAuthId(logado.authId())
                 .orElseThrow(() -> new EntityNotFoundException("Perfil tatuador não encontrado"));
             Client outro = clientRepository.findById(req.outroPerfilId())
                 .orElseThrow(() -> new EntityNotFoundException("Cliente não encontrado"));
 
             clienteId = outro.getClientId();
             tatuadorId = meuPerfil.getTatuadorId();
-            outroUserId = outro.getUserId();
+            outroAuthId = outro.getAuthId();
+            outroNome = outro.getNome();
 
         } else {
             throw new AccessDeniedException("Esse papel não participa de chat");
         }
 
         Chat chat = chatRepository.findByClienteIdAndTatuadorId(clienteId, tatuadorId)
-            .orElseGet(() -> chatRepository.save(
-                Chat.builder()
-                    .clienteId(clienteId)
-                    .tatuadorId(tatuadorId)
-                    .ativo(true)
-                    .build()
-            ));
+            .orElseGet(() -> criarChat(clienteId, tatuadorId));
 
-        String outroNome = userRepository.findById(outroUserId)
-            .map(u -> ((User) u).getNome())
-            .orElse("Usuário");
         Optional<Message> ultima = messageRepository.findTopByChatIdOrderByDataEnvioDesc(chat.getChatId());
 
         return new ChatDTO(
             chat.getChatId(),
-            outroUserId,
+            outroAuthId,
             outroNome,
             ultima.map(ChatService::preview).orElse(null),
             ultima.map(Message::getDataEnvio).orElse(null),
-            chat.isAtivo()
+            chat.isAtivo(),
+            naoLida(logado, chat, ultima)
         );
     }
+
+    private Chat criarChat(UUID clienteId, UUID tatuadorId) {
+        if (contratoService.estudioDeAtendimento(tatuadorId).isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Este tatuador ainda não atende em nenhum estúdio.");
+        }
+        
+        return chatRepository.save(Chat.builder()
+            .clienteId(clienteId)
+            .tatuadorId(tatuadorId)
+            .ativo(true)
+            .build());
+    }
+
 
 
     /**
      * Devolve a lista de chats do usuario logado, com o nome do outro
-     * lado e um preview da ultima mensagem. Igual ao WhatsApp "lista
-     * de conversas".
+     * lado, um preview da ultima mensagem e se ela esta nao lida. Igual ao
+     * WhatsApp "lista de conversas": da conversa mais recente (enviada ou
+     * recebida) para a mais antiga; chats sem mensagem vao para o fim.
      */
-    public List<ChatDTO> listarChatsDoUsuario(User logado){
+    public List<ChatDTO> listarChatsDoUsuario(UsuarioLogado logado){
         List<ChatDTO> listaChats = new ArrayList<>();
 
-        if (logado.getRole() == UserRole.cliente) {
-            Client meuPerfil = clientRepository.findByUserId(logado.getUserId())
+        if ("cliente".equals(logado.papel())) {
+            Client meuPerfil = clientRepository.findByAuthId(logado.authId())
                 .orElseThrow(() -> new EntityNotFoundException("Perfil cliente não encontrado"));
 
             List<Chat> chats = chatRepository.findByClienteId(meuPerfil.getClientId());
@@ -126,22 +137,21 @@ public class ChatService {
             for (int i = 0; i < chats.size(); i++) {
                 Artist outro = artistRepository.findById(chats.get(i).getTatuadorId())
                     .orElseThrow(() -> new EntityNotFoundException("Tatuador não encontrado"));
-                User outroUser = userRepository.findById(outro.getUserId())
-                    .orElseThrow(() -> new EntityNotFoundException("Usuário não encontrado"));
 
                 Optional<Message> ultima = messageRepository.findTopByChatIdOrderByDataEnvioDesc(chats.get(i).getChatId());
 
                 listaChats.add(new ChatDTO(
                     chats.get(i).getChatId(),
-                    outro.getUserId(),
-                    outroUser.getNome(),
+                    outro.getAuthId(),
+                    outro.getNome(),
                     ultima.map(ChatService::preview).orElse(null),
                     ultima.map(Message::getDataEnvio).orElse(null),
-                    chats.get(i).isAtivo()
+                    chats.get(i).isAtivo(),
+                    naoLida(logado, chats.get(i), ultima)
                 ));
             }
-        } else if (logado.getRole() == UserRole.tatuador) {
-            Artist meuPerfil = artistRepository.findByUserId(logado.getUserId())
+        } else if ("tatuador".equals(logado.papel())) {
+            Artist meuPerfil = artistRepository.findByAuthId(logado.authId())
                 .orElseThrow(() -> new EntityNotFoundException("Perfil artista não encontrado"));
 
             List<Chat> chats = chatRepository.findByTatuadorId(meuPerfil.getTatuadorId());
@@ -149,29 +159,41 @@ public class ChatService {
             for (int i = 0; i < chats.size(); i++) {
                 Client outro = clientRepository.findById(chats.get(i).getClienteId())
                     .orElseThrow(() -> new EntityNotFoundException("Cliente não encontrado"));
-                User outroUser = userRepository.findById(outro.getUserId())
-                    .orElseThrow(() -> new EntityNotFoundException("Usuário não encontrado"));
 
                 Optional<Message> ultima = messageRepository.findTopByChatIdOrderByDataEnvioDesc(chats.get(i).getChatId());
 
                 listaChats.add(new ChatDTO(
                     chats.get(i).getChatId(),
-                    outro.getUserId(),
-                    outroUser.getNome(),
+                    outro.getAuthId(),
+                    outro.getNome(),
                     ultima.map(ChatService::preview).orElse(null),
                     ultima.map(Message::getDataEnvio).orElse(null),
-                    chats.get(i).isAtivo()
+                    chats.get(i).isAtivo(),
+                    naoLida(logado, chats.get(i), ultima)
                 ));
             }
         } else {
             throw new AccessDeniedException("Esse papel não participa de chat");
         }
 
+        listaChats.sort(Comparator.comparing(ChatDTO::dataUltimaMensagem,
+            Comparator.nullsLast(Comparator.reverseOrder())));
         return listaChats;
     }
 
+    /**
+     * Basta olhar a última mensagem: se é minha, já respondi (e enviar marca
+     * como lido); se é para mim, está não lida quando chegou depois da minha
+     * última leitura — ou se nunca abri a conversa.
+     */
+    private static boolean naoLida(UsuarioLogado logado, Chat chat, Optional<Message> ultima) {
+        if (ultima.isEmpty() || !ultima.get().getDestinatarioId().equals(logado.authId())) return false;
+        LocalDateTime leuEm = "tatuador".equals(logado.papel()) ? chat.getTatuadorLeuEm() : chat.getClienteLeuEm();
+        return leuEm == null || ultima.get().getDataEnvio().isAfter(leuEm);
+    }
 
-    public Page<MensagemDTO> listarMensagens(User logado, UUID chatId, Pageable pagina){
+
+    public Page<MensagemDTO> listarMensagens(UsuarioLogado logado, UUID chatId, Pageable pagina){
         Chat chat = chatRepository.findById(chatId)
             .orElseThrow(() -> new EntityNotFoundException("Chat não encontrado"));
         garantirParticipacao(logado, chat);
@@ -181,7 +203,7 @@ public class ChatService {
     }
 
 
-    public MensagemDTO enviarMensagem(User logado, UUID chatId, EnviarMensagemRequest req){
+    public MensagemDTO enviarMensagem(UsuarioLogado logado, UUID chatId, EnviarMensagemRequest req){
         Chat chat = chatRepository.findById(chatId)
             .orElseThrow(() -> new EntityNotFoundException("Chat não encontrado"));
         garantirParticipacao(logado, chat);
@@ -195,7 +217,7 @@ public class ChatService {
      * Supabase Storage e a mensagem segue o mesmo caminho das de texto:
      * salva e entregue via WebSocket aos dois participantes.
      */
-    public MensagemDTO enviarImagem(User logado, UUID chatId, MultipartFile file, String legenda){
+    public MensagemDTO enviarImagem(UsuarioLogado logado, UUID chatId, MultipartFile file, String legenda){
         Chat chat = chatRepository.findById(chatId)
             .orElseThrow(() -> new EntityNotFoundException("Chat não encontrado"));
         garantirParticipacao(logado, chat);
@@ -219,25 +241,25 @@ public class ChatService {
      * Mensagem enviada em nome do tatuador ao confirmar um agendamento.
      * O chamador já validou que o tatuador participa do chat.
      */
-    public MensagemDTO enviarConfirmacaoAgendamento(User tatuador, Chat chat, String conteudo) {
+    public MensagemDTO enviarConfirmacaoAgendamento(UsuarioLogado tatuador, Chat chat, String conteudo) {
         return salvarEDistribuir(tatuador, chat, conteudo, null);
     }
 
 
-    private MensagemDTO salvarEDistribuir(User logado, Chat chat, String conteudo, String imagemUrl) {
+    private MensagemDTO salvarEDistribuir(UsuarioLogado logado, Chat chat, String conteudo, String imagemUrl) {
         UUID chatId = chat.getChatId();
-        UUID remetenteId = logado.getUserId();
+        UUID remetenteId = logado.authId();
         UUID destinatarioId;
 
-        if (logado.getRole() == UserRole.cliente) {
+        if ("cliente".equals(logado.papel())) {
             Artist outroPerfil = artistRepository.findById(chat.getTatuadorId())
                 .orElseThrow(() -> new EntityNotFoundException("Tatuador não encontrado"));
-            destinatarioId = outroPerfil.getUserId();
+            destinatarioId = outroPerfil.getAuthId();
 
-        } else if (logado.getRole() == UserRole.tatuador) {
+        } else if ("tatuador".equals(logado.papel())) {
             Client outroPerfil = clientRepository.findById(chat.getClienteId())
                 .orElseThrow(() -> new EntityNotFoundException("Cliente não encontrado"));
-            destinatarioId = outroPerfil.getUserId();
+            destinatarioId = outroPerfil.getAuthId();
 
         } else {
             throw new AccessDeniedException("Esse papel não participa de chat");
@@ -251,14 +273,13 @@ public class ChatService {
             .imagemUrl(imagemUrl)
             .build());
 
-        User destinatario = (User) userRepository.findById(destinatarioId)
-            .orElseThrow(() -> new EntityNotFoundException("Usuário destinatário não encontrado"));
+        registrarLeitura(logado, chatId, salva.getDataEnvio());
 
         MensagemDTO dto = MensagemDTO.from(salva);
 
         Runnable distribuir = () -> {
-            messagingTemplate.convertAndSendToUser(destinatario.getEmail(), "/queue/messages", dto);
-            messagingTemplate.convertAndSendToUser(logado.getEmail(), "/queue/messages", dto);
+            messagingTemplate.convertAndSendToUser(destinatarioId.toString(), "/queue/messages", dto);
+            messagingTemplate.convertAndSendToUser(logado.getName(), "/queue/messages", dto);
         };
 
         // Dentro de uma transação (ex.: confirmação de agendamento), só entrega
@@ -272,6 +293,26 @@ public class ChatService {
         }
 
         return dto;
+    }
+
+
+    /**
+     * Marca a conversa como lida pelo usuário logado até agora (tela do chat
+     * aberta). Também é chamado ao enviar: quem responde já leu o que veio antes.
+     */
+    public void marcarComoLido(UsuarioLogado logado, UUID chatId) {
+        Chat chat = chatRepository.findById(chatId)
+            .orElseThrow(() -> new EntityNotFoundException("Chat não encontrado"));
+        garantirParticipacao(logado, chat);
+        registrarLeitura(logado, chatId, LocalDateTime.now());
+    }
+
+    private void registrarLeitura(UsuarioLogado logado, UUID chatId, LocalDateTime quando) {
+        if ("tatuador".equals(logado.papel())) {
+            chatRepository.marcarLidoPeloTatuador(chatId, quando);
+        } else if ("cliente".equals(logado.papel())) {
+            chatRepository.marcarLidoPeloCliente(chatId, quando);
+        }
     }
 
 
@@ -289,16 +330,16 @@ public class ChatService {
      * Sem essa checagem, qualquer um com o chatId conseguiria ler/enviar
      * mensagens em chat alheio.
      */
-    private void garantirParticipacao(User user, Chat chat) {
-        if (user.getRole() == UserRole.cliente) {
-            Client meuPerfil = clientRepository.findByUserId(user.getUserId())
+    private void garantirParticipacao(UsuarioLogado user, Chat chat) {
+        if ("cliente".equals(user.papel())) {
+            Client meuPerfil = clientRepository.findByAuthId(user.authId())
                 .orElseThrow(() -> new EntityNotFoundException("Perfil cliente não encontrado"));
 
             if (!chat.getClienteId().equals(meuPerfil.getClientId()))
                 throw new AccessDeniedException("Você não participa deste chat");
 
-        } else if (user.getRole() == UserRole.tatuador) {
-            Artist meuPerfil = artistRepository.findByUserId(user.getUserId())
+        } else if ("tatuador".equals(user.papel())) {
+            Artist meuPerfil = artistRepository.findByAuthId(user.authId())
                 .orElseThrow(() -> new EntityNotFoundException("Perfil artista não encontrado"));
 
             if (!chat.getTatuadorId().equals(meuPerfil.getTatuadorId()))

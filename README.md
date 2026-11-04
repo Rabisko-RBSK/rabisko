@@ -282,7 +282,6 @@ Secret Key: ...
 | Variável | Onde pegar | Obrigatória |
 |---|---|---|
 | `DB_URL`, `DB_USER`, `DB_PASS` | Seção **"⛁ Database"**: sempre `postgres`/`postgres` em dev local. Pode deixar em branco fora do Dev Container (o `application-local.yml` já assume `localhost:54322`); **dentro** do Dev Container, preencha com `jdbc:postgresql://host.docker.internal:54322/postgres` | Só dentro do Dev Container |
-| `JWT_SECRET` | Não vem de lugar nenhum — invente uma string longa e aleatória (ex.: `openssl rand -hex 32` no Git Bash) | Recomendada (fallback inseguro `my-secret-key` se ausente) |
 | `SUPABASE_URL` | Seção **"🌐 APIs" → "Project URL"**. Fora do Dev Container use `http://127.0.0.1:54321`; dentro dele, `http://host.docker.internal:54321` | Sim (upload de imagens) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Seção **"🔑 Authentication Keys" → "Secret"** (`sb_secret_...`). ⚠️ **Não** é a "Access Key"/"Secret Key" da seção "📦 Storage (S3)" — aquela é para outro protocolo e não funciona aqui | Sim (upload de imagens) |
 
