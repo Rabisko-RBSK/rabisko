@@ -1,5 +1,6 @@
-import api from './index';
-import { ConviteDTO, ConviteDetalheDTO, ContratoDTO, ContratoInput, HorarioDTO } from './artistService';
+import api, { type EnderecoInput } from './index';
+import { multipartImage } from '../../utils/multipart';
+import { ConviteDTO, ConviteDetalheDTO, ContratoDTO, ContratoInput, EnderecoDTO, HorarioDTO } from './artistService';
 
 /** Tatuador da equipe do estúdio (GET /studio/me/colaboradores). */
 export interface ColaboradorDTO {
@@ -42,6 +43,24 @@ export interface StudioDTO {
 }
 
 export type CnpjStatus = 'verificado' | 'pendente' | 'irregular';
+
+/** Dados editáveis do estúdio (GET/PATCH /studio/me/perfil). CNPJ é só leitura. */
+export interface EstudioPerfil {
+  nome: string;
+  cnpj: string | null;
+  cnpjStatus: CnpjStatus;
+  /** Só dígitos; null sem telefone. */
+  telefone: string | null;
+  fotoUrl: string | null;
+  endereco: EnderecoDTO | null;
+  posicoes: number;
+}
+
+export interface AtualizarPerfilEstudioDTO {
+  nome: string;
+  telefone: string | null;
+  endereco: EnderecoInput;
+}
 
 /**
  * Rotas `/studio/**` — conta de estúdio, ou tatuador dono gerenciando o próprio
@@ -110,6 +129,26 @@ export const studioService = {
   },
 
   /** Grade de atendimento do estúdio. Lista vazia = sem restrição. */
+  async meuPerfil(): Promise<EstudioPerfil> {
+    const { data } = await api.get<EstudioPerfil>('/studio/me/perfil');
+    return data;
+  },
+
+  async atualizarPerfil(dto: AtualizarPerfilEstudioDTO): Promise<EstudioPerfil> {
+    const { data } = await api.patch<EstudioPerfil>('/studio/me/perfil', dto);
+    return data;
+  },
+
+  /** Envia a foto do estúdio (multipart) e o backend já grava; devolve a URL. */
+  async enviarFoto(localUri: string): Promise<string> {
+    const form = multipartImage(localUri, 'file');
+    const { data } = await api.post<{ url: string }>('/studio/me/foto', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 60000,
+    });
+    return data.url;
+  },
+
   async meusHorarios(): Promise<HorarioDTO[]> {
     const { data } = await api.get<HorarioDTO[]>('/studio/me/horarios');
     return data;

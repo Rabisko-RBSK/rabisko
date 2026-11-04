@@ -6,7 +6,7 @@ import { BottomNav } from '../components/common/BottomNav';
 import { StudioDashboardProvider } from '../hooks/useStudioDashboard';
 import { StudioAgendaScreen } from '../screens/App/StudioDashboardScreen';
 import { StudioDashboardStack } from './studio-dashboard.stack';
-import { SettingsScreen } from '../screens/App/SettingsScreen';
+import { SettingsStack } from './settings.stack';
 import { StudioServicosScreen } from '../screens/App/ServicosScreen';
 import { StudioEquipeStack } from './studio-equipe.stack';
 
@@ -39,7 +39,7 @@ export function StudioRoutes() {
         <Screen name="Servicos" component={StudioServicosScreen} />
         <Screen name="Team" component={StudioEquipeStack} />
         <Screen name="Agenda" component={StudioAgendaScreen} />
-        <Screen name="Settings" component={SettingsScreen} />
+        <Screen name="Settings" component={SettingsStack} />
       </Navigator>
     </StudioDashboardProvider>
   );

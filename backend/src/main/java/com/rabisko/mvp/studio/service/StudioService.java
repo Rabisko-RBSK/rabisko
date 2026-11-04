@@ -15,11 +15,14 @@ import com.rabisko.mvp.studio.repository.ConviteEstudioRepository;
 import com.rabisko.mvp.studio.repository.StudioRepository;
 import com.rabisko.mvp.shared.infraestrutura.cnpj.ResultadoCnpj;
 import com.rabisko.mvp.shared.infraestrutura.security.UsuarioLogado;
+import com.rabisko.mvp.shared.storage.StorageService;
+import com.rabisko.mvp.shared.validacao.Telefone;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
@@ -52,6 +55,9 @@ public class StudioService {
 
     @Autowired 
     private HorarioService horarioService;
+
+    @Autowired
+    private StorageService storageService;
 
     @Transactional
     public Studio cadastrarEstudio(UUID authId, RegisterEstudioDTO body, ResultadoCnpj cnpj) {
@@ -102,6 +108,36 @@ public class StudioService {
 
     public StudioDTO meuEstudio(UsuarioLogado logado) {
         return StudioDTO.from(exigirEstudioDoUser(logado));
+    }
+
+    /** Perfil editável do estúdio (tela "Perfil do estúdio" nas Configurações). */
+    public EstudioPerfilDTO meuPerfil(UsuarioLogado logado) {
+        return perfilDe(exigirEstudioDoUser(logado));
+    }
+
+    @Transactional
+    public EstudioPerfilDTO atualizarPerfil(UsuarioLogado logado, AtualizarPerfilEstudioDTO body) {
+        Studio estudio = exigirEstudioDoUser(logado);
+        estudio.setNome(body.nome().trim());
+        estudio.setTelefone(Telefone.normalizar(body.telefone()));
+        estudio.setEnderecoId(enderecoService.salvar(body.endereco(), estudio.getEnderecoId()).getEnderecoId());
+        return perfilDe(studioRepository.save(estudio));
+    }
+
+    /** Sobe a foto e já grava no estúdio; devolve a URL pública. */
+    @Transactional
+    public String atualizarFoto(UsuarioLogado logado, MultipartFile file) {
+        Studio estudio = exigirEstudioDoUser(logado);
+        String url = storageService.uploadFotoPerfil(file);
+        estudio.setFotoPerfilUrl(url);
+        studioRepository.save(estudio);
+        return url;
+    }
+
+    private EstudioPerfilDTO perfilDe(Studio s) {
+        return new EstudioPerfilDTO(
+            s.getNome(), s.getCnpj(), s.getCnpjStatus(), s.getTelefone(), s.getFotoPerfilUrl(),
+            enderecoService.buscar(s.getEnderecoId()), s.getPosicoes());
     }
 
     @Transactional

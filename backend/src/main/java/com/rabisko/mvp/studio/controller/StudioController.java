@@ -1,14 +1,17 @@
 package com.rabisko.mvp.studio.controller;
 
 import com.rabisko.mvp.artist.domain.ArtistStudioSearchResultDTO;
+import com.rabisko.mvp.artist.domain.UploadResponseDTO;
 import com.rabisko.mvp.horario.domain.HorarioDTO;
 import com.rabisko.mvp.studio.domain.AtualizarEstudioDTO;
+import com.rabisko.mvp.studio.domain.AtualizarPerfilEstudioDTO;
 import com.rabisko.mvp.studio.domain.ColaboradorDTO;
 import com.rabisko.mvp.studio.domain.ContratoDTO;
 import com.rabisko.mvp.studio.domain.ContratoInputDTO;
 import com.rabisko.mvp.studio.domain.ConviteDTO;
 import com.rabisko.mvp.studio.domain.ConviteDetalheDTO;
 import com.rabisko.mvp.studio.domain.CriarConviteDTO;
+import com.rabisko.mvp.studio.domain.EstudioPerfilDTO;
 import com.rabisko.mvp.studio.domain.StudioDTO;
 import com.rabisko.mvp.studio.service.StudioService;
 import com.rabisko.mvp.shared.infraestrutura.security.UsuarioLogado;
@@ -18,6 +21,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -41,6 +45,29 @@ public class StudioController {
             @RequestBody @Valid AtualizarEstudioDTO body
     ) {
         return ResponseEntity.ok(studioService.atualizarEstudio(logado, body));
+    }
+
+    /** GET /studio/me/perfil — dados editáveis do estúdio (nome, telefone, endereço, foto). */
+    @GetMapping("/me/perfil")
+    public ResponseEntity<EstudioPerfilDTO> meuPerfil(@AuthenticationPrincipal UsuarioLogado logado) {
+        return ResponseEntity.ok(studioService.meuPerfil(logado));
+    }
+
+    @PatchMapping("/me/perfil")
+    public ResponseEntity<EstudioPerfilDTO> atualizarPerfil(
+            @AuthenticationPrincipal UsuarioLogado logado,
+            @RequestBody @Valid AtualizarPerfilEstudioDTO body
+    ) {
+        return ResponseEntity.ok(studioService.atualizarPerfil(logado, body));
+    }
+
+    /** POST /studio/me/foto — multipart, campo `file`. Já grava no estúdio. */
+    @PostMapping("/me/foto")
+    public ResponseEntity<UploadResponseDTO> atualizarFoto(
+            @AuthenticationPrincipal UsuarioLogado logado,
+            @RequestParam("file") MultipartFile file
+    ) {
+        return ResponseEntity.ok(new UploadResponseDTO(studioService.atualizarFoto(logado, file)));
     }
 
     @GetMapping("/me/convites")

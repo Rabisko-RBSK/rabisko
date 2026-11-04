@@ -1,5 +1,7 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert, Switch } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   User,
   HelpCircle,
@@ -12,12 +14,15 @@ import {
 import { useAuthStore } from '../../store/authStore';
 import { Header } from '../../components/common/Header';
 import { sair } from '../../services/supabase';
+import type { SettingsStackParamList } from '../../routes/settings.stack';
 
 /**
  * Settings (DESIGN.md §10 #14 / Screens.jsx#SettingsScreen). Single cream-surface list.
  * Sign-out is rendered as a separate, low-emphasis link below the list.
  * Tatuador com estúdio próprio ganha o switch "Modo estúdio", que troca as
  * abas do artista pelas do estúdio (a mesma tela aparece nos dois fluxos).
+ * "Meu Perfil" abre o perfil de quem está logado: cliente, tatuador ou, no
+ * fluxo do estúdio (conta de estúdio ou modo estúdio), o perfil do estúdio.
  */
 
 interface SettingRow {
@@ -28,8 +33,10 @@ interface SettingRow {
 }
 
 export function SettingsScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<SettingsStackParamList>>();
   const { role, logout, estudioProprioId, modo, setModo } = useAuthStore();
   const podeAlternarModo = role === 'artista' && !!estudioProprioId;
+  const fluxoEstudio = role === 'estudio' || (podeAlternarModo && modo === 'estudio');
 
   // Encerra a sessão no Supabase; se falhar (ex.: sem rede), limpa o app mesmo assim.
   const handleLogout = () => {
@@ -37,7 +44,14 @@ export function SettingsScreen() {
   };
 
   const rows: SettingRow[] = [
-    ...(role !== 'artista' ? [{ id: 'profile', label: 'Meu Perfil', icon: User }] : []),
+    fluxoEstudio
+      ? { id: 'profile', label: 'Perfil do estúdio', icon: Store, onPress: () => navigation.navigate('PerfilEstudio') }
+      : {
+          id: 'profile',
+          label: 'Meu Perfil',
+          icon: User,
+          onPress: () => navigation.navigate(role === 'artista' ? 'PerfilTatuador' : 'PerfilCliente'),
+        },
     {
       id: 'help',
       label: 'Ajuda',
