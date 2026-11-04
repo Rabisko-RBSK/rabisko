@@ -3,13 +3,14 @@ package com.rabisko.mvp.appointment.controller;
 import com.rabisko.mvp.appointment.domain.AgendaEstudioDTO;
 import com.rabisko.mvp.appointment.domain.AgendamentoInvalidoException;
 import com.rabisko.mvp.appointment.domain.AppointmentDTO;
-import com.rabisko.mvp.appointment.domain.AppointmentStatus;
 import com.rabisko.mvp.appointment.domain.AtualizarStatusSessaoRequest;
 import com.rabisko.mvp.appointment.domain.BusySlotDTO;
+import com.rabisko.mvp.appointment.domain.CheckInRequest;
 import com.rabisko.mvp.appointment.domain.ConflitoAgendaException;
 import com.rabisko.mvp.appointment.domain.CreateAppointmentRequest;
 import com.rabisko.mvp.appointment.domain.SessaoListItemDTO;
 import com.rabisko.mvp.appointment.service.AppointmentService;
+import com.rabisko.mvp.appointment.service.TokenCheckinService;
 import com.rabisko.mvp.shared.infraestrutura.security.UsuarioLogado;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +19,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.MediaType;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -117,4 +120,33 @@ public class AppointmentController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return appointmentService.obterHorariosOcupadosPorId(tatuadorId, date);
     }
+
+    @GetMapping("/appointments/sessoes/{sessionId}/qrcode")
+    public ResponseEntity<TokenCheckinService.TokenCheckin> qrCodeSessao(
+            @AuthenticationPrincipal UsuarioLogado logado,
+            @PathVariable UUID sessionId
+    ) {
+        return ResponseEntity.ok(appointmentService.gerarQrCode(logado, sessionId));
+    }
+
+    @PostMapping("/appointments/sessoes/check-in")
+    public ResponseEntity<Void> checkIn(
+            @AuthenticationPrincipal UsuarioLogado logado,
+            @RequestBody @Valid CheckInRequest body
+    ) {
+        appointmentService.checkIn(logado, body.token());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping(value = "/appointments/{id}/finalizar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Void> finalizarServico(
+            @AuthenticationPrincipal UsuarioLogado logado,
+            @PathVariable UUID id,
+            @RequestParam(value = "adicionarAoPortfolio", defaultValue = "false") boolean adicionarAoPortfolio,
+            @RequestParam(value = "foto", required = false) MultipartFile foto
+    ) {
+        appointmentService.finalizarServico(logado, id, adicionarAoPortfolio, foto);
+        return ResponseEntity.noContent().build();
+    }
+
 }

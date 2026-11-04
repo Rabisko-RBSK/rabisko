@@ -12,7 +12,8 @@ import { appointmentService, SessaoListItemDTO } from '../../services/api';
 
 
 const GANTT_START  = 8;
-const GANTT_END    = 21;
+/** Até a meia-noite, como o mapa de posições: sessões noturnas também aparecem. */
+const GANTT_END    = 24;
 const PX_PER_MIN   = 1.5;
 const ROW_HEIGHT   = 52;
 const LABEL_WIDTH  = 52;
@@ -139,7 +140,7 @@ export function CalendarScreen() {
 
   const TIME_LABELS = Array.from(
     { length: GANTT_END - GANTT_START + 1 },
-    (_, i) => `${String(GANTT_START + i).padStart(2, '0')}:00`,
+    (_, i) => `${String((GANTT_START + i) % 24).padStart(2, '0')}:00`,
   );
 
   const todayStr = formatDate(new Date());

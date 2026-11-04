@@ -1,6 +1,5 @@
 package com.rabisko.mvp.kanban.service;
 
-import com.rabisko.mvp.appointment.domain.AppointmentStatus;
 import com.rabisko.mvp.kanban.domain.KanbanColuna;
 
 import java.time.LocalDate;
@@ -12,13 +11,13 @@ import java.util.List;
  * Em que coluna do Kanban cada serviço aparece. Sem dependências
  * de Spring/banco para ser testável isoladamente (ver ClassificadorKanbanTest).
  *
- * O status do serviço fica "confirmada" desde a criação — nada o avança —, então
- * a coluna sai das datas das sessões não canceladas:
- *   - finalizado: status concluida, ou todas as sessões já terminaram (a flag
- *     `finalizado` de servicos é ignorada: nada no app a grava, e no seed ela
- *     aparece em serviço com sessão futura);
- *   - agendado: nenhuma sessão começou ainda;
- *   - em_progresso: alguma sessão já começou e ainda há sessão por terminar.
+ * Quem encerra o serviço é o tatuador (POST /appointments/{id}/finalizar, que
+ * grava a flag `finalizado`); as datas das sessões não canceladas decidem o resto:
+ *   - finalizado: só com a flag `finalizado`;
+ *   - agendado: nenhuma sessão começou ainda (ou o serviço não tem sessão);
+ *   - em_progresso: alguma sessão já começou. Inclui o serviço em que todas as
+ *     sessões já passaram e ninguém finalizou — "aguardando finalização", com
+ *     sessaoAtual e proximaSessao nulos.
  * A coluna mensagens_nao_lidas vem dos chats, não dos serviços (KanbanService).
  */
 public final class ClassificadorKanban {
@@ -32,31 +31,36 @@ public final class ClassificadorKanban {
     }
 
     /**
-     * @param sessaoAtual   posição (1..total) da próxima sessão, ou da que está em andamento.
-     * @param fim           fim da última sessão (null sem sessões).
+     * @param sessaoAtual   posição (1..total) da próxima sessão, ou da que está em
+     *                      andamento; null em finalizado e em "aguardando finalização".
+     * @param concluidoEm   dia da finalização (ou do fim da última sessão, quando
+     *                      não há data gravada); só em finalizado.
      */
     public record Situacao(
         KanbanColuna coluna,
         int totalSessoes,
         Integer sessaoAtual,
         LocalDateTime proximaSessao,
-        LocalDateTime fim
+        LocalDate concluidoEm
     ) {
-        public LocalDate concluidoEm() {
-            return coluna == KanbanColuna.finalizado && fim != null ? fim.toLocalDate() : null;
+        /** Todas as sessões já passaram, mas o tatuador ainda não finalizou. */
+        public boolean aguardandoFinalizacao() {
+            return coluna == KanbanColuna.em_progresso && sessaoAtual == null;
         }
     }
 
     public static Situacao doServico(
-            AppointmentStatus status, List<Sessao> sessoes, LocalDateTime agora) {
+            boolean finalizado, LocalDateTime dataFinalizacao, List<Sessao> sessoes, LocalDateTime agora) {
 
         List<Sessao> ordenadas = sessoes.stream().sorted(Comparator.comparing(Sessao::inicio)).toList();
         int total = ordenadas.size();
-        LocalDateTime fim = ordenadas.stream().map(Sessao::fim).max(Comparator.naturalOrder()).orElse(null);
 
-        boolean todasTerminaram = fim != null && !fim.isAfter(agora);
-        if (status == AppointmentStatus.concluida || todasTerminaram) {
-            return new Situacao(KanbanColuna.finalizado, total, null, null, fim);
+        if (finalizado) {
+            LocalDate concluidoEm = dataFinalizacao != null
+                ? dataFinalizacao.toLocalDate()
+                : ordenadas.stream().map(Sessao::fim).max(Comparator.naturalOrder())
+                    .map(LocalDateTime::toLocalDate).orElse(null);
+            return new Situacao(KanbanColuna.finalizado, total, null, null, concluidoEm);
         }
 
         if (total == 0) {
@@ -64,17 +68,16 @@ public final class ClassificadorKanban {
         }
 
         boolean comecou = !ordenadas.get(0).inicio().isAfter(agora);
-        KanbanColuna coluna = comecou || status == AppointmentStatus.em_andamento
-            ? KanbanColuna.em_progresso
-            : KanbanColuna.agendado;
+        KanbanColuna coluna = comecou ? KanbanColuna.em_progresso : KanbanColuna.agendado;
 
         // Próxima = a primeira que ainda não terminou (pode estar em andamento).
         for (int i = 0; i < total; i++) {
             Sessao s = ordenadas.get(i);
             if (s.fim().isAfter(agora)) {
-                return new Situacao(coluna, total, i + 1, s.inicio(), fim);
+                return new Situacao(coluna, total, i + 1, s.inicio(), null);
             }
         }
-        throw new IllegalStateException("Sessão em aberto não encontrada");
+        // Todas já passaram e ninguém finalizou: aguardando finalização.
+        return new Situacao(KanbanColuna.em_progresso, total, null, null, null);
     }
 }

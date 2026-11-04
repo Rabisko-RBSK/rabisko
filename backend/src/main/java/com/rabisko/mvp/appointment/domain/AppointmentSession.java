@@ -54,4 +54,10 @@ public class AppointmentSession {
     @CreationTimestamp
     @Column(name = "data_criacao", updatable = false, nullable = false)
     private LocalDateTime dataCriacao;
+
+    @Column(name = "checkin_em")
+    private LocalDateTime checkinEm;
+
+    @Column(name = "checkin_origem")
+    private String checkinOrigem;
 }

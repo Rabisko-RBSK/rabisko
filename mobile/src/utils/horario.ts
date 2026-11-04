@@ -36,6 +36,27 @@ export function normalizarGrade(horarios: HorarioDTO[]): HorarioDTO[] {
     .sort((a, b) => a.diaSemana - b.diaSemana || paraMinutos(a.abre) - paraMinutos(b.abre));
 }
 
+/**
+ * Um intervalo por dia (da menor abertura ao maior fechamento), que é o que
+ * o HorarioSemanalForm edita. Grades antigas com pausa no mesmo dia (ex.:
+ * 10h-12h e 14h-20h) viram um intervalo só (10h-20h); sem isso, editar o dia
+ * mexeria nos dois intervalos e o backend recusaria por sobreposição.
+ */
+export function umIntervaloPorDia(horarios: HorarioDTO[]): HorarioDTO[] {
+  const porDia = new Map<number, HorarioDTO>();
+  for (const h of normalizarGrade(horarios)) {
+    const atual = porDia.get(h.diaSemana);
+    porDia.set(h.diaSemana, atual
+      ? {
+          diaSemana: h.diaSemana,
+          abre: paraMinutos(h.abre) < paraMinutos(atual.abre) ? h.abre : atual.abre,
+          fecha: paraMinutos(h.fecha) > paraMinutos(atual.fecha) ? h.fecha : atual.fecha,
+        }
+      : h);
+  }
+  return [...porDia.values()];
+}
+
 export function mesmaGrade(a: HorarioDTO[], b: HorarioDTO[]): boolean {
   return JSON.stringify(normalizarGrade(a)) === JSON.stringify(normalizarGrade(b));
 }
