@@ -16,6 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -95,6 +96,14 @@ public class ContratoService {
 
     public Optional<UUID> estudioDeAtendimento(UUID tatuadorId) {
         return estudioColaborador(tatuadorId).or(() -> estudioProprio(tatuadorId));
+    }
+
+    /** Tatuador com contrato "dono" ativo no estúdio (null em estúdio de conta própria sem dono). */
+    public Optional<UUID> donoDoEstudio(UUID estudioId) {
+        return contratoRepository.findByEstudioIdAndStatus(estudioId, ativo).stream()
+            .filter(c -> c.getModelo() == ContratoModelo.dono)
+            .min(Comparator.comparing(ContratoColaborador::getDataCriacao))
+            .map(ContratoColaborador::getTatuadorId);
     }
 
     @Transactional

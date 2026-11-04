@@ -218,12 +218,11 @@ function Indicador({ ativa }: { ativa: number }) {
 
 interface ServicosScreenProps {
   visao: VisaoKanban;
-  /** Só o tatuador abre chat e anamnese (as telas ficam na pilha da aba dele). */
+  /** Só o tatuador abre o chat (a tela fica na pilha da aba dele). */
   onAbrirChat?: (card: KanbanCardDTO) => void;
-  onAbrirAnamnese?: (sessao: SessaoListItemDTO) => void;
 }
 
-export function ServicosScreen({ visao, onAbrirChat, onAbrirAnamnese }: ServicosScreenProps) {
+export function ServicosScreen({ visao, onAbrirChat }: ServicosScreenProps) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const { cards, loading, refreshing, error, reload, refresh } = useKanbanServicos(visao);
@@ -367,13 +366,6 @@ export function ServicosScreen({ visao, onAbrirChat, onAbrirAnamnese }: Servicos
         visible={!!sessaoAberta}
         onClose={() => setSessaoAberta(null)}
         sessao={sessaoAberta}
-        onOpenAnamnese={() => {
-          // No estúdio o botão fica desabilitado (acessoAnamnese só libera cliente e tatuador).
-          if (!sessaoAberta || !onAbrirAnamnese) return;
-          const sessao = sessaoAberta;
-          setSessaoAberta(null);
-          onAbrirAnamnese(sessao);
-        }}
       />
     </View>
   );
@@ -389,7 +381,6 @@ export function ArtistServicosScreen() {
         outroNome: card.clienteNome,
         outroUsuarioId: card.clienteAuthId!,
       })}
-      onAbrirAnamnese={(sessao) => navigation.navigate('Anamnese', { sessao })}
     />
   );
 }
