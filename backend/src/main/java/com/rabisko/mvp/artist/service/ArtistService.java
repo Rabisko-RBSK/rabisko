@@ -42,11 +42,9 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -59,9 +57,6 @@ import static com.rabisko.mvp.studio.domain.ConviteStatus.*;
 public class ArtistService {
 
     private static final Logger log = LoggerFactory.getLogger(ArtistService.class);
-
-    /** Raio padrao da busca por distancia quando o front nao passa um. */
-    private static final double RAIO_KM_DEFAULT = 25.0;
 
     /** Tamanho maximo da bio (espelha BIO_MAX da tela de perfil). */
     private static final int BIO_MAX = 300;
@@ -141,35 +136,9 @@ public class ArtistService {
             Double lng,
             Double raioKm
     ) {
-        boolean semEstilo = estilos == null || estilos.isEmpty();
-        List<String> estilosNormalizados = semEstilo
-                ? Collections.emptyList()
-                : estilos.stream()
-                        .filter(s -> s != null && !s.isBlank())
-                        .map(s -> s.trim().toLowerCase(Locale.ROOT))
-                        .collect(Collectors.toList());
-
-        if (estilosNormalizados.isEmpty()) {
-            semEstilo = true;
-        }
-
-        boolean semDistancia = lat == null || lng == null;
-        double raio = (raioKm == null || raioKm <= 0) ? RAIO_KM_DEFAULT : raioKm;
-
-        Collection<String> estilosParam = estilosNormalizados.isEmpty()
-                ? List.of("")
-                : estilosNormalizados;
-        double latParam = lat == null ? 0.0 : lat;
-        double lngParam = lng == null ? 0.0 : lng;
-
+        FiltroBusca f = FiltroBusca.de(estilos, lat, lng, raioKm);
         List<ArtistSearchProjection> rows = artistRepository.buscar(
-                semEstilo,
-                estilosParam,
-                semDistancia,
-                latParam,
-                lngParam,
-                raio
-        );
+                f.semEstilo(), f.estilos(), f.semDistancia(), f.lat(), f.lng(), f.raioKm());
 
         return rows.stream()
                 .map(ArtistSearchResultDTO::fromProjection)
