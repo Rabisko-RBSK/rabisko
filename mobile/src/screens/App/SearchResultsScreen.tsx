@@ -12,7 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Lightbulb, Mail, MapPin } from 'lucide-react-native';
+import { Lightbulb, Mail, MapPin, Store, User, Users } from 'lucide-react-native';
 import * as Location from 'expo-location';
 
 import { Header } from '../../components/common/Header';
@@ -20,11 +20,15 @@ import { Button } from '../../components/common/Button';
 import { HomeStackParamList } from '../../routes/home.stack';
 import {
   ArtistSearchResult,
+  StudioSearchResult,
   searchService,
 } from '../../services/api/searchService';
+import { mesclarResultados, ResultadoBusca } from '../../utils/resultadosBusca';
 import { useEstilos } from '../../hooks/useEstilos';
 import { closestMatch } from '../../utils/levenshtein';
 import { normalize } from '../../utils/normalize';
+
+type Resultado = ResultadoBusca<ArtistSearchResult, StudioSearchResult>;
 
 type SearchResultsRoute = RouteProp<HomeStackParamList, 'SearchResults'>;
 type SearchResultsNav = NativeStackNavigationProp<HomeStackParamList, 'SearchResults'>;
@@ -50,7 +54,7 @@ export function SearchResultsScreen() {
   const estilo = estiloParam ?? (matchingEstilo ? matchingEstilo.nome : undefined);
   const termo = matchingEstilo ? undefined : termoParam;
 
-  const [results, setResults] = useState<ArtistSearchResult[]>([]);
+  const [results, setResults] = useState<Resultado[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -86,24 +90,18 @@ export function SearchResultsScreen() {
       setLoading(true);
       setError(null);
       try {
-        let data = await searchService.buscarArtistas({
+        const params = {
           estilo: estilo ? [estilo] : undefined,
           lat: opts.lat,
           lng: opts.lng,
           raioKm: opts.lat != null ? RAIO_KM_DEFAULT : undefined,
-        });
+        };
+        const [tatuadores, estudios] = await Promise.all([
+          searchService.buscarArtistas(params),
+          searchService.buscarEstudios(params),
+        ]);
 
-        if (termo) {
-          const norm = normalize(termo);
-          data = data.filter(
-            (a) =>
-              normalize(a.nome).includes(norm) ||
-              normalize(a.email).includes(norm) ||
-              (a.endereco && normalize(a.endereco).includes(norm))
-          );
-        }
-
-        setResults(data);
+        setResults(mesclarResultados(tatuadores, estudios, termo));
       } catch (err: any) {
         console.warn('[SearchResults] erro na busca', err?.response?.status, err?.message);
         setError('Nao foi possivel carregar os resultados. Tente de novo.');
@@ -184,33 +182,63 @@ export function SearchResultsScreen() {
   }, [fetchResults, usarDistancia, coords]);
 
   const renderItem = useCallback(
-    ({ item }: { item: ArtistSearchResult }) => (
-      <TouchableOpacity
-        activeOpacity={0.85}
-        onPress={() => navigation.navigate('EstablishmentProfile', { id: item.tatuadorId })}
-        className="bg-surface rounded-rd-md p-4 mb-3"
-      >
-        <Text className="font-aux-bold text-[18px] text-ink" numberOfLines={1}>
-          {item.nome}
-        </Text>
-
-        <View className="flex-row items-center mt-2">
-          <Mail size={14} color="#404040" style={{ marginRight: 6 }} />
-          <Text className="font-body text-[13px] text-fg-2" numberOfLines={1}>
-            {item.email}
-          </Text>
-        </View>
-
-        {item.endereco ? (
-          <View className="flex-row items-start mt-1">
-            <MapPin size={14} color="#6B6B6B" style={{ marginRight: 6, marginTop: 2 }} />
-            <Text className="font-body text-[13px] text-fg-3 flex-1" numberOfLines={2}>
-              {item.endereco}
+    ({ item: r }: { item: Resultado }) => {
+      const estudio = r.tipo === 'estudio';
+      return (
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() =>
+            r.tipo === 'estudio'
+              ? navigation.navigate('StudioPublicProfile', { id: r.item.estudioId })
+              : navigation.navigate('EstablishmentProfile', { id: r.item.tatuadorId })
+          }
+          className="bg-surface rounded-rd-md p-4 mb-3"
+        >
+          <View className="flex-row items-center">
+            <Text className="font-aux-bold text-[18px] text-ink flex-1 mr-2" numberOfLines={1}>
+              {r.item.nome}
             </Text>
+            <View
+              className={`flex-row items-center rounded-full px-2 py-0.5 ${estudio ? 'bg-plum' : 'bg-plum-tint'}`}
+            >
+              {estudio ? (
+                <Store size={12} color="#FFFFFF" style={{ marginRight: 4 }} />
+              ) : (
+                <User size={12} color="#602C66" style={{ marginRight: 4 }} />
+              )}
+              <Text className={`font-body-semibold text-[11px] ${estudio ? 'text-white' : 'text-plum'}`}>
+                {estudio ? 'Estúdio' : 'Tatuador'}
+              </Text>
+            </View>
           </View>
-        ) : null}
-      </TouchableOpacity>
-    ),
+
+          {r.tipo === 'tatuador' ? (
+            <View className="flex-row items-center mt-2">
+              <Mail size={14} color="#404040" style={{ marginRight: 6 }} />
+              <Text className="font-body text-[13px] text-fg-2" numberOfLines={1}>
+                {r.item.email}
+              </Text>
+            </View>
+          ) : (
+            <View className="flex-row items-center mt-2">
+              <Users size={14} color="#404040" style={{ marginRight: 6 }} />
+              <Text className="font-body text-[13px] text-fg-2" numberOfLines={1}>
+                {r.item.totalTatuadores === 1 ? '1 tatuador' : `${r.item.totalTatuadores} tatuadores`}
+              </Text>
+            </View>
+          )}
+
+          {r.item.endereco ? (
+            <View className="flex-row items-start mt-1">
+              <MapPin size={14} color="#6B6B6B" style={{ marginRight: 6, marginTop: 2 }} />
+              <Text className="font-body text-[13px] text-fg-3 flex-1" numberOfLines={2}>
+                {r.item.endereco}
+              </Text>
+            </View>
+          ) : null}
+        </TouchableOpacity>
+      );
+    },
     [navigation],
   );
 
@@ -218,7 +246,7 @@ export function SearchResultsScreen() {
     ? `Estilo: ${estilo}`
     : termo
     ? `Busca: "${termo}"`
-    : 'Todos os tatuadores';
+    : 'Todos os tatuadores e estúdios';
 
   return (
     <View className="flex-1 bg-background">
@@ -261,7 +289,7 @@ export function SearchResultsScreen() {
       ) : (
         <FlatList
           data={results}
-          keyExtractor={(item) => item.tatuadorId}
+          keyExtractor={(item) => item.chave}
           renderItem={renderItem}
           contentContainerStyle={{
             paddingHorizontal: 24,
@@ -271,7 +299,7 @@ export function SearchResultsScreen() {
           ListEmptyComponent={
             <View className="items-center justify-center mt-16 px-8">
               <Text className="font-aux-bold text-[18px] text-ink mb-2 text-center">
-                Nenhum tatuador encontrado
+                Nenhum tatuador ou estúdio encontrado
               </Text>
               <Text className="font-body text-[13px] text-fg-2 text-center">
                 Tente um estilo diferente ou desligue o filtro de distancia.

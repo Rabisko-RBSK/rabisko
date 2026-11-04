@@ -9,9 +9,6 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Header } from '../../components/common/Header';
 import { SessionDetailModal } from './SessionDetailModal';
 import { appointmentService, SessaoListItemDTO } from '../../services/api';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { SessionsStackParamList } from '../../routes/sessions.stack';
 
 
 const GANTT_START  = 8;
@@ -83,7 +80,6 @@ function formatDataHora(dateStr: string, horario: string): string {
 
 
 export function CalendarScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<SessionsStackParamList>>();
   const [weekOffset, setWeekOffset] = React.useState(0);
   const [sessoes, setSessoes] = React.useState<SessaoListItemDTO[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -346,11 +342,6 @@ export function CalendarScreen() {
         visible={detalheVisivel}
         onClose={() => setDetalheVisivel(false)}
         sessao={selectedSessao}
-        onOpenAnamnese={() => {
-          if (!selectedSessao) return;
-          setDetalheVisivel(false);
-          navigation.navigate('Anamnese', { sessao: selectedSessao });
-        }}
         onStatusAtualizado={(sessionId, status) => {
           setSessoes((lista) => lista.map((s) => (s.sessionId === sessionId ? { ...s, status } : s)));
           setSelectedSessao((s) => (s && s.sessionId === sessionId ? { ...s, status } : s));

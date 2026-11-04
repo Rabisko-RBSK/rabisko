@@ -6,8 +6,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SessaoListItemDTO, StatusSessaoMarcavel, appointmentService } from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
-import { acessoAnamnese } from '../../services/anamneseFlow';
-import { AnamneseButton } from '../../components/anamnese/AnamneseButton';
 import { studioDashboardTheme as theme } from '../../theme/studioDashboard';
 
 
@@ -70,12 +68,11 @@ interface Props {
   visible: boolean;
   onClose: () => void;
   sessao: SessaoListItemDTO | null;
-  onOpenAnamnese: () => void;
   /** Chamado depois que o tatuador marca a sessão (para a lista atualizar o status). */
   onStatusAtualizado?: (sessionId: string, status: StatusSessaoMarcavel) => void;
 }
 
-export function SessionDetailModal({ visible, onClose, sessao, onOpenAnamnese, onStatusAtualizado }: Props) {
+export function SessionDetailModal({ visible, onClose, sessao, onStatusAtualizado }: Props) {
   const perfil = useAuthStore((state) => state.role);
   const [marcando, setMarcando] = useState<StatusSessaoMarcavel | null>(null);
   if (!sessao) return null;
@@ -98,7 +95,6 @@ export function SessionDetailModal({ visible, onClose, sessao, onOpenAnamnese, o
   };
 
   const badgeColors = statusBadgeColors(sessao.status);
-  const acesso = acessoAnamnese(sessao, perfil);
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
@@ -190,17 +186,6 @@ export function SessionDetailModal({ visible, onClose, sessao, onOpenAnamnese, o
               </View>
             </View>
           )}
-          <View style={{ marginTop: 24, padding: 16, gap: 12, backgroundColor: theme.colors.card,
-            borderRadius: theme.radius.row, width: '100%', maxWidth: 560, alignSelf: 'center' }}>
-            <Text style={{ fontFamily: theme.fonts.bold, fontSize: 18, lineHeight: 26, color: theme.colors.text }}>
-              Anamnese desta sessão
-            </Text>
-            <Text style={{ fontFamily: theme.fonts.regular, fontSize: 14, lineHeight: 22, color: theme.colors.text }}>
-              {acesso.motivo}
-            </Text>
-            <AnamneseButton title={perfil === 'cliente' ? 'Preencher minha parte' : 'Preencher registro pós-atendimento'}
-              disabled={!acesso.permitido} onPress={onOpenAnamnese} />
-          </View>
         </ScrollView>
       </SafeAreaView>
     </Modal>
