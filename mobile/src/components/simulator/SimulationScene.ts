@@ -18,6 +18,49 @@ export interface SimulationSceneOptions {
 /** Altura do plano em unidades de mundo; a largura é `PLANE_HEIGHT * aspecto da foto`. */
 const PLANE_HEIGHT = 2;
 
+/**
+ * O three (r163+) exige WebGL 2, que no celular é OpenGL ES 3.0. Uma GPU só com ES 2.0
+ * (Mali-400/450 e similares, em Androids muito baratos) renderizaria um canvas preto sem erro,
+ * então é melhor falhar cedo com uma mensagem clara. `GL_VERSION` vem direto do driver, por
+ * exemplo "OpenGL ES 3.0 Apple A15 GPU - 95" ou "OpenGL ES 3.2 V@0530.0".
+ */
+function assertOpenGlEs3(gl: ExpoWebGLRenderingContext): void {
+  const version = String(gl.getParameter(gl.VERSION) ?? '');
+  const es = /OpenGL ES(?:-CM)? (\d+)/i.exec(version);
+  if (es && Number(es[1]) < 3) {
+    throw new Error(`A GPU deste aparelho não suporta OpenGL ES 3.0 (${version})`);
+  }
+  const webgl = /^WebGL (\d+)/i.exec(version);
+  if (webgl && Number(webgl[1]) < 2) {
+    throw new Error(`O contexto não é WebGL 2 (${version})`);
+  }
+}
+
+/**
+ * O expo-gl faz `WebGL2RenderingContext` herdar de `WebGLRenderingContext`, então o contexto
+ * passa no `instanceof WebGLRenderingContext` que o three (r163+) usa para rejeitar WebGL 1, e o
+ * construtor lança "WebGL 1 is not supported since r163" mesmo em GPUs com ES 3.0. O three só
+ * consulta esse global dentro do construtor: escondê-lo durante a chamada resolve sem tocar no
+ * expo-gl. A capacidade real da GPU já foi conferida em `assertOpenGlEs3`.
+ */
+function createRenderer(gl: ExpoWebGLRenderingContext, canvas: HTMLCanvasElement): THREE.WebGLRenderer {
+  const globalScope = globalThis as { WebGLRenderingContext?: unknown };
+  const original = globalScope.WebGLRenderingContext;
+  globalScope.WebGLRenderingContext = undefined;
+  try {
+    return new THREE.WebGLRenderer({
+      canvas,
+      context: gl,
+      antialias: false,
+      alpha: false,
+      premultipliedAlpha: false,
+      powerPreference: 'high-performance',
+    });
+  } finally {
+    globalScope.WebGLRenderingContext = original;
+  }
+}
+
 type Uniforms = {
   uSkinMap: THREE.IUniform<THREE.Texture | null>;
   uDepthMap: THREE.IUniform<THREE.Texture | null>;
@@ -77,6 +120,8 @@ export class SimulationScene {
     this.segments = options.segments ?? 128;
     this.fieldOfView = options.fieldOfView ?? 20;
 
+    assertOpenGlEs3(gl);
+
     const width = gl.drawingBufferWidth;
     const height = gl.drawingBufferHeight;
 
@@ -93,14 +138,7 @@ export class SimulationScene {
       getContext: () => gl,
     } as unknown as HTMLCanvasElement;
 
-    this.renderer = new THREE.WebGLRenderer({
-      canvas,
-      context: gl,
-      antialias: false,
-      alpha: false,
-      premultipliedAlpha: false,
-      powerPreference: 'high-performance',
-    });
+    this.renderer = createRenderer(gl, canvas);
     this.renderer.setPixelRatio(1);
     this.renderer.setSize(width, height, false);
     this.renderer.setClearColor(options.clearColor ?? 0xeae0d5, 1);

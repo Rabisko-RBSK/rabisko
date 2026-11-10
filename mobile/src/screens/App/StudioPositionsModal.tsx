@@ -4,6 +4,7 @@ import {
   Modal,
   Pressable,
   ScrollView,
+  type ScrollViewInstance,
   Text,
   TouchableOpacity,
   View,
@@ -96,7 +97,7 @@ export function StudioPositionsModal({
   visible, onClose, onConfirm, data, duracaoMinutos, inicial, pendentes = [], ignorarSessionIds, horarios,
 }: Props) {
   const insets = useSafeAreaInsets();
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
 
   const [agenda, setAgenda] = useState<AgendaEstudioDTO | null>(null);
   const [carregando, setCarregando] = useState(true);

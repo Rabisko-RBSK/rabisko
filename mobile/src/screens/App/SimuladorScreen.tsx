@@ -5,7 +5,12 @@ import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import * as Sharing from 'expo-sharing';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useNavigation } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { Header } from '../../components/common/Header';
+import type { AppRoutesParamList } from '../../routes/app.routes';
+import type { ChatDTO } from '../../services/api';
+import { EnviarSimulacaoModal, type ImagemSimulacao } from './EnviarSimulacaoModal';
 import { FilterChip } from '../../components/common/Chip';
 import {
   TattooSimulationCanvas,
@@ -14,6 +19,7 @@ import {
 import { IDENTITY_TRANSFORM, type TattooTransform } from '../../components/simulator/tattooMath';
 import { simulationService } from '../../services/api/simulationService';
 import {
+  dimensoesPng,
   limparCacheSimulador,
   medirImagem,
   normalizarImagem,
@@ -34,7 +40,8 @@ import type { DepthMap } from '../../utils/depthPng';
  *
  * Os gestos (arrastar, pinçar, girar) rodam na thread JS (`runOnJS(true)`) e vão direto para o
  * canvas pela ref — nada de estado React no caminho quente, para manter 60 FPS. "Salvar" captura
- * o frame do WebGL (`captureSnapshot`) e grava na galeria.
+ * o frame do WebGL (`captureSnapshot`) e grava na galeria; "Enviar p/ Tatuador" captura o mesmo
+ * frame e abre o `EnviarSimulacaoModal`, que manda a imagem numa conversa e abre o chat.
  */
 
 type DepthStatus = 'idle' | 'loading' | 'ready' | 'failed';
@@ -47,52 +54,53 @@ const RELEVOS: { id: Relevo; label: string; displacementScale: number }[] = [
 ];
 
 /**
- * Gestos de manipulação da tatuagem (arrastar, pinçar, girar), simultâneos. Cada gesto guarda no
- * seu `onStart` o estado de onde partiu e só altera o próprio campo, então os três podem rodar ao
- * mesmo tempo sem se atropelar. Os callbacks rodam na thread JS (`runOnJS(true)`): quem consome o
- * gesto é o canvas WebGL, que renderiza a partir do JS, então passar pelo worklet da Reanimated
- * só adicionaria uma ida e volta entre threads.
+ * Gestos de manipulação da tatuagem (arrastar, pinçar, girar), simultâneos.
+ *
+ * Cada evento aplica só a variação desde o evento anterior (`onChange`: `changeX/Y`,
+ * `scaleChange`, `rotationChange`) sobre o transform atual do canvas. Não há "base" guardada no
+ * início do gesto: um toque novo sempre continua de onde a arte está, mesmo que o evento de
+ * ativação chegue fora de ordem ou se perca. (Antes cada gesto somava a translação total a uma
+ * base capturada no `onStart`; quando essa base ficava desatualizada, a arte voltava para a
+ * posição anterior a cada toque.) Cada gesto só altera o próprio campo, então os três podem
+ * rodar ao mesmo tempo sem se atropelar.
+ *
+ * Os callbacks rodam na thread JS (`runOnJS(true)`): quem consome o gesto é o canvas WebGL, que
+ * renderiza a partir do JS, então passar pelo worklet da Reanimated só adicionaria uma ida e
+ * volta entre threads.
  *
  * Fecha sobre o handle do canvas (estado), não sobre refs: a regra `react-hooks/refs` do React
  * Compiler proíbe passar funções que leem refs para chamadas feitas durante o render.
  */
 function criarGestosDaTatuagem(canvas: TattooSimulationCanvasHandle | null) {
   const estadoAtual = (): TattooTransform => canvas?.getTransform() ?? { ...IDENTITY_TRANSFORM };
-  let basePan = estadoAtual();
-  let basePinch = basePan;
-  let baseRotation = basePan;
 
   const pan = Gesture.Pan()
     .runOnJS(true)
-    .onStart(() => {
-      basePan = estadoAtual();
-    })
-    .onUpdate((e) => {
-      canvas?.setTransform({ x: basePan.x + e.translationX, y: basePan.y + e.translationY });
+    .onChange((e) => {
+      const atual = estadoAtual();
+      canvas?.setTransform({ x: atual.x + e.changeX, y: atual.y + e.changeY });
     });
 
   const pinch = Gesture.Pinch()
     .runOnJS(true)
-    .onStart(() => {
-      basePinch = estadoAtual();
-    })
-    .onUpdate((e) => {
-      canvas?.setTransform({ scale: basePinch.scale * e.scale });
+    .onChange((e) => {
+      canvas?.setTransform({ scale: estadoAtual().scale * e.scaleChange });
     });
 
   const rotation = Gesture.Rotation()
     .runOnJS(true)
-    .onStart(() => {
-      baseRotation = estadoAtual();
-    })
-    .onUpdate((e) => {
-      canvas?.setTransform({ rotation: baseRotation.rotation + (e.rotation * 180) / Math.PI });
+    .onChange((e) => {
+      canvas?.setTransform({ rotation: estadoAtual().rotation + (e.rotationChange * 180) / Math.PI });
     });
 
   return Gesture.Simultaneous(pan, pinch, rotation);
 }
 
 export function SimuladorScreen() {
+  const navigation = useNavigation<BottomTabNavigationProp<AppRoutesParamList>>();
+  // Frame capturado para enviar no chat; com valor, o modal de escolha do tatuador fica aberto.
+  const [imagemParaEnviar, setImagemParaEnviar] = useState<ImagemSimulacao | null>(null);
+  const [capturandoEnvio, setCapturandoEnvio] = useState(false);
   const [fotoBase, setFotoBase] = useState<ImageInfo | null>(null);
   const [tatuagem, setTatuagem] = useState<ImageInfo | null>(null);
   const [depthMap, setDepthMap] = useState<DepthMap | null>(null);
@@ -143,7 +151,8 @@ export function SimuladorScreen() {
       try {
         const png = await simulationService.removerFundo(referencia.uri);
         const file = salvarBytesEmCache(png, `tatuagem-${Date.now()}.png`);
-        const { width, height } = await medirImagem(file.uri);
+        // As dimensões vêm do próprio PNG; o `Image.getSize` só fica de reserva.
+        const { width, height } = dimensoesPng(png) ?? (await medirImagem(file.uri));
         setTatuagem({ uri: file.uri, width, height });
       } catch (error) {
         console.error('Erro ao remover fundo:', error);
@@ -255,6 +264,34 @@ export function SimuladorScreen() {
       console.error('Erro ao salvar imagem:', error);
       Alert.alert('Erro', 'Não foi possível salvar a imagem.');
     }
+  };
+
+  const abrirEnvioParaTatuador = async () => {
+    if (!canvas || capturandoEnvio) return;
+    setCapturandoEnvio(true);
+    try {
+      const { uri, width, height } = await canvas.captureSnapshot({ format: 'jpeg', quality: 0.9 });
+      setImagemParaEnviar({ uri, width, height });
+    } catch (error) {
+      console.error('Erro ao capturar a simulação:', error);
+      Alert.alert('Erro', 'Não foi possível capturar a simulação.');
+    } finally {
+      setCapturandoEnvio(false);
+    }
+  };
+
+  const abrirConversaEnviada = (chat: ChatDTO) => {
+    setImagemParaEnviar(null);
+    // `initial: false` deixa a lista de conversas embaixo, para o "voltar" da conversa funcionar.
+    navigation.navigate('Chat', {
+      screen: 'ChatThread',
+      params: {
+        chatId: chat.chatId,
+        outroNome: chat.outroUsuarioNome,
+        outroUsuarioId: chat.outroUsuarioId,
+      },
+      initial: false,
+    });
   };
 
   const handleRenderError = useCallback(() => {
@@ -399,10 +436,15 @@ export function SimuladorScreen() {
               <TouchableOpacity
                 activeOpacity={0.65}
                 className="bg-ink flex-row flex-1 items-center justify-center py-4 rounded-md px-2"
-                style={{ gap: 8 }}
-                onPress={() => Alert.alert('Em breve!', 'A conexão com o chat do tatuador será implementada na próxima versão.')}
+                style={{ gap: 8, opacity: capturandoEnvio ? 0.6 : 1 }}
+                disabled={capturandoEnvio}
+                onPress={abrirEnvioParaTatuador}
               >
-                <Send size={18} color="#FFFFFF" />
+                {capturandoEnvio ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Send size={18} color="#FFFFFF" />
+                )}
                 <Text className="font-body-bold text-[14px] text-surface text-center">Enviar p/ Tatuador</Text>
               </TouchableOpacity>
 
@@ -445,6 +487,12 @@ export function SimuladorScreen() {
           Suas simulações ficam salvas aqui e podem ser enviadas direto no chat com o artista.
         </Text>
       </ScrollView>
+
+      <EnviarSimulacaoModal
+        imagem={imagemParaEnviar}
+        onClose={() => setImagemParaEnviar(null)}
+        onEnviado={abrirConversaEnviada}
+      />
     </View>
   );
 }

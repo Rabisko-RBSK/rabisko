@@ -32,16 +32,41 @@ export function diretorioSimulador(): Directory {
   return dir;
 }
 
-/** Apaga os arquivos do simulador (PNGs recortados, temporários). Seguro chamar a qualquer momento. */
+/**
+ * Apaga os arquivos do simulador (PNGs recortados, temporários). Seguro chamar a qualquer momento.
+ *
+ * Apaga o conteúdo e mantém a pasta: apagar e recriar a própria pasta fazia, no iOS, as
+ * referências gravadas depois falharem no `Image.getSize` ("Failed to getSize of file://...").
+ */
 export function limparCacheSimulador(): void {
   try {
     const dir = new Directory(Paths.cache, 'simulador');
-    if (dir.exists) {
-      dir.delete();
+    if (!dir.exists) return;
+    for (const item of dir.list()) {
+      try {
+        item.delete();
+      } catch (error) {
+        console.warn('[Simulador] Falha ao apagar arquivo do cache:', error);
+      }
     }
   } catch (error) {
     console.warn('[Simulador] Falha ao limpar o cache:', error);
   }
+}
+
+const PNG_ASSINATURA = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
+/**
+ * Largura e altura de um PNG lidas do cabeçalho (o IHDR é sempre o primeiro chunk: bytes 16-23).
+ * Evita reabrir pelo sistema um arquivo que acabou de ser gravado. Null se não for PNG.
+ */
+export function dimensoesPng(bytes: Uint8Array): { width: number; height: number } | null {
+  if (bytes.length < 24 || PNG_ASSINATURA.some((b, i) => bytes[i] !== b)) return null;
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  if (String.fromCharCode(bytes[12], bytes[13], bytes[14], bytes[15]) !== 'IHDR') return null;
+  const width = view.getUint32(16);
+  const height = view.getUint32(20);
+  return width > 0 && height > 0 ? { width, height } : null;
 }
 
 export function salvarBytesEmCache(bytes: Uint8Array, nome: string): File {
