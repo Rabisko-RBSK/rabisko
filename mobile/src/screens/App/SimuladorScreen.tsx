@@ -19,6 +19,7 @@ import {
 import { IDENTITY_TRANSFORM, type TattooTransform } from '../../components/simulator/tattooMath';
 import { simulationService } from '../../services/api/simulationService';
 import {
+  dimensoesPng,
   limparCacheSimulador,
   medirImagem,
   normalizarImagem,
@@ -150,7 +151,8 @@ export function SimuladorScreen() {
       try {
         const png = await simulationService.removerFundo(referencia.uri);
         const file = salvarBytesEmCache(png, `tatuagem-${Date.now()}.png`);
-        const { width, height } = await medirImagem(file.uri);
+        // As dimensões vêm do próprio PNG; o `Image.getSize` só fica de reserva.
+        const { width, height } = dimensoesPng(png) ?? (await medirImagem(file.uri));
         setTatuagem({ uri: file.uri, width, height });
       } catch (error) {
         console.error('Erro ao remover fundo:', error);
