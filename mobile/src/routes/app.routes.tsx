@@ -1,8 +1,9 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import type { NavigatorScreenParams } from '@react-navigation/native';
 
 import { HomeStack } from './home.stack';
-import { ChatStack } from './chat.stack';
+import { ChatStack, type ChatStackParamList } from './chat.stack';
 import { SimuladorScreen } from '../screens/App/SimuladorScreen';
 import { ClientSessionsStack } from './sessions.stack';
 import { SettingsStack } from './settings.stack';
@@ -18,7 +19,8 @@ import { BottomNav } from '../components/common/BottomNav';
  */
 export type AppRoutesParamList = {
   Home: undefined;
-  Chat: undefined;
+  /** Com params, abre direto uma conversa (ex.: o Simulador depois de enviar a simulação). */
+  Chat: NavigatorScreenParams<ChatStackParamList> | undefined;
   Simulador: undefined;
   Sessoes: undefined;
   Settings: undefined;

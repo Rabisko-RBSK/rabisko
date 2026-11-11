@@ -5,6 +5,7 @@ import {
   NativeSyntheticEvent,
   RefreshControl,
   ScrollView,
+  type ScrollViewInstance,
   Text,
   TouchableOpacity,
   View,
@@ -251,8 +252,8 @@ export function ServicosScreen({ visao, onAbrirChat, onAbrirServico }: ServicosS
   };
 
   const [ativa, setAtiva] = useState(0);
-  const kanbanRef = useRef<ScrollView>(null);
-  const abasRef = useRef<ScrollView>(null);
+  const kanbanRef = useRef<ScrollViewInstance>(null);
+  const abasRef = useRef<ScrollViewInstance>(null);
   const abasX = useRef<number[]>([]);
 
   const largura = width - PADDING - GAP - ESPIA;
