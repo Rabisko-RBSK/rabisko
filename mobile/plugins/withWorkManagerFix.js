@@ -2,26 +2,21 @@
  * Corrige o crash na abertura do APK:
  *   "Failed to create an instance of class androidx.work.impl.WorkDatabase"
  *
- * O react-native-maps declara androidx.work:work-runtime:2.9.1, mas outra
- * dependência transitiva traz o Room 2.7+. O WorkDatabase_Impl gerado no
- * WorkManager 2.9 não é compatível com o Room 2.7+ e o app morre antes de
- * carregar o JS. Forçamos uma versão do WorkManager compatível.
+ * O template do SDK 58 liga o R8 (android.enableMinifyInReleaseBuilds=true).
+ * O WorkManager (trazido pelo react-native-maps) cria o WorkDatabase_Impl do
+ * Room por reflexão no boot, e o R8 deixa essa classe impossível de instanciar.
+ * Desligamos a minificação no release, como era antes do upgrade.
  */
-const { withAppBuildGradle } = require('expo/config-plugins');
+const { withGradleProperties } = require('expo/config-plugins');
 
-const WORK_VERSION = '2.10.1';
-const MARKER = '// withWorkManagerFix';
+const KEY = 'android.enableMinifyInReleaseBuilds';
 
 module.exports = function withWorkManagerFix(config) {
-  return withAppBuildGradle(config, (cfg) => {
-    if (!cfg.modResults.contents.includes(MARKER)) {
-      cfg.modResults.contents += `
-${MARKER}
-configurations.all {
-    resolutionStrategy.force "androidx.work:work-runtime:${WORK_VERSION}"
-}
-`;
-    }
+  return withGradleProperties(config, (cfg) => {
+    cfg.modResults = cfg.modResults.filter(
+      (item) => !(item.type === 'property' && item.key === KEY)
+    );
+    cfg.modResults.push({ type: 'property', key: KEY, value: 'false' });
     return cfg;
   });
 };
