@@ -4,6 +4,8 @@ import api from './index';
 export interface Estilo {
   estiloId: string;
   nome: string;
+  /** URL publica da imagem (bucket style_images); null quando nao ha imagem. */
+  imagemUrl: string | null;
 }
 
 export const estiloService = {

@@ -57,15 +57,15 @@ BEGIN;
 -- ----------------------------------------------------------------------------
 -- estilos: catálogo controlado de estilos de tatuagem
 -- ----------------------------------------------------------------------------
-INSERT INTO "public"."estilos" ("estilo_id", "nome", "descricao") VALUES
-    ('55555555-5555-5555-5555-555555555501', 'Old School',        'Traços grossos, cores vivas e temas clássicos da tatuagem americana.'),
-    ('55555555-5555-5555-5555-555555555502', 'New School',        'Evolução exagerada e colorida da old school, com influência de cartoon.'),
-    ('55555555-5555-5555-5555-555555555503', 'Realismo',          'Busca reproduzir fotos e texturas com o máximo de fidelidade possível.'),
-    ('55555555-5555-5555-5555-555555555504', 'Blackwork',         'Uso predominante de preto sólido, texturas e composições gráficas.'),
-    ('55555555-5555-5555-5555-555555555505', 'Fineline',          'Traços finos e delicados, com poucos ou nenhum preenchimento.'),
-    ('55555555-5555-5555-5555-555555555506', 'Aquarela',          'Simula o efeito de tinta aquarela, com manchas e transições de cor.'),
-    ('55555555-5555-5555-5555-555555555507', 'Tribal',            'Composições gráficas em preto inspiradas em culturas tribais.'),
-    ('55555555-5555-5555-5555-555555555508', 'Oriental/Japonês',  'Estilo irezumi: dragões, koi, ondas e grandes composições corporais.')
+INSERT INTO "public"."estilos" ("estilo_id", "nome", "descricao", "imagem_path") VALUES
+    ('55555555-5555-5555-5555-555555555501', 'Old School',        'Traços grossos, cores vivas e temas clássicos da tatuagem americana.', 'OldSchool.jpeg'),
+    ('55555555-5555-5555-5555-555555555502', 'New School',        'Evolução exagerada e colorida da old school, com influência de cartoon.', NULL),
+    ('55555555-5555-5555-5555-555555555503', 'Realismo',          'Busca reproduzir fotos e texturas com o máximo de fidelidade possível.', 'Realismo.jpeg'),
+    ('55555555-5555-5555-5555-555555555504', 'Blackwork',         'Uso predominante de preto sólido, texturas e composições gráficas.', 'Blackwork.jpeg'),
+    ('55555555-5555-5555-5555-555555555505', 'Fineline',          'Traços finos e delicados, com poucos ou nenhum preenchimento.', 'Fineline.jpeg'),
+    ('55555555-5555-5555-5555-555555555506', 'Aquarela',          'Simula o efeito de tinta aquarela, com manchas e transições de cor.', 'Aquarela.jpeg'),
+    ('55555555-5555-5555-5555-555555555507', 'Tribal',            'Composições gráficas em preto inspiradas em culturas tribais.', 'Tribal.jpeg'),
+    ('55555555-5555-5555-5555-555555555508', 'Oriental/Japonês',  'Estilo irezumi: dragões, koi, ondas e grandes composições corporais.', 'Oriental.jpeg')
 ON CONFLICT ("estilo_id") DO NOTHING;
 
 -- ----------------------------------------------------------------------------
