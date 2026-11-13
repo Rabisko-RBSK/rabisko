@@ -33,7 +33,6 @@ import { SuggestionList } from '../../components/common/SuggestionList';
 import { useEstilos } from '../../hooks/useEstilos';
 import { Estilo } from '../../services/api/estiloService';
 import { searchService, ArtistSearchResult } from '../../services/api/searchService';
-import { flashService, FlashItem } from '../../services/api/flashService';
 import { normalize } from '../../utils/normalize';
 import { levenshtein } from '../../utils/levenshtein';
 import { notaParaExibir } from '../../utils/nota';
@@ -87,30 +86,6 @@ function StyleTile({
       <Text className="font-body-medium text-[12px] text-ink mt-2 text-center" numberOfLines={1}>
         {label}
       </Text>
-    </TouchableOpacity>
-  );
-}
-
-function FlashCard({
-  title,
-  price,
-  photo,
-  onPress,
-}: {
-  title: string;
-  price: string;
-  photo: string;
-  onPress?: () => void;
-}) {
-  return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.9} className="mr-3" style={{ width: 168 }}>
-      <View className="rounded-rd-lg overflow-hidden bg-surface" style={{ width: 168, height: 168 }}>
-        <Image source={{ uri: photo }} className="w-full h-full" />
-      </View>
-      <Text className="font-body-semibold text-[14px] text-ink mt-2" numberOfLines={1}>
-        {title}
-      </Text>
-      <Text className="font-body text-[12px] text-fg-2">{price}</Text>
     </TouchableOpacity>
   );
 }
@@ -195,10 +170,6 @@ export function HomeScreen() {
   const [locationDenied, setLocationDenied] = useState(false);
   const [errorNear, setErrorNear] = useState<string | null>(null);
 
-  // Flashes do dia
-  const [flashes, setFlashes] = useState<FlashItem[]>([]);
-  const [loadingFlashes, setLoadingFlashes] = useState(true);
-
   // 1. Carregar artistas para o destaque
   const carregarDestaques = useCallback(async () => {
     setLoadingArtists(true);
@@ -247,24 +218,10 @@ export function HomeScreen() {
     }
   }, []);
 
-  // 3. Carregar flashes do dia
-  const carregarFlashes = useCallback(async () => {
-    setLoadingFlashes(true);
-    try {
-      const data = await flashService.listarHoje();
-      setFlashes(data);
-    } catch (err: any) {
-      console.warn('[Home] erro ao carregar flashes', err);
-    } finally {
-      setLoadingFlashes(false);
-    }
-  }, []);
-
   useEffect(() => {
     carregarDestaques();
     carregarProximos();
-    carregarFlashes();
-  }, [carregarDestaques, carregarProximos, carregarFlashes]);
+  }, [carregarDestaques, carregarProximos]);
 
   // Sugestões de busca ranqueadas
   const suggestions = useMemo(
@@ -469,46 +426,7 @@ export function HomeScreen() {
           </ScrollView>
         )}
 
-        {/* 4. Flash do Dia */}
-        <View className="flex-row items-end justify-between px-6 mb-3 mt-8">
-          <View className="flex-row items-center">
-            <Text className="font-aux-bold text-[20px] text-ink mr-2">Flash do dia</Text>
-            <StatusPill label="HOJE" tone="plum" />
-          </View>
-          <TouchableOpacity
-            hitSlop={8}
-            onPress={() => navigation.navigate('SearchResults', undefined)}
-          >
-            <Text className="font-body-semibold text-[12px] text-fg-2">Ver tudo</Text>
-          </TouchableOpacity>
-        </View>
-        {loadingFlashes ? (
-          <View className="h-32 items-center justify-center">
-            <ActivityIndicator color="#602C66" />
-          </View>
-        ) : (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 24 }}
-          >
-            {flashes.map((f) => (
-              <FlashCard
-                key={f.id}
-                title={f.title}
-                price={f.price}
-                photo={f.photo}
-                onPress={() => {
-                  if (allArtists[0]) {
-                    navigation.navigate('EstablishmentProfile', { id: allArtists[0].tatuadorId });
-                  }
-                }}
-              />
-            ))}
-          </ScrollView>
-        )}
-
-        {/* 5. Novidade — Simulação de Tatuagem */}
+        {/* 4. Novidade — Simulação de Tatuagem */}
         <View className="px-6 mt-8">
           <TouchableOpacity
             activeOpacity={0.9}
@@ -533,7 +451,7 @@ export function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* 6. Perto de Você */}
+        {/* 5. Perto de Você */}
         <SectionHeader title="Perto de você" />
         <View className="px-6">
           {loadingNear ? (
