@@ -38,6 +38,9 @@ public class StorageService {
     @Value("${supabase.bucket.chat:chat_images}")
     private String chatBucket;
 
+    @Value("${supabase.bucket.estilos:style_images}")
+    private String estiloBucket;
+
     /** Sobe imagem para o bucket de fotos de perfil; devolve a URL publica. */
     public String uploadFotoPerfil(MultipartFile file) {
         return upload(profileBucket, file);
@@ -51,6 +54,15 @@ public class StorageService {
     /** Sobe imagem anexada a uma mensagem de chat; devolve a URL publica. */
     public String uploadChat(MultipartFile file) {
         return upload(chatBucket, file);
+    }
+
+    /**
+     * URL publica da imagem de um estilo, a partir do nome do objeto guardado
+     * em estilos.imagem_path. Devolve null quando o estilo nao tem imagem.
+     */
+    public String publicUrlEstilo(String objectName) {
+        if (objectName == null || objectName.isBlank()) return null;
+        return publicUrl(estiloBucket, objectName);
     }
 
     /** Apaga uma imagem do bucket. Best-effort: loga e segue se o objeto sumiu. */
@@ -104,6 +116,10 @@ public class StorageService {
             throw new RuntimeException("Erro ao subir imagem para o Supabase Storage.", e);
         }
 
+        return publicUrl(bucket, objectName);
+    }
+
+    private String publicUrl(String bucket, String objectName) {
         String base = publicUrl == null || publicUrl.isBlank() ? supabaseUrl : publicUrl;
         return base + "/storage/v1/object/public/" + bucket + "/" + objectName;
     }
