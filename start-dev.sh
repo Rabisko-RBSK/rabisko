@@ -53,6 +53,11 @@ echo -e "${BOLD}==> Subindo Supabase local (Postgres, Auth, Storage)...${RESET}"
 echo "    (isso pode demorar na primeira vez, enquanto as imagens do Docker são baixadas)"
 npx supabase start
 
+# Sobe as imagens dos buckets com objects_path (ex.: style_images <- docs/images).
+# Idempotente: arquivos já existentes são sobrescritos.
+echo -e "${BOLD}==> Enviando imagens de seed para o Storage...${RESET}"
+npx supabase seed buckets
+
 echo
 echo -e "${GREEN}${BOLD}Supabase local no ar.${RESET}"
 echo "    Studio, API URL, DB URL e chaves foram exibidos acima."

@@ -41,27 +41,6 @@ import { notaParaExibir } from '../../utils/nota';
 /** Quantidade máxima de sugestões mostradas no dropdown da Home. */
 const MAX_SUGGESTIONS = 5;
 
-/** Fotos visuais associadas a cada estilo de tatuagem */
-const STYLE_PHOTOS: Record<string, string> = {
-  'realismo': 'https://images.unsplash.com/photo-1565058379802-bbe93b2f703a?q=80&w=400&auto=format&fit=crop',
-  'minimalista': 'https://images.unsplash.com/photo-1542856391-010fb87dcfed?q=80&w=400&auto=format&fit=crop',
-  'fineline': 'https://images.unsplash.com/photo-1542856391-010fb87dcfed?q=80&w=400&auto=format&fit=crop',
-  'aquarela': 'https://images.unsplash.com/photo-1568515045052-f9a854d70bfd?q=80&w=400&auto=format&fit=crop',
-  'blackwork': 'https://images.unsplash.com/photo-1611501275019-9b5cda994e8d?q=80&w=400&auto=format&fit=crop',
-  'old school': 'https://images.unsplash.com/photo-1590246814883-57c511e7afde?q=80&w=400&auto=format&fit=crop',
-  'oriental': 'https://images.unsplash.com/photo-1598371839696-5c5bb00bdc28?q=80&w=400&auto=format&fit=crop',
-  'oriental/japonês': 'https://images.unsplash.com/photo-1598371839696-5c5bb00bdc28?q=80&w=400&auto=format&fit=crop',
-  'tribal': 'https://images.unsplash.com/photo-1562962230-16e4623d36e6?q=80&w=400&auto=format&fit=crop',
-  'new school': 'https://images.unsplash.com/photo-1611501275019-9b5cda994e8d?q=80&w=400&auto=format&fit=crop',
-};
-
-function getStylePhoto(nome: string): string {
-  const key = nome.toLowerCase().trim();
-  return STYLE_PHOTOS[key] || 'https://images.unsplash.com/photo-1565058379802-bbe93b2f703a?q=80&w=400&auto=format&fit=crop';
-}
-
-
-
 function SectionHeader({
   title,
   action,
@@ -89,13 +68,21 @@ function StyleTile({
   onPress,
 }: {
   label: string;
-  photo: string;
+  /** Imagem do estilo (Supabase Storage); sem ela, mostra a inicial do nome. */
+  photo: string | null;
   onPress: () => void;
 }) {
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.85} className="mr-3" style={{ width: 96 }}>
-      <View className="rounded-rd-lg overflow-hidden bg-surface" style={{ width: 96, height: 128 }}>
-        <Image source={{ uri: photo }} className="w-full h-full" />
+      <View
+        className="rounded-rd-lg overflow-hidden bg-surface items-center justify-center"
+        style={{ width: 96, height: 128 }}
+      >
+        {photo ? (
+          <Image source={{ uri: photo }} className="w-full h-full" />
+        ) : (
+          <Text className="font-display text-[32px] text-ink">{label.charAt(0).toUpperCase()}</Text>
+        )}
       </View>
       <Text className="font-body-medium text-[12px] text-ink mt-2 text-center" numberOfLines={1}>
         {label}
@@ -475,7 +462,7 @@ export function HomeScreen() {
               <StyleTile
                 key={s.estiloId}
                 label={s.nome}
-                photo={getStylePhoto(s.nome)}
+                photo={s.imagemUrl}
                 onPress={() => navigation.navigate('SearchResults', { estilo: s.nome })}
               />
             ))}

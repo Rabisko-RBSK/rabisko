@@ -35,6 +35,10 @@ public class Estilo {
     /** Descricao opcional (ex.: "tracos finos e geometria"). */
     private String descricao;
 
+    /** Nome do objeto no bucket style_images (ex.: "Realismo.jpeg"); nullable. */
+    @Column(name = "imagem_path")
+    private String imagemPath;
+
     @CreationTimestamp
     @Column(name = "data_criacao", updatable = false, nullable = false)
     private LocalDateTime dataCriacao;

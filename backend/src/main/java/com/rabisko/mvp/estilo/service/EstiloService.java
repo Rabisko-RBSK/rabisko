@@ -2,6 +2,7 @@ package com.rabisko.mvp.estilo.service;
 
 import com.rabisko.mvp.estilo.domain.EstiloDTO;
 import com.rabisko.mvp.estilo.repository.EstiloRepository;
+import com.rabisko.mvp.shared.storage.StorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -15,9 +16,12 @@ public class EstiloService {
     @Autowired
     private EstiloRepository estiloRepository;
 
+    @Autowired
+    private StorageService storageService;
+
     public List<EstiloDTO> listar() {
         return estiloRepository.findAll(Sort.by("nome")).stream()
-                .map(EstiloDTO::fromEntity)
+                .map(e -> EstiloDTO.fromEntity(e, storageService.publicUrlEstilo(e.getImagemPath())))
                 .toList();
     }
 }
